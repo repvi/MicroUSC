@@ -1,6 +1,5 @@
-## IDF Component Manager Manifest File
+version: 0.1.0
+
 dependencies:
   idf:
     version: ">=5.1"
-  #ESP32_USC_SERIAL_DRIVERS:
-  #  path: "/path/to/code"
