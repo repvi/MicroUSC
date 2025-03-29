@@ -3,19 +3,13 @@
 
 # USC Drivers
 
-Starts a FreeRTOS task to print "Hello World".
+Start the program by creating your own universal serial connection protocol.
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
-
-## How to use example
+## How to use the program
 
 Follow detailed instructions provided specifically for this example.
 
-Select the instructions depending on Espressif chip installed on your development board:
-
-- [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
-- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
-
+Create or use a pre-made driver for your selected ESP32 type.
 
 ## Example folder contents
 
@@ -24,13 +18,15 @@ The project **hello_world** contains one source file in C language [hello_world_
 ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both).
 
 Below is short explanation of remaining files in the project folder.
-
 ```
 ├── CMakeLists.txt
-├── pytest_hello_world.py      Python script used for automated testing
+├── components
+|   ├── driver_connection
+|   ├── drivers
+|   └── memory_storage
 ├── main
 │   ├── CMakeLists.txt
-│   └── hello_world_main.c
+│   └── main.c
 └── README.md                  This is the file you are currently reading
 ```
 

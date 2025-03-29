@@ -20,11 +20,46 @@ void app_main(void) {
 
     uart_port_config_t pins = {
         .tx = GPIO_NUM_1,
-        .tx = GPIO_NUM_3,
+        .rx = GPIO_NUM_3,
         .port = UART_NUM_0
     };
 
     // code should go after here
 
     // functions like init_[something([varaible type] &configuration);
+
+    usc_config_t driver_example = {
+        .uart_config = pins,
+        .driver_name = "Driver example"
+    };
+
+    // make sure this points to a function that will handle
+    // the actions of the serial code that is recieved.
+    /* For example, create 
+    function_driver(void *parameter) {
+        [type] *something = ([type] *)parameter;
+        while (1) {
+            // do something
+            if ([data] equals example) {
+                // do action
+            }
+        }
+        // data can be NULL so make sure to add safe code using
+        // if statements
+    }
+    */
+    
+    usc_data_process_t driver_action = NULL; // point to the function
+    // you created
+    
+    
+    // function will configure driver_example
+    // 0 is for the driver type, for now you can only use 0 and 1.
+    // do not use the same number or it will not be configured
+    
+    ret = usc_driver_init(&driver_example, setting, &driver_action, 0);
+    if (ret != ESP_OK) { // temporary
+        printf("something went wrong here\n");
+        return;
+    }
 }
