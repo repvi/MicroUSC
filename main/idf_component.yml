@@ -2,3 +2,5 @@
 dependencies:
   idf:
     version: ">=5.1"
+  my_custom_component:
+    git: https://github.com/yourusername/yourrepository.git
