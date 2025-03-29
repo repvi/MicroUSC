@@ -8,10 +8,7 @@ void app_main(void) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(ret);
-
-    int something;
-    
+    ESP_ERROR_CHECK(ret);    
     
     uart_config_t setting = {
         .baud_rate = 115200,

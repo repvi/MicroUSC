@@ -2,7 +2,5 @@
 dependencies:
   idf:
     version: ">=5.1"
-  ESP32_USC_SERIAL_DRIVERS:
-    git: https://github.com/ASM-GP/ESP32_USC_SERIAL_DRIVERS.git
   #ESP32_USC_SERIAL_DRIVERS:
   #  path: "/path/to/code"
