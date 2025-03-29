@@ -5,6 +5,6 @@ dependencies:
     version: 5.4.0
 direct_dependencies:
 - idf
-manifest_hash: b19eb9d5a8d2bed37b40fbf045bdd44c113b33011d09bd42b3d11141f15d9fa7
+manifest_hash: 669c056b22539cd81129f8ec4655f8c9c19ec5452358ed2e7420c3cc39e19631
 target: esp32
 version: 2.0.0
