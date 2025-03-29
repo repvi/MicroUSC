@@ -2,6 +2,14 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
 //IRAM_ATTR
 
+// git log
+// git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
+// git commit -m 'Change details'
+// git branch 
+// git checkout -b [name of branch]
+// git push origin [name of branch]
+// git pull origin master
+// git status
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -56,7 +64,7 @@ void app_main(void) {
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
-    
+
     ret = usc_driver_init(&driver_example, setting, &driver_action, 0);
     if (ret != ESP_OK) { // temporary
         printf("something went wrong here\n");
