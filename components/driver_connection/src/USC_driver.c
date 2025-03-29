@@ -91,9 +91,9 @@ static void initialize_driver_name(usc_config_t *config) {
     }    
 }
 
-void usb_driver_read_task(void *pvParameters); // header
+void usc_driver_read_task(void *pvParameters); // header
 
-static void create_usb_driver_task(usc_config_t *config) {
+static void create_usc_driver_task(usc_config_t *config) {
     static int driver_task_priority = TASK_PRIORITY;
     if (strcmp(config->driver_name, "") == 0) {
         static int num = 1;
@@ -102,7 +102,7 @@ static void create_usb_driver_task(usc_config_t *config) {
     }
 
     xTaskCreatePinnedToCore(
-        usb_driver_read_task,         // Task function
+        usc_driver_read_task,         // Task function
         config->driver_name,          // Task name
         TASK_STACK_SIZE,              // Stack size
         (void *)config,               // Task parameters
@@ -112,7 +112,7 @@ static void create_usb_driver_task(usc_config_t *config) {
     );
 }
 
-esp_err_t usb_driver_init(usc_config_t *config, uart_config_t uart_config, usc_data_process_t driver_process, int i) {
+esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, usc_data_process_t driver_process, int i) {
     // Validate UART configuration
     if (OUTSIDE_SCOPE(i, DRIVER_MAX)) {
         ESP_LOGE("USB_DRIVER", "Invalid driver index");
@@ -142,14 +142,14 @@ esp_err_t usb_driver_init(usc_config_t *config, uart_config_t uart_config, usc_d
     config->has_access = false; // default to not have access
     // Set status and create the task
     config->status = NOT_CONNECTED; // As default
-    create_usb_driver_task(config); // create the task for the serial driver implemented
+    create_usc_driver_task(config); // create the task for the serial driver implemented
     config->baud_rate = uart_config.baud_rate; // in case, recommended to set
     drivers[i].config = config; // store the configuration of the implemented serial driver
     drivers[i].driver_action = driver_process; // Set the driver action callback
     return ESP_OK;
 }
 
-void usb_print_driver_configurations(void) {
+void usc_print_driver_configurations(void) {
     for (int i = 0; i < DRIVER_MAX; i++) {
         if (drivers[i].driver_action == NULL) {
             ESP_LOGI("DRIVER", "NOT INITIALIZED on index %d", i);
@@ -168,7 +168,7 @@ void usb_print_driver_configurations(void) {
     }
 }
 
-void usb_print_overdriver_configuration(void) {
+void usc_print_overdriver_configuration(void) {
     for (int i = 0; i < OVERDRIVER_MAX; i++) {
         if (overdrivers[i].driver_action == NULL) {
             ESP_LOGI("OVERDRIVER", " NOT INITIALIZED on index %d", i);
@@ -182,20 +182,20 @@ void usb_print_overdriver_configuration(void) {
     }
 }
 
-esp_err_t usb_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t len) {
+esp_err_t usc_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t len) {
     return (uart_write_bytes(config->uart_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
 }
 
-esp_err_t usb_driver_request_password(usc_config_t *config) {
-    return usb_driver_write(config, REQUEST_KEY, sizeof(REQUEST_KEY));
+esp_err_t usc_driver_request_password(usc_config_t *config) {
+    return usc_driver_write(config, REQUEST_KEY, sizeof(REQUEST_KEY));
 }
 
-esp_err_t usb_driver_ping(usc_config_t *config) {
-    return usb_driver_write(config, PING, sizeof(PING));
+esp_err_t usc_driver_ping(usc_config_t *config) {
+    return usc_driver_write(config, PING, sizeof(PING));
 }
 
 static bool handle_serial_key(usc_config_t *config) {
-    usb_driver_request_password(config); // Request serial key
+    usc_driver_request_password(config); // Request serial key
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
 
     serial_data_ptr_t key = uart_read(&config->uart_config.port, sizeof(serial_key_t));
@@ -213,7 +213,7 @@ static bool handle_serial_key(usc_config_t *config) {
 }
 
 static void maintain_connection(usc_config_t *config) {
-    usb_driver_ping(config);
+    usc_driver_ping(config);
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Allow time for the ping
 }
 
@@ -229,7 +229,7 @@ static void process_data(usc_config_t *config) {
     }
 }
 
-void usb_driver_read_task(void *pvParameters) {
+void usc_driver_read_task(void *pvParameters) {
     usc_config_t *config = (usc_config_t *)pvParameters;
 
     while (1) {
@@ -265,7 +265,7 @@ static void clear_serial_memory(memory_pool_t *pool, memory_block_t *serial_memo
     serial_memory = NULL;
 }
 
-esp_err_t usb_driver_deinit(serial_input_driver_t *driver) {
+esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     memset(driver->config.driver_name, '\0', DRIVER_NAME_SIZE);
 
     uart_port_config_deinit(&driver->config.uart_config);
@@ -289,7 +289,7 @@ static esp_err_t manage_overdrivers(usc_stored_config_t *overdriver, usc_config_
     return ESP_OK;
 }
 
-esp_err_t usb_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) {
+esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) {
     if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX)) {
         ESP_LOGE("USB_DRIVER", "Invalid overdriver index");
         return false;
@@ -310,7 +310,7 @@ esp_err_t overdrive_usb_driver(serial_input_driver_t *driver, int i) {
 }
 
 // completed, do not change
-esp_err_t usb_overdriver_deinit_all(void) {
+esp_err_t usc_overdriver_deinit_all(void) {
     for (int i = 0; i < OVERDRIVER_MAX; i++) {
         overdrivers[i].config = NULL;
         overdrivers[i].driver_action = NULL;

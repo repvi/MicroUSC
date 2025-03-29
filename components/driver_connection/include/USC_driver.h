@@ -136,21 +136,21 @@ typedef unsigned int overdriver_size_t;
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usb_driver_init(usc_config_t *config, uart_config_t uart_config, usc_data_process_t driver_process, int i);
+esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, usc_data_process_t driver_process, int i);
 
 /**
  * @brief Prints the configurations of all initialized drivers.
  * 
  * Iterates through each driver and logs its configuration details if it is initialized.
  */
-void usb_print_driver_configurations(void);
+void usc_print_driver_configurations(void);
 
 /**
  * @brief Prints the configurations of all overdrivers.
  * 
  * Iterates through each overdriver and logs its configuration details if it is initialized.
  */
-void usb_print_overdriver_configuration(void);
+void usc_print_overdriver_configuration(void);
 
 /**
  * @brief Write data using the USB driver.
@@ -164,7 +164,7 @@ void usb_print_overdriver_configuration(void);
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usb_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t len);
+esp_err_t usc_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t len);
 
 /**
  * @brief Request a password using the USB driver.
@@ -176,7 +176,7 @@ esp_err_t usb_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t 
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usb_driver_request_password(usc_config_t *config);
+esp_err_t usc_driver_request_password(usc_config_t *config);
 
 /**
  * @brief Ping the USB driver.
@@ -188,7 +188,7 @@ esp_err_t usb_driver_request_password(usc_config_t *config);
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usb_driver_ping(usc_config_t *config);
+esp_err_t usc_driver_ping(usc_config_t *config);
 
 void uart_port_config_deinit(uart_port_config_t *uart_config);
 
@@ -202,11 +202,11 @@ void uart_port_config_deinit(uart_port_config_t *uart_config);
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usb_driver_deinit(serial_input_driver_t *config);
+esp_err_t usc_driver_deinit(serial_input_driver_t *config);
 
-esp_err_t usb_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i);
+esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i);
 
-esp_err_t overdrive_usb_driver(serial_input_driver_t *driver, int i);
+esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i);
 /**
  * @brief Deinitialize all USB drivers.
  *
@@ -217,7 +217,7 @@ esp_err_t overdrive_usb_driver(serial_input_driver_t *driver, int i);
 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usb_overdriver_deinit_all(void);
+esp_err_t usc_overdriver_deinit_all(void);
 
 #ifdef __cplusplus
 }

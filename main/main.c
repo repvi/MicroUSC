@@ -27,6 +27,4 @@ void app_main(void) {
     // code should go after here
 
     // functions like init_[something([varaible type] &configuration);
-
-    
 }
