@@ -11,7 +11,7 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 set(PARTITION_TABLE_CSV "partitions.csv")
 
-project(ESP32_USC_SERIAL_DRIVERS)
+project(ESP32_USC_DRIVERS)
 
 # idf.py -p <COM_PORT> erase_flash
 
