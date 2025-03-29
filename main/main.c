@@ -9,6 +9,8 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    int something;
     
     
     uart_config_t setting = {
