@@ -4,7 +4,7 @@
 
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
-// git commit -m 'Change details'
+// git commit -m "Change details"
 // git branch 
 // git checkout -b [name of branch]
 // git push origin [name of branch]
