@@ -10,6 +10,7 @@
 // git push origin [name of branch]
 // git pull origin master
 // git status
+// git switch [name of branchgit ]           switches to another branch
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
