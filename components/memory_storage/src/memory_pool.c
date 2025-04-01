@@ -37,7 +37,7 @@ static bool memory_pool_configure(memory_pool_t *pool, const size_t block_size, 
         return false;
     }
 
-    return set_memory_pool_vals(pool, block_size, num_blocks);
+    return set_memory_pool_vals(pool, block_size, num_blocks); // can be optimized here
 }
 
 bool memory_pool_init(memory_pool_t *pool, const size_t block_size, const size_t num_blocks) {

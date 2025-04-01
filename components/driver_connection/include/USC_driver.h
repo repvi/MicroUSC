@@ -136,7 +136,7 @@ typedef unsigned int overdriver_size_t;
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, usc_data_process_t driver_process, int i);
+esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, int i);
 
 /**
  * @brief Prints the configurations of all initialized drivers.
