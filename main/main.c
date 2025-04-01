@@ -11,6 +11,9 @@
 // git pull origin master
 // git status
 // git switch [name of branchgit ]           switches to another branch
+
+// 115200 baud rate
+
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -18,9 +21,9 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);    
-    
+
     uart_config_t setting = {
-        .baud_rate = 115200,
+        .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -66,7 +69,7 @@ void app_main(void) {
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
 
-    ret = usc_driver_init(&driver_example, setting, &driver_action, 0);
+    ret = usc_driver_init(&driver_example, setting, pins, &driver_action, 0);
     if (ret != ESP_OK) { // temporary
         printf("something went wrong here\n");
         return;

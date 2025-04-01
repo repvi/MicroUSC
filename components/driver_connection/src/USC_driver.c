@@ -73,10 +73,11 @@ static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 memory_pool_t memory_serial_node;
 
-static esp_err_t initialize_uart(usc_config_t *config, uart_config_t uart_config) {
+static esp_err_t initialize_uart(usc_config_t *config, uart_config_t *uart_config, uart_port_config_t *port_config) {
     esp_err_t ret = uart_init(config->uart_config, uart_config);
     if (ret != ESP_OK) {
         config->status = ERROR;
+        config->uart_config = *port_config;
     }
     return ret;
 }
@@ -84,10 +85,9 @@ static esp_err_t initialize_uart(usc_config_t *config, uart_config_t uart_config
 static void initialize_driver_name(usc_config_t *config) {
     if (strncmp(config->driver_name, "", DRIVER_NAME_SIZE) == 0) {
         static int no_name = 1;
-        driver_name_t driver_name;
-        snprintf(driver_name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name++);
-        strncpy(config->driver_name, driver_name, DRIVER_NAME_SIZE - 1);
+        snprintf(config->driver_name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name);
         config->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
+        no_name++;
     }    
 }
 
@@ -112,7 +112,7 @@ static void create_usc_driver_task(usc_config_t *config) {
     );
 }
 
-esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, usc_data_process_t driver_process, int i) {
+esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, int i) {
     // Validate UART configuration
     if (OUTSIDE_SCOPE(i, DRIVER_MAX)) {
         ESP_LOGE("USB_DRIVER", "Invalid driver index");
@@ -142,8 +142,8 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, usc_d
     config->has_access = false; // default to not have access
     // Set status and create the task
     config->status = NOT_CONNECTED; // As default
-    create_usc_driver_task(config); // create the task for the serial driver implemented
     config->baud_rate = uart_config.baud_rate; // in case, recommended to set
+    create_usc_driver_task(config); // create the task for the serial driver implemented
     drivers[i].config = config; // store the configuration of the implemented serial driver
     drivers[i].driver_action = driver_process; // Set the driver action callback
     return ESP_OK;
@@ -221,10 +221,10 @@ static void maintain_connection(usc_config_t *config) {
 static void process_data(usc_config_t *config) {
     serial_data_ptr_t temp_data = uart_read(&config->uart_config.port, sizeof(serial_data_t));
     if (temp_data != NULL) {
-        config->status = DATA_RECEIVED; 
+        config->status = DATA_RECEIVED;
+        config->data = (memory_block_t *)memory_pool_alloc(&memory_serial_node); // wrong
     } 
     else {
-        config->data = (memory_block_t *)memory_pool_alloc(&memory_serial_node);
         config->status = DATA_RECEIVE_ERROR;
     }
 }
