@@ -62,7 +62,7 @@ IRAM_ATTR void normal_function(void) {
 DRAM_ATTR uint32_t cache_disabled_buffer[64];
 */
 
-// save a lot of SRAM
+// save a lot of memory
 typedef struct {
     usc_config_t *config;                    ///< Array of USB configurations
     usc_data_process_t driver_action;        ///< Action callback for the overdrive driver
@@ -143,9 +143,10 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
     // Set status and create the task
     config->status = NOT_CONNECTED; // As default
     config->baud_rate = uart_config.baud_rate; // in case, recommended to set
-    create_usc_driver_task(config); // create the task for the serial driver implemented
     drivers[i].config = config; // store the configuration of the implemented serial driver
     drivers[i].driver_action = driver_process; // Set the driver action callback
+
+    create_usc_driver_task(config); // create the task for the serial driver implemented
     return ESP_OK;
 }
 
@@ -168,7 +169,7 @@ void usc_print_driver_configurations(void) {
     }
 }
 
-void usc_print_overdriver_configuration(void) {
+void usc_print_overdriver_configurations(void) {
     for (int i = 0; i < OVERDRIVER_MAX; i++) {
         if (overdrivers[i].driver_action == NULL) {
             ESP_LOGI("OVERDRIVER", " NOT INITIALIZED on index %d", i);
@@ -222,7 +223,7 @@ static void process_data(usc_config_t *config) {
     serial_data_ptr_t temp_data = uart_read(&config->uart_config.port, sizeof(serial_data_t));
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
-        config->data = (memory_block_t *)memory_pool_alloc(&memory_serial_node); // wrong
+        queue_add(&memory_serial_node, &config->data);
     } 
     else {
         config->status = DATA_RECEIVE_ERROR;

@@ -17,6 +17,12 @@ typedef struct memory_block_t {
     struct memory_block_t *next; // next element in the block
 } memory_block_t;
 
+// Carefully use this
+typedef struct {
+    memory_block_t *head;
+    memory_block_t *tail;
+} Queue;
+
 /**
  * Struct representing a memory pool.
  */
@@ -61,5 +67,12 @@ void memory_pool_free(memory_pool_t *pool, void *block);
  * @param pool Pointer to the memory_pool_t structure.
  */
 void memory_pool_destroy(memory_pool_t* pool);
+
+
+void queue_add(memory_pool_t *pool, Queue *queue);
+
+void queue_remove(memory_pool_t *pool, Queue *queue);
+
+void queue_delete(memory_pool_t *pool, Queue *queue);
 
 #endif // MEMORY_POOL_H
