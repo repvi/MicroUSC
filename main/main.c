@@ -41,7 +41,6 @@ void app_main(void) {
     // functions like init_[something([varaible type] &configuration);
 
     usc_config_t driver_example = {
-        .uart_config = pins,
         .driver_name = "Driver example"
     };
 

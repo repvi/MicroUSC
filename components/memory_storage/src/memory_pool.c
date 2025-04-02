@@ -98,3 +98,33 @@ void memory_pool_destroy(memory_pool_t *pool) {
     heap_caps_free(pool);
     pool = NULL;
 }
+
+void queue_add(memory_pool_t *pool, Queue *queue) {
+    memory_block_t *new_block = (memory_block_t *)memory_pool_alloc(pool);
+    if (new_block == NULL) {
+        return;
+    }
+
+    if (queue->head != NULL) {
+        queue->tail->next = new_block;
+        queue->tail = queue->tail->next;
+    }
+    else {
+        queue->head = new_block;
+        queue->tail = queue->head;
+    }
+}
+
+void queue_remove(memory_pool_t *pool, Queue *queue) {
+    if (queue->head != NULL) {
+        void *temp = (void *)queue->head;
+        queue->head = queue->head->next;
+        memory_pool_free(pool, temp);
+    }
+}
+
+void queue_delete(memory_pool_t *pool, Queue *queue) {
+    while (queue->head != NULL) {
+        queue_remove(pool, queue);   
+    }
+}

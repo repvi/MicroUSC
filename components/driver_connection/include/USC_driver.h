@@ -104,7 +104,7 @@ typedef struct {
     
     bool has_access; ///< Flag indicating if access is granted.
 
-    memory_block_t *data; // stored data from port to driver
+    Queue data; // stored data from port to driver
 
     usc_status_t status; ///< Current status of the USB connection.
 
@@ -150,7 +150,7 @@ void usc_print_driver_configurations(void);
  * 
  * Iterates through each overdriver and logs its configuration details if it is initialized.
  */
-void usc_print_overdriver_configuration(void);
+void usc_print_overdriver_configurations(void);
 
 /**
  * @brief Write data using the USB driver.
