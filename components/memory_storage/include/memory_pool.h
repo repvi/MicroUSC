@@ -73,6 +73,8 @@ void queue_add(memory_pool_t *pool, Queue *queue);
 
 void queue_remove(memory_pool_t *pool, Queue *queue);
 
+char *queue_top(memory_pool_t *pool, Queue *queue);
+
 void queue_delete(memory_pool_t *pool, Queue *queue);
 
 #endif // MEMORY_POOL_H

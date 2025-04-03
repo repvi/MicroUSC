@@ -164,7 +164,7 @@ void usc_print_overdriver_configurations(void);
  * 
  *     - ESP_FAIL: Failed
  */
-esp_err_t usc_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t len);
+esp_err_t usc_driver_write(usc_config_t *config, const serial_data_ptr_t data, size_t len);
 
 /**
  * @brief Request a password using the USB driver.
