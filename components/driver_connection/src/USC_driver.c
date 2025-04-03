@@ -6,6 +6,7 @@
 #include "USC_driver.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
+//#include "esp_assert.h"
 
 #define TASK_PRIORITY                   (10) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
@@ -35,7 +36,14 @@
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
 // needs baud rate implementation
-#define CONFIGURED_BAUDRATE CONFIG_ESP_CONSOLE_UART_BAUDRATE
+#ifdef CONFIG_ESP_CONSOLE_UART_BAUDRATE
+    #define CONFIGURED_BAUDRATE   CONFIG_ESP_CONSOLE_UART_BAUDRATE
+#endif
+#ifndef CONFIG_ESP_CONSOLE_UART_BAUDRATE
+    #define CONFIGURED_BAUDRATE       (-1)
+#endif
+
+ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE is not defined!");
 
 const int DRIVER_NAME_SIZE = sizeof(driver_name_t);
 /*
@@ -73,7 +81,7 @@ static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 memory_pool_t memory_serial_node;
 
-static esp_err_t initialize_uart(usc_config_t *config, uart_config_t *uart_config, uart_port_config_t *port_config) {
+static esp_err_t initialize_uart(usc_config_t *config, uart_config_t uart_config, const uart_port_config_t *port_config) {
     esp_err_t ret = uart_init(config->uart_config, uart_config);
     if (ret != ESP_OK) {
         config->status = ERROR;
@@ -125,7 +133,7 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
     }
 
     // Initialize UART and memory pool
-    if (developer_input(initialize_uart(config, uart_config) != ESP_OK)) {
+    if (developer_input(initialize_uart(config, uart_config, &port_config) != ESP_OK)) {
         ESP_LOGE("USB_DRIVER", "Initialization failed");
         return ESP_FAIL;
     }
@@ -183,8 +191,18 @@ void usc_print_overdriver_configurations(void) {
     }
 }
 
-esp_err_t usc_driver_write(usc_config_t *config, serial_data_ptr_t data, size_t len) {
-    return (uart_write_bytes(config->uart_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
+esp_err_t usc_driver_write(usc_config_t *config, const serial_data_ptr_t data, size_t len) {
+    if (config->baud_rate < CONFIGURED_BAUDRATE) { 
+        for (int i = 0; i < len; i++) {
+            if (uart_write_bytes(config->uart_config.port, &data[i], 1) == -1) {
+                return ESP_FAIL;
+            }
+        }
+        return ESP_OK;
+    }
+    else {
+        return (uart_write_bytes(config->uart_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
+    }
 }
 
 esp_err_t usc_driver_request_password(usc_config_t *config) {
@@ -248,22 +266,13 @@ void usc_driver_read_task(void *pvParameters) {
 }
 
 void uart_port_config_deinit(uart_port_config_t *uart_config) {
-    uart_config->port = UART_NUM_MAX;
-    uart_config->rx = UART_DEFAULT_CONFIG_PIN;
-    uart_config->tx = UART_DEFAULT_CONFIG_PIN;
+    uart_config->port = UART_NUM_MAX; // Not a real PORT
+    uart_config->rx = UART_DEFAULT_CONFIG_PIN; // -1
+    uart_config->tx = UART_DEFAULT_CONFIG_PIN; // -1
 }
 
-static void clear_serial_memory(memory_pool_t *pool, memory_block_t *serial_memory) {
-    memory_block_t *current = serial_memory;
-    memory_block_t *removing = NULL;
-
-    while (current != NULL) {
-        removing = current;
-        current = current->next;
-        memory_pool_free(pool, (void *)removing);
-    }
-
-    serial_memory = NULL;
+static void clear_serial_memory(memory_pool_t *pool, Queue *serial_memory) {
+    queue_delete(pool, serial_memory);
 }
 
 esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
@@ -274,7 +283,7 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     driver->config.baud_rate = 0;
     driver->config.has_access = false;
     driver->config.status = NOT_CONNECTED;
-    clear_serial_memory(&memory_serial_node, driver->config.data);
+    clear_serial_memory(&memory_serial_node, &driver->config.data);
     driver->driver_action = NULL;
     return ESP_OK;
 }
