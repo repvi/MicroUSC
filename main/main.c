@@ -20,7 +20,7 @@ void app_main(void) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(ret);    
+    ESP_ERROR_CHECK(ret);
 
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
@@ -68,7 +68,7 @@ void app_main(void) {
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
 
-    ret = usc_driver_init(&driver_example, setting, pins, &driver_action, 0);
+    ret = usc_driver_init(&driver_example, setting, pins, driver_action, 0);
     if (ret != ESP_OK) { // temporary
         printf("something went wrong here\n");
         return;

@@ -83,7 +83,7 @@ void memory_pool_free(memory_pool_t *pool, void *block) {
         return;
     }
 
-    memory_block_t *chunk = block;
+    memory_block_t *chunk = block; // might need cast
     chunk->next = pool->memory_free;
     pool->memory_free = chunk;
     pool->free_blocks++;
@@ -102,7 +102,7 @@ void memory_pool_destroy(memory_pool_t *pool) {
 void queue_add(memory_pool_t *pool, Queue *queue) {
     memory_block_t *new_block = (memory_block_t *)memory_pool_alloc(pool);
     if (new_block == NULL) {
-        return;
+        return; // not allocated
     }
 
     if (queue->head != NULL) {
@@ -120,6 +120,17 @@ void queue_remove(memory_pool_t *pool, Queue *queue) {
         void *temp = (void *)queue->head;
         queue->head = queue->head->next;
         memory_pool_free(pool, temp);
+    }
+}
+
+char *queue_top(memory_pool_t *pool, Queue *queue) {
+    if (queue->head != NULL) {
+        char *data = (char *)queue->head;
+        queue_remove(pool, queue);
+        return data;
+    }
+    else {
+        return NULL;
     }
 }
 
