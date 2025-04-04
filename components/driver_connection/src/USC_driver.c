@@ -6,9 +6,9 @@
 #include "USC_driver.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
-//#include "esp_assert.h"
+#include "esp_assert.h"
 
-#define TASK_PRIORITY                   (10) // Used for the serial communication task
+#define TASK_PRIORITY_START             (10) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
 #define TASK_CORE                        (1) // Core 1 is used for all other operations other than wifi or any wireless protocols
 
@@ -18,32 +18,7 @@
 
 #define OVERDRIVER_MAX                  (3)
 
-#define UART_DEFAULT_CONFIG_PIN        (-1)
-
 #define MEMORY_BLOCK_MAX               (20)
-
-#define INSIDE_SCOPE(x, max) (0 <= (x) && (x) < (max))
-#define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
-#define developer_input(x) (x)
-
-#define RUN_FIRST      __attribute__((constructor)) // probably might not use
-#define MALLOC         __attribute__((malloc)) // used for dynamic memory functions
-#define HOT            __attribute__((hot)) // for critical operations (Need most optimization)
-#define COLD           __attribute__((cold)) // not much much. Use less memory but slower execution of function. Used like in initializing
-
-#define OPTIMIZE_CONSTANT(x) \
-    (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
-// DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
-
-// needs baud rate implementation
-#ifdef CONFIG_ESP_CONSOLE_UART_BAUDRATE
-    #define CONFIGURED_BAUDRATE   CONFIG_ESP_CONSOLE_UART_BAUDRATE
-#endif
-#ifndef CONFIG_ESP_CONSOLE_UART_BAUDRATE
-    #define CONFIGURED_BAUDRATE       (-1)
-#endif
-
-ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE is not defined!");
 
 const int DRIVER_NAME_SIZE = sizeof(driver_name_t);
 /*
@@ -102,7 +77,7 @@ static void initialize_driver_name(usc_config_t *config) {
 void usc_driver_read_task(void *pvParameters); // header
 
 static void create_usc_driver_task(usc_config_t *config) {
-    static int driver_task_priority = TASK_PRIORITY;
+    static int driver_TASK_Priority_START = TASK_PRIORITY_START;
     if (strcmp(config->driver_name, "") == 0) {
         static int num = 1;
         sprintf(config->driver_name, "Unknown Driver %d", num);
@@ -114,7 +89,7 @@ static void create_usc_driver_task(usc_config_t *config) {
         config->driver_name,          // Task name
         TASK_STACK_SIZE,              // Stack size
         (void *)config,               // Task parameters
-        driver_task_priority++,       // Increment priority for next task
+        driver_TASK_Priority_START++,       // Increment priority for next task
         NULL,                         // Task handle
         TASK_CORE                     // Core to pin the task
     );
@@ -267,8 +242,8 @@ void usc_driver_read_task(void *pvParameters) {
 
 void uart_port_config_deinit(uart_port_config_t *uart_config) {
     uart_config->port = UART_NUM_MAX; // Not a real PORT
-    uart_config->rx = UART_DEFAULT_CONFIG_PIN; // -1
-    uart_config->tx = UART_DEFAULT_CONFIG_PIN; // -1
+    uart_config->rx = GPIO_NUM_NC; // -1
+    uart_config->tx = GPIO_NUM_NC; // -1
 }
 
 static void clear_serial_memory(memory_pool_t *pool, Queue *serial_memory) {
