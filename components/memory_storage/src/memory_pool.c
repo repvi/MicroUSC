@@ -1,5 +1,4 @@
 #include "memory_pool.h"
-#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <stddef.h>
 #include <stdint.h>
