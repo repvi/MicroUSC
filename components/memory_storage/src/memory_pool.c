@@ -124,7 +124,7 @@ void queue_remove(memory_pool_t *pool, Queue *queue) {
 
 char *queue_top(memory_pool_t *pool, Queue *queue) {
     if (queue->head != NULL) {
-        char *data = (char *)queue->head;
+        char *data = (char *)queue->head; // already casts it to a char
         queue_remove(pool, queue);
         return data;
     }

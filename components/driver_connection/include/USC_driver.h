@@ -8,6 +8,17 @@
 extern "C" {
 #endif
 
+#define CURRENT_VERSION_MAJOR 0
+#define CURRENT_VERSION_MINOR 5
+#define CURRENT_VERSION_PATCH 25
+
+#define TO_STRING(x)        #x
+#define USC_VERSION()       TO_STRING(CURRENT_VERSION_MAJOR) "." \
+                            TO_STRING(CURRENT_VERSION_MINOR) "." \
+                            TO_STRING(CURRENT_VERSION_PATCH)
+
+#undef TO_STRING
+
 #define DRIVER_MAX              2
 
 #define SERIAL_KEY      "123456789" // Password for the program
@@ -51,6 +62,8 @@ extern "C" {
 
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
+
+
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
 // needs baud rate implementation
@@ -72,7 +85,6 @@ typedef struct Node {
 
 /**
  * @brief Type definition for USB event callback function.
- *
  * @param void *arg: Argument passed to the callback.
  */
 typedef void (*usc_event_cb_t)(void *);
@@ -95,32 +107,7 @@ typedef char driver_name_t[20];
 typedef char serial_key_t[10];
 
 /**
- * @brief 
- *   NOT_CONNECTED
- *   
- *   CONNECTED
- *   
- *   DISCONNECTED  
- *   
- *   ERROR      
- *   
- *   DATA_RECEIVED
- *     
- *   DATA_SENT
- *        
- *   DATA_SEND_ERROR 
- *    
- *   DATA_RECEIVE_ERROR
- * 
- *   DATA_SEND_TIMEOUT
- *   
- *   DATA_RECEIVE_TIMEOUT
- * 
- *   DATA_SEND_COMPLETE
- * 
- *   DATA_RECEIVE_COMPLETE
- * 
- *   TIME_OUT      
+ * @brief Status of driver connection
  */
 typedef enum {
     NOT_CONNECTED,         ///< Device is not connected.
@@ -236,7 +223,7 @@ esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i);
  * @param drivers Pointer to the serial input drivers structure.
  * @return ESP_OK if there was no issue in deinitializing the overdrivers
  */
-esp_err_t usc_overdriver_deinit_all(void);
+void usc_overdriver_deinit_all(void);
 
 #ifdef __cplusplus
 }

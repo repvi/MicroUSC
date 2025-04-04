@@ -217,7 +217,7 @@ static void process_data(usc_config_t *config) {
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
         queue_add(&memory_serial_node, &config->data);
-    } 
+    }
     else {
         config->status = DATA_RECEIVE_ERROR;
     }
@@ -267,9 +267,11 @@ static esp_err_t manage_overdrivers(usc_stored_config_t *overdriver, usc_config_
     if (action == NULL) {
         return ESP_FAIL;
     }
+
     overdriver->driver_action = action;
     overdriver->config = config;
-    overdriver->config->status = NOT_CONNECTED;
+    //overdriver->config->status = NOT_CONNECTED; unnessary
+
     uart_port_config_deinit(&overdriver->config->uart_config);
     return ESP_OK;
 }
@@ -295,10 +297,9 @@ esp_err_t overdrive_usb_driver(serial_input_driver_t *driver, int i) {
 }
 
 // completed, do not change
-esp_err_t usc_overdriver_deinit_all(void) {
+void usc_overdriver_deinit_all(void) {
     for (int i = 0; i < OVERDRIVER_MAX; i++) {
         overdrivers[i].config = NULL;
         overdrivers[i].driver_action = NULL;
     }
-    return ESP_OK;
 }
