@@ -31,7 +31,7 @@ typedef struct {
     void *memory;
     size_t block_size;     // Size of each block in the pool
     size_t num_blocks;     // Total number of blocks in the pool
-    size_t free_blocks;
+    size_t free_blocks;    // This isn't being used in anything so far>>>>>>>
 } memory_pool_t;
 
 /**
