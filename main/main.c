@@ -14,6 +14,30 @@
 
 // 115200 baud rate
 
+/*
+// Function that runs from IRAM (faster but limited space)
+void IRAM_ATTR critical_timing_function(void) {
+    // Time-critical code here
+}
+
+// Data that persists across deep sleep
+RTC_DATA_ATTR uint32_t boot_count = 0;
+
+// Data in RTC slow memory (persists in deep sleep, slower access)
+RTC_SLOW_ATTR uint8_t slow_memory_buffer[512];
+
+// Data in RTC fast memory (persists in light sleep, faster access)
+RTC_FAST_ATTR uint8_t fast_memory_buffer[128];
+
+// Function that should be executed from flash (saves IRAM)
+IRAM_ATTR void normal_function(void) {
+    // Non-time-critical code
+}
+
+// Data that must be accessible during cache disabled periods
+DRAM_ATTR uint32_t cache_disabled_buffer[64];
+*/
+
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {

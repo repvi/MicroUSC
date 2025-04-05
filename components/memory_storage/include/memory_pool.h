@@ -18,9 +18,11 @@ typedef struct memory_block_t {
 } memory_block_t;
 
 // Carefully use this
+
 typedef struct {
     memory_block_t *head;
     memory_block_t *tail;
+    size_t count; // not really implemented
 } Queue;
 
 /**

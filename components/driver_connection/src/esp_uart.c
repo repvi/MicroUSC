@@ -26,8 +26,8 @@ esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config) {
     return res;
 }
 
-serial_data_ptr_t uart_read(uart_port_t *uart, size_t len) {
-    serial_data_ptr_t buf = (serial_data_ptr_t)heap_caps_malloc(len, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+char *uart_read(uart_port_t *uart, size_t len) {
+    char *buf = (char *)heap_caps_malloc(len, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (buf == NULL) { // failed to allocate memory
         ESP_LOGE("uart_read", "Failed to allocate memory for buffer");
         return NULL;
@@ -35,7 +35,7 @@ serial_data_ptr_t uart_read(uart_port_t *uart, size_t len) {
 
     memset(buf, '\0', len); // Clear the buffer
 
-    serial_data_ptr_t ptr = buf;
+    char *ptr = buf;
     int total_size = 0;
     int timeout_count = 0;
     
@@ -64,4 +64,10 @@ serial_data_ptr_t uart_read(uart_port_t *uart, size_t len) {
 
     buf[total_size - 1] = '\0';
     return buf;
+}
+
+void uart_port_config_deinit(uart_port_config_t *uart_config) {
+    uart_config->port = UART_NUM_MAX; // Not a real PORT
+    uart_config->rx = GPIO_NUM_NC; // -1
+    uart_config->tx = GPIO_NUM_NC; // -1
 }
