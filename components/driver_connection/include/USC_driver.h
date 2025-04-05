@@ -8,14 +8,14 @@
 extern "C" {
 #endif
 
-#define CURRENT_VERSION_MAJOR 0
-#define CURRENT_VERSION_MINOR 5
-#define CURRENT_VERSION_PATCH 25
+#define CURRENT_VERSION_MAJOR             (0)
+#define CURRENT_VERSION_MINOR             (5)
+#define CURRENT_VERSION_PATCH             (25)
 
-#define TO_STRING(x)        #x
-#define USC_VERSION()       TO_STRING(CURRENT_VERSION_MAJOR) "." \
-                            TO_STRING(CURRENT_VERSION_MINOR) "." \
-                            TO_STRING(CURRENT_VERSION_PATCH)
+#define to_string(x)        #x
+#define USC_Version()       to_string(CURRENT_VERSION_MAJOR) "." \
+                            to_string(CURRENT_VERSION_MINOR) "." \
+                            to_string(CURRENT_VERSION_PATCH)
 
 #undef TO_STRING
 
@@ -187,7 +187,7 @@ void usc_print_overdriver_configurations(void);
  * @param len Length of the data to be written.
  * @return ESP_OK if configuration is valid for the serial port.
  */
-esp_err_t usc_driver_write(usc_config_t *config, const serial_data_ptr_t data, size_t len);
+esp_err_t usc_driver_write(const usc_config_t *config, const serial_data_ptr_t data, const size_t len);
 
 /**
  * @brief Request a password using the USB driver.
