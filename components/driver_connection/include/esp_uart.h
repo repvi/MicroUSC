@@ -23,15 +23,15 @@ typedef struct {
     uart_port_t port; ///< UART port identifier.
 } uart_port_config_t;
 
-typedef char* serial_data_ptr_t;
-
 typedef unsigned int serial_size_t;
 
 typedef int baud_rate_t;
 
 esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config);
 
-serial_data_ptr_t uart_read(uart_port_t *uart, size_t len);
+char *uart_read(uart_port_t *uart, size_t len);
+
+void uart_port_config_deinit(uart_port_config_t *uart_config);
 
 #ifdef __cplusplus
 }
