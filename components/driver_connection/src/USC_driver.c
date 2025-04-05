@@ -221,7 +221,7 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     driver->config.baud_rate = 0;
     driver->config.has_access = false;
     driver->config.status = NOT_CONNECTED;
-    clear_serial_memory(&driver->config.data);
+    //clear_serial_memory(&driver->config.data); // not neccessary
     driver->driver_action = NULL;
     return ESP_OK;
 }

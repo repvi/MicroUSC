@@ -134,8 +134,8 @@ typedef struct {
     
     bool has_access; ///< Flag indicating if access is granted.
 
-    Queue data; // This is wrong!!!!!
-
+    Queue data; // UART_NUM_MAX is used as the size of the stored data in the port
+    
     usc_status_t status; ///< Current status of the USB connection.
 
     baud_rate_t baud_rate; ///< Baud rate of the UART (not implemented yet).

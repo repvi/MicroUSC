@@ -21,9 +21,15 @@ Below is short explanation of remaining files in the project folder.
 ```
 ├── CMakeLists.txt
 ├── components
-|   ├── driver_connection
-|   ├── drivers
-|   └── memory_storage
+│   ├── driver_connection
+│   │   ├── include
+│   │   └── src
+│   ├── drivers
+│   │   ├── include
+│   │   └── src
+│   └── memory_storage
+│       ├── include
+│       └── src
 ├── main
 │   ├── CMakeLists.txt
 │   └── main.c
