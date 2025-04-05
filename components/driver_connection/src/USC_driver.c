@@ -20,7 +20,7 @@
 
 #define MEMORY_BLOCK_MAX               (20)
 
-const int DRIVER_NAME_SIZE = sizeof(driver_name_t);
+#define DRIVER_NAME_SIZE (sizeof(driver_name_t))
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {
@@ -56,20 +56,19 @@ static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 memory_pool_t memory_serial_node;
 
-static esp_err_t initialize_uart(usc_config_t *config, uart_config_t uart_config, const uart_port_config_t *port_config) {
+static esp_err_t initialize_uart(usc_config_t *config, uart_config_t uart_config) {
     esp_err_t ret = uart_init(config->uart_config, uart_config);
     if (ret != ESP_OK) {
         config->status = ERROR;
-        config->uart_config = *port_config;
     }
     return ret;
 }
 
-static void initialize_driver_name(usc_config_t *config) {
-    if (strncmp(config->driver_name, "", DRIVER_NAME_SIZE) == 0) {
+static void check_driver_name(char *name) {
+    if (strncmp(name, "", DRIVER_NAME_SIZE) == 0) {
         static int no_name = 1;
-        snprintf(config->driver_name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name);
-        config->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
+        snprintf(name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name);
+        name[DRIVER_NAME_SIZE - 1] = '\0';
         no_name++;
     }    
 }
@@ -102,25 +101,26 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (OUTSIDE_SCOPE(config->uart_config.port, UART_NUM_MAX)) {
+    if (OUTSIDE_SCOPE(config->uart_config.port, UART_NUM_MAX - 1)) {
         ESP_LOGE("USB_DRIVER", "Invalid UART port");
         return ESP_ERR_INVALID_ARG;
     }
 
+    config->uart_config = port_config;
     // Initialize UART and memory pool
-    if (developer_input(initialize_uart(config, uart_config, &port_config) != ESP_OK)) {
+    if (developer_input(initialize_uart(config, uart_config) != ESP_OK)) {
         ESP_LOGE("USB_DRIVER", "Initialization failed");
         return ESP_FAIL;
     }
 
     if (!memory_serial_node.memory) {
-        if (!unlikely(memory_pool_init(&memory_serial_node, SIZE_OF_SERIAL_MEMORY_BLOCK, MEMORY_BLOCK_MAX) != ESP_OK)) {
+        if (unlikely(memory_pool_init(&memory_serial_node, SIZE_OF_SERIAL_MEMORY_BLOCK, MEMORY_BLOCK_MAX) != ESP_OK)) {
             return ESP_ERR_NO_MEM;
         }
     }
 
     // Initialize driver name
-    initialize_driver_name(config);
+    check_driver_name(config->driver_name);
 
     config->has_access = false; // default to not have access
     // Set status and create the task
@@ -166,7 +166,7 @@ void usc_print_overdriver_configurations(void) {
     }
 }
 
-esp_err_t usc_driver_write(usc_config_t *config, const serial_data_ptr_t data, size_t len) {
+esp_err_t usc_driver_write(const usc_config_t *config, const serial_data_ptr_t data, const size_t len) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
         for (int i = 0; i < len; i++) {
             if (uart_write_bytes(config->uart_config.port, &data[i], 1) == -1) {
@@ -270,9 +270,7 @@ static esp_err_t manage_overdrivers(usc_stored_config_t *overdriver, usc_config_
 
     overdriver->driver_action = action;
     overdriver->config = config;
-    //overdriver->config->status = NOT_CONNECTED; unnessary
 
-    uart_port_config_deinit(&overdriver->config->uart_config);
     return ESP_OK;
 }
 
