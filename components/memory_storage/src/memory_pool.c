@@ -1,5 +1,4 @@
 #include "memory_pool.h"
-#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -69,6 +68,7 @@ memory_pool_t *memory_pool_malloc(const size_t block_size, const size_t num_bloc
 
 void *memory_pool_alloc(memory_pool_t *pool) {
     if (!pool || pool->memory_free == NULL) return NULL;
+    
 
     memory_block_t *chunk = pool->memory_free; // actual memory
 
@@ -113,6 +113,8 @@ void queue_add(memory_pool_t *pool, Queue *queue) {
         queue->head = new_block;
         queue->tail = queue->head;
     }
+
+    queue->count++;
 }
 
 void queue_remove(memory_pool_t *pool, Queue *queue) {
@@ -120,12 +122,13 @@ void queue_remove(memory_pool_t *pool, Queue *queue) {
         void *temp = (void *)queue->head;
         queue->head = queue->head->next;
         memory_pool_free(pool, temp);
+        queue->count--;
     }
 }
 
 char *queue_top(memory_pool_t *pool, Queue *queue) {
     if (queue->head != NULL) {
-        char *data = (char *)queue->head;
+        char *data = (char *)queue->head; // already casts it to a char
         queue_remove(pool, queue);
         return data;
     }
