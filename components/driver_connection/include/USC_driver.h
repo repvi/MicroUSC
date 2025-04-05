@@ -76,12 +76,12 @@ extern "C" {
 
 ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE is not defined!");
 
-typedef struct Node {
+typedef struct stored_uart_data_t {
     serial_data_t data; // change in the future
-    struct Node *next;
-} Node;
+    struct stored_uart_data_t *next;
+} stored_uart_data_t;
 
-#define SIZE_OF_SERIAL_MEMORY_BLOCK    (sizeof(Node)) // must be defined
+#define SIZE_OF_SERIAL_MEMORY_BLOCK    (sizeof(stored_uart_data_t)) // must be defined
 
 /**
  * @brief Type definition for USB event callback function.
@@ -134,7 +134,7 @@ typedef struct {
     
     bool has_access; ///< Flag indicating if access is granted.
 
-    Queue data; // stored data from port to driver
+    Queue data; // This is wrong!!!!!
 
     usc_status_t status; ///< Current status of the USB connection.
 
@@ -187,7 +187,7 @@ void usc_print_overdriver_configurations(void);
  * @param len Length of the data to be written.
  * @return ESP_OK if configuration is valid for the serial port.
  */
-esp_err_t usc_driver_write(const usc_config_t *config, const serial_data_ptr_t data, const size_t len);
+esp_err_t usc_driver_write(const usc_config_t *config, const char *data, const size_t len);
 
 /**
  * @brief Request a password using the USB driver.

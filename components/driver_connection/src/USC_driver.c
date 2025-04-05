@@ -20,30 +20,7 @@
 
 #define MEMORY_BLOCK_MAX               (20)
 
-#define DRIVER_NAME_SIZE (sizeof(driver_name_t))
-/*
-// Function that runs from IRAM (faster but limited space)
-void IRAM_ATTR critical_timing_function(void) {
-    // Time-critical code here
-}
-
-// Data that persists across deep sleep
-RTC_DATA_ATTR uint32_t boot_count = 0;
-
-// Data in RTC slow memory (persists in deep sleep, slower access)
-RTC_SLOW_ATTR uint8_t slow_memory_buffer[512];
-
-// Data in RTC fast memory (persists in light sleep, faster access)
-RTC_FAST_ATTR uint8_t fast_memory_buffer[128];
-
-// Function that should be executed from flash (saves IRAM)
-IRAM_ATTR void normal_function(void) {
-    // Non-time-critical code
-}
-
-// Data that must be accessible during cache disabled periods
-DRAM_ATTR uint32_t cache_disabled_buffer[64];
-*/
+#define DRIVER_NAME_SIZE              (sizeof(driver_name_t))
 
 // save a lot of memory
 typedef struct {
@@ -54,15 +31,7 @@ typedef struct {
 static usc_stored_config_t drivers[DRIVER_MAX];
 static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
-memory_pool_t memory_serial_node;
-
-static esp_err_t initialize_uart(usc_config_t *config, uart_config_t uart_config) {
-    esp_err_t ret = uart_init(config->uart_config, uart_config);
-    if (ret != ESP_OK) {
-        config->status = ERROR;
-    }
-    return ret;
-}
+static memory_pool_t memory_serial_node;
 
 static void check_driver_name(char *name) {
     if (strncmp(name, "", DRIVER_NAME_SIZE) == 0) {
@@ -88,7 +57,7 @@ static void create_usc_driver_task(usc_config_t *config) {
         config->driver_name,          // Task name
         TASK_STACK_SIZE,              // Stack size
         (void *)config,               // Task parameters
-        driver_TASK_Priority_START++,       // Increment priority for next task
+        driver_TASK_Priority_START++, // Increment priority for next task
         NULL,                         // Task handle
         TASK_CORE                     // Core to pin the task
     );
@@ -108,7 +77,7 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
 
     config->uart_config = port_config;
     // Initialize UART and memory pool
-    if (developer_input(initialize_uart(config, uart_config) != ESP_OK)) {
+    if (developer_input(uart_init(config->uart_config, uart_config) != ESP_OK)) {
         ESP_LOGE("USB_DRIVER", "Initialization failed");
         return ESP_FAIL;
     }
@@ -166,7 +135,7 @@ void usc_print_overdriver_configurations(void) {
     }
 }
 
-esp_err_t usc_driver_write(const usc_config_t *config, const serial_data_ptr_t data, const size_t len) {
+esp_err_t usc_driver_write(const usc_config_t *config, const char *data, const size_t len) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
         for (int i = 0; i < len; i++) {
             if (uart_write_bytes(config->uart_config.port, &data[i], 1) == -1) {
@@ -192,7 +161,7 @@ static bool handle_serial_key(usc_config_t *config) {
     usc_driver_request_password(config); // Request serial key
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
 
-    serial_data_ptr_t key = uart_read(&config->uart_config.port, sizeof(serial_key_t));
+    char *key = uart_read(&config->uart_config.port, sizeof(serial_key_t));
     if (key != NULL) {
         if (strcmp(key, SERIAL_KEY) == 0) {
             config->has_access = true;
@@ -213,7 +182,7 @@ static void maintain_connection(usc_config_t *config) {
 
 // todo - Implement where to store the grabbed serial data in the system
 static void process_data(usc_config_t *config) {
-    serial_data_ptr_t temp_data = uart_read(&config->uart_config.port, sizeof(serial_data_t));
+    char *temp_data = uart_read(&config->uart_config.port, sizeof(serial_data_t));
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
         queue_add(&memory_serial_node, &config->data);
@@ -229,25 +198,19 @@ void usc_driver_read_task(void *pvParameters) {
     while (1) {
         if (!config->has_access) {
             if (!handle_serial_key(config)) {
-                continue; // Retry if serial key check fails
+                continue;                 // Retry if serial key check fails
             }
         }
 
-        maintain_connection(config); // Ping the driver to check connection
-        process_data(config);        // Read and process incoming data
+        maintain_connection(config);     // Ping the driver to check connection
+        process_data(config);            // Read and process incoming data
 
         vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
     }
 }
 
-void uart_port_config_deinit(uart_port_config_t *uart_config) {
-    uart_config->port = UART_NUM_MAX; // Not a real PORT
-    uart_config->rx = GPIO_NUM_NC; // -1
-    uart_config->tx = GPIO_NUM_NC; // -1
-}
-
-static void clear_serial_memory(memory_pool_t *pool, Queue *serial_memory) {
-    queue_delete(pool, serial_memory);
+static void clear_serial_memory(Queue *serial_memory) {
+    queue_delete(&memory_serial_node, serial_memory);
 }
 
 esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
@@ -258,7 +221,7 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     driver->config.baud_rate = 0;
     driver->config.has_access = false;
     driver->config.status = NOT_CONNECTED;
-    clear_serial_memory(&memory_serial_node, &driver->config.data);
+    clear_serial_memory(&driver->config.data);
     driver->driver_action = NULL;
     return ESP_OK;
 }
@@ -282,7 +245,7 @@ esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) 
     return manage_overdrivers(&overdrivers[i], config, action);
 }
 
-esp_err_t overdrive_usb_driver(serial_input_driver_t *driver, int i) {
+esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i) {
     if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX) && overdrivers[i].driver_action == NULL) {
         return ESP_FAIL;
     }
