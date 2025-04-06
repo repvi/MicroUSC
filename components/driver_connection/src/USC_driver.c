@@ -29,6 +29,7 @@ typedef struct {
 } usc_stored_config_t;
 
 static usc_stored_config_t drivers[DRIVER_MAX];
+
 static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 static memory_pool_t memory_serial_node;
@@ -137,7 +138,7 @@ void usc_print_overdriver_configurations(void) {
 
 esp_err_t usc_driver_write(const usc_config_t *config, const char *data, const size_t len) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
-        for (int i = 0; i < len; i++) {
+        literate_bytes(len) {
             if (uart_write_bytes(config->uart_config.port, &data[i], 1) == -1) {
                 return ESP_FAIL;
             }

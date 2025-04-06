@@ -63,6 +63,7 @@ extern "C" {
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
 
+#define literate_bytes(x) for (size_t i = 0; i < (x); i++)
 
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
@@ -75,6 +76,8 @@ extern "C" {
 #endif
 
 ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE is not defined!");
+
+typedef size_t serial_data_t;
 
 typedef struct stored_uart_data_t {
     serial_data_t data; // change in the future
