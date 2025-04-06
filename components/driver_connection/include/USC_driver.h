@@ -17,7 +17,7 @@ extern "C" {
                             to_string(CURRENT_VERSION_MINOR) "." \
                             to_string(CURRENT_VERSION_PATCH)
 
-#undef TO_STRING
+#undef to_string
 
 #define DRIVER_MAX              2
 
@@ -48,8 +48,8 @@ extern "C" {
     #define OPT1         __attribute__((optimize("O1")))
     #define OPT2         __attribute__((optimize("O2")))
     #define OPT3         __attribute__((optimize("O3")))
-#else
-    #define RUN_FIRST // Nothing is disabled
+#else // disabled
+    #define RUN_FIRST
     #define MALLOC 
     #define HOT   
     #define COLD
@@ -80,8 +80,6 @@ typedef struct stored_uart_data_t {
     serial_data_t data; // change in the future
     struct stored_uart_data_t *next;
 } stored_uart_data_t;
-
-#define SIZE_OF_SERIAL_MEMORY_BLOCK    (sizeof(stored_uart_data_t)) // must be defined
 
 /**
  * @brief Type definition for USB event callback function.
@@ -125,19 +123,29 @@ typedef enum {
     TIME_OUT,              ///< Operation timed out.
 } usc_status_t;
 
+
+struct QueueNode {
+    char data[15];
+    struct QueueNode *next;
+};
+
+typedef struct {
+    struct QueueNode *head;
+    struct QueueNode *tail;
+    size_t count;
+} Queue;
+
+#define SIZE_OF_SERIAL_MEMORY_BLOCK    (sizeof(struct QueueNode)) // must be defined
+
 /**
  * @brief Structure for USB configuration.
  */
 typedef struct {
     uart_port_config_t uart_config; ///< UART configuration structure.
     driver_name_t driver_name; ///< Name of the driver.
-    
     bool has_access; ///< Flag indicating if access is granted.
-
     Queue data; // UART_NUM_MAX is used as the size of the stored data in the port
-    
     usc_status_t status; ///< Current status of the USB connection.
-
     baud_rate_t baud_rate; ///< Baud rate of the UART (not implemented yet).
 } usc_config_t;
 
@@ -154,16 +162,21 @@ typedef struct {
  */
 typedef unsigned int overdriver_size_t;
 
+
+void queue_add(Queue *queue, const char *restrict data);
+
+void queue_remove(Queue *queue);
+
+char *queue_top(Queue *queue);
+
+void queue_delete(Queue *queue);
+
 /**
  * @brief Initialize the USB driver.
  *        Index is from 0 to DRIVER_MAX - 1 (0 to 1)
  * @param config Pointer to the USB configuration structure.
  * @param event_cb Pointer to the event callback function.
- * @param dfomdf dfomd
- * @return
- *     - ESP_OK: Success
- * 
- *     - ESP_FAIL: Failed
+ * @return ESP_OK if port initialization and configuration is valid.
  */
 esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, int i);
 

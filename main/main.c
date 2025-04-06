@@ -78,7 +78,7 @@ void app_main(void) {
 
     ret = usc_driver_init(&driver_example, setting, pins, driver_action, 0);
     if (ret != ESP_OK) { // temporary
-        printf("something went wrong here\n");
+        printf("Failed to register driver\n");
         return;
     }
 }
