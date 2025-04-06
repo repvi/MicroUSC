@@ -34,6 +34,52 @@ static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 static memory_pool_t memory_serial_node;
 
+void queue_add(Queue *queue, const char *restrict data) {
+    struct QueueNode *new_block = (struct QueueNode *)memory_pool_alloc(&memory_serial_node);
+    if (new_block == NULL) {
+        return; // not allocated
+    }
+    
+    strncpy(new_block->data, data, sizeof(queue->head->data));
+
+    if (queue->head != NULL) {
+        queue->tail->next = new_block;
+        queue->tail = queue->tail->next;
+    }
+    else {
+        queue->head = new_block;
+        queue->tail = queue->head;
+    }
+
+    queue->count++;
+}
+
+void queue_remove(Queue *queue) {
+    if (queue->head != NULL) {
+        void *temp = (void *)queue->head;
+        queue->head = queue->head->next;
+        memory_pool_free(&memory_serial_node, temp);
+        queue->count--;
+    }
+}
+
+char *queue_top(Queue *queue) {
+    if (queue->head != NULL) {
+        char *data = queue->head->data; // get pointer to data
+        queue_remove(queue);
+        return data;
+    }
+    else {
+        return NULL;
+    }
+}
+
+void queue_delete(Queue *queue) {
+    while (queue->head != NULL) {
+        queue_remove(queue);   
+    }
+}
+
 static void check_driver_name(char *name) {
     if (strncmp(name, "", DRIVER_NAME_SIZE) == 0) {
         static int no_name = 1;
@@ -59,6 +105,23 @@ static void create_usc_driver_task(usc_config_t *config) {
         TASK_STACK_SIZE,              // Stack size
         (void *)config,               // Task parameters
         driver_TASK_Priority_START++, // Increment priority for next task
+        NULL,                         // Task handle
+        TASK_CORE                     // Core to pin the task
+    );
+}
+
+static void create_usc_driver_action_task(usc_data_process_t driver_process, const int i) {
+    const int OFFSET = TASK_PRIORITY_START + DRIVER_MAX;
+
+    char task_name[15];
+    sprintf(task_name, "Action #%d", i);
+
+    xTaskCreatePinnedToCore(
+        driver_process,               // Task function
+        task_name,                    // Task name
+        TASK_STACK_SIZE,              // Stack size
+        (void *)i,                    // Task parameters
+        (OFFSET + i),                 // Based on index
         NULL,                         // Task handle
         TASK_CORE                     // Core to pin the task
     );
@@ -100,6 +163,7 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
     drivers[i].driver_action = driver_process; // Set the driver action callback
 
     create_usc_driver_task(config); // create the task for the serial driver implemented
+    create_usc_driver_action_task(driver_process, i);
     return ESP_OK;
 }
 
@@ -181,12 +245,12 @@ static void maintain_connection(usc_config_t *config) {
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Allow time for the ping
 }
 
-// todo - Implement where to store the grabbed serial data in the system
 static void process_data(usc_config_t *config) {
     char *temp_data = uart_read(&config->uart_config.port, sizeof(serial_data_t));
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
-        queue_add(&memory_serial_node, &config->data);
+        queue_add(&config->data, temp_data);
+        heap_caps_free(temp_data);
     }
     else {
         config->status = DATA_RECEIVE_ERROR;
@@ -210,8 +274,8 @@ void usc_driver_read_task(void *pvParameters) {
     }
 }
 
-static void clear_serial_memory(Queue *serial_memory) {
-    queue_delete(&memory_serial_node, serial_memory);
+static void clear_serial_memory(Queue *serial_memory) { // not used yet
+    queue_delete(serial_memory);
 }
 
 esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
@@ -222,7 +286,7 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     driver->config.baud_rate = 0;
     driver->config.has_access = false;
     driver->config.status = NOT_CONNECTED;
-    clear_serial_memory(&driver->config.data);
+    //clear_serial_memory(&driver->config.data); // not neccessary
     driver->driver_action = NULL;
     return ESP_OK;
 }

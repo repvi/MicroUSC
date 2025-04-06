@@ -67,22 +67,6 @@ void app_main(void) {
     usc_config_t driver_example = {
         .driver_name = "Driver example"
     };
-
-    // make sure this points to a function that will handle
-    // the actions of the serial code that is recieved.
-    /* For example, create 
-    function_driver(void *parameter) {
-        [type] *something = ([type] *)parameter;
-        while (1) {
-            // do something
-            if ([data] equals example) {
-                // do action
-            }
-        }
-        // data can be NULL so make sure to add safe code using
-        // if statements
-    }
-    */
     
     usc_data_process_t driver_action = NULL; // point to the function
     // you created
@@ -94,7 +78,7 @@ void app_main(void) {
 
     ret = usc_driver_init(&driver_example, setting, pins, driver_action, 0);
     if (ret != ESP_OK) { // temporary
-        printf("something went wrong here\n");
+        printf("Failed to register driver\n");
         return;
     }
 }
