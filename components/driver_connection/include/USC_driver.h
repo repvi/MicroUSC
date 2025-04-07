@@ -63,6 +63,7 @@ extern "C" {
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
 
+// The literate_bytes macro defines a for loop that iterates from 0 to x - 1, where x is the number of iterations specified.
 #define literate_bytes(x) for (size_t i = 0; i < (x); i++)
 
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
@@ -77,10 +78,8 @@ extern "C" {
 
 ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE is not defined!");
 
-typedef size_t serial_data_t;
-
 typedef struct stored_uart_data_t {
-    serial_data_t data; // change in the future
+    uint32_t data; // change in the future
     struct stored_uart_data_t *next;
 } stored_uart_data_t;
 
@@ -128,7 +127,7 @@ typedef enum {
 
 
 struct QueueNode {
-    char data[15];
+    uint32_t data; // change in the future
     struct QueueNode *next;
 };
 
@@ -166,7 +165,7 @@ typedef struct {
 typedef unsigned int overdriver_size_t;
 
 
-void queue_add(Queue *queue, const char *restrict data);
+void queue_add(Queue *queue, const uint32_t data);
 
 void queue_remove(Queue *queue);
 
