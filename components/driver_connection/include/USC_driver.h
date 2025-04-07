@@ -173,6 +173,8 @@ char *queue_top(Queue *queue);
 
 void queue_delete(Queue *queue);
 
+void s_atomic_add(uint32_t *ptr, uint32_t value);
+
 /**
  * @brief Initialize the USB driver.
  *        Index is from 0 to DRIVER_MAX - 1 (0 to 1)

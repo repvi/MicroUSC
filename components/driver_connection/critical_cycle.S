@@ -14,9 +14,10 @@
 s_atomic_add:
     retry:
         //entry a1, 16          // Create stack frame
-        l32i a4, a2, 0   // Load the value at address a2 into a4. a dereference of a pointer.
-        addi a5, a4, a3  // Add the immediate value a3 to a4 (uint32_t value)
+        l32i    a4, a2, 0  // Load current value from [a2]
+        add     a5, a4, a3 // Compute new value (a5 = a4 + a3)
         //l32i a5, a2, 4   // Load the value at address a2 + 4 into a5
-        s32c1i a5, a2, 0  // Store the value in a5 at address a2 and return the old value in a4
-        bnez a5, retry        // Retry on failure
-    ret   // Return without setting any value
+        s32c1i  a5, a2, 0  // Atomic compare-and-swap
+        bnez    a5, retry   // Retry on failure
+    mov     a2, a4         // Return original value
+    ret                    // Exit
