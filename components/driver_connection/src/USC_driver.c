@@ -1,12 +1,17 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/atomic.h"
 #include "freertos/event_groups.h"
+#include <atomic.h>
 #include <string.h>
 #include "esp_system.h"
 #include "USC_driver.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_assert.h"
+#include "critical_cycle.S"
+
+extern uint32_t s_atomic_add(uint32_t *ptr, uint32_t value);
 
 #define TASK_PRIORITY_START             (10) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
@@ -22,6 +27,7 @@
 
 #define DRIVER_NAME_SIZE              (sizeof(driver_name_t))
 
+
 // save a lot of memory
 typedef struct {
     usc_config_t *config;                    ///< Array of USB configurations
@@ -29,18 +35,19 @@ typedef struct {
 } usc_stored_config_t;
 
 static usc_stored_config_t drivers[DRIVER_MAX];
+volatile uint32_t __attribute__((aligned(4))) shared_array[DRIVER_MAX];  // Indexed access [1][3]
 
 static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 static memory_pool_t memory_serial_node;
 
-void queue_add(Queue *queue, const char *restrict data) {
+void queue_add(Queue *queue, const uint32_t data) {
     struct QueueNode *new_block = (struct QueueNode *)memory_pool_alloc(&memory_serial_node);
     if (new_block == NULL) {
         return; // not allocated
     }
-    
-    strncpy(new_block->data, data, sizeof(queue->head->data));
+
+    new_block->data = data;
 
     if (queue->head != NULL) {
         queue->tail->next = new_block;
@@ -59,18 +66,20 @@ void queue_remove(Queue *queue) {
         void *temp = (void *)queue->head;
         queue->head = queue->head->next;
         memory_pool_free(&memory_serial_node, temp);
-        queue->count--;
+        //queue->count--;
+        atomic_add(&shared_values[0], 1);    
+        Atomic_Add_u32(&queue->count, -1); // Decrement the count atomically
     }
 }
 
-char *queue_top(Queue *queue) {
+uint32_t queue_top(Queue *queue) {
     if (queue->head != NULL) {
-        char *data = queue->head->data; // get pointer to data
+        uint32_t data = queue->head->data; // get pointer to data
         queue_remove(queue);
         return data;
     }
     else {
-        return NULL;
+        return 0; // default
     }
 }
 

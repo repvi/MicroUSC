@@ -86,7 +86,7 @@ void memory_pool_free(memory_pool_t *pool, void *block) {
     memory_block_t *chunk = block; // might need cast
     chunk->next = pool->memory_free;
     pool->memory_free = chunk;
-    pool->free_blocks++;
+    //pool->free_blocks++;
 }
 
 void memory_pool_destroy(memory_pool_t *pool) {
