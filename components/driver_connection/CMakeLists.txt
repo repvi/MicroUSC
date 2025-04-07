@@ -1,5 +1,6 @@
 idf_component_register(
-    SRC_DIRS "src" "critical_cycle.S"
+    SRCS "critical_cycle.S"
+    SRC_DIRS "src"
     INCLUDE_DIRS "include" "."
     PRIV_REQUIRES
         freertos

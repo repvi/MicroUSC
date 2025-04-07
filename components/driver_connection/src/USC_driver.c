@@ -9,9 +9,7 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_assert.h"
-#include "critical_cycle.S"
-
-extern uint32_t s_atomic_add(uint32_t *ptr, uint32_t value);
+//#include "critical_cycle.S"
 
 #define TASK_PRIORITY_START             (10) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS

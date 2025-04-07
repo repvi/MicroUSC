@@ -1,3 +1,5 @@
+#include "test_driver.h"
+#include "speed_test.h"
 #include "USC_driver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
 //IRAM_ATTR
@@ -75,7 +77,6 @@ void app_main(void) {
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
-
     ret = usc_driver_init(&driver_example, setting, pins, driver_action, 0);
     if (ret != ESP_OK) { // temporary
         printf("Failed to register driver\n");
