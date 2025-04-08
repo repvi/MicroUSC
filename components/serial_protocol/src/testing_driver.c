@@ -2,6 +2,7 @@
 #include "string.h"
 #include "stddef.h"
 #include "stdint.h"
+#include "driver/gpio.h" // to include driver GPIO header for the esp32
 
 /* n = 0 -> default value 
    n = 1 -> turn off esp32
@@ -20,15 +21,18 @@ uint32_t getData(void) {
     return 1;
 }
 
-void function(void *p) {
+void function_task(void *p) {
     uint32_t data = 0;
+
+    //configure GPIO Pin
+    gpio_pad_select_gpio(GPIO_NUM_2); // selecting pin 2
+    gpio_set_direction(GPIO_MODE_OUTPUT); // setting pin as output
 
     while (1) {
         data = getData();
         
         switch(data) {
             case 1: 
-                
                 break;
             case 2:
                 break;
@@ -39,6 +43,7 @@ void function(void *p) {
             case 5:
                 break;
             case 6:
+                gpio_set_level(GPIO_NUM_2, 1); // set pin 2 output HIGH
                 break;
             case 7:
                 break;
