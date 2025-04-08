@@ -19,7 +19,6 @@ void test_driver_action_function(int index) {
             // turn off LED
         }
     }
-    
 }
 
 
