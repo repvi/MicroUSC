@@ -1,3 +1,2 @@
-#pragma once 
+#pragma
 
-void test_driver_action_function(int index);
