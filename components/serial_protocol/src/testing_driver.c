@@ -1,6 +1,9 @@
 #include "testing_driver.h"
 #include "string.h"
 // pvParameter doesn't need to be used.
+
+int num = 20;
+
 void test_driver_action_function(int index) {
     // index of the driver (0 - 1)
 
@@ -16,11 +19,8 @@ void test_driver_action_function(int index) {
             // turn off LED
         }
     }
+    
 }
-
-
-
-
 
 
 
