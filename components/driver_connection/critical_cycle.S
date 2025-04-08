@@ -9,6 +9,7 @@
 
 .section .text
 .global s_atomic_add
+
 .align 4
 
 s_atomic_add:

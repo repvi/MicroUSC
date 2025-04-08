@@ -1,8 +1,8 @@
 #ifndef __USB_DRIVER_H
 #define __USB_DRIVER_H
 
-#include "memory_pool.h"
 #include "esp_uart.h"
+#include "memory_pool.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +24,7 @@ extern "C" {
 #define SERIAL_KEY      "123456789" // Password for the program
 #define REQUEST_KEY     "GSKx" // Used for requesting the passcode for the driver
 #define PING            "ping" // Used for making sure there is a connection
+#define SERIAL_REQUEST_SIZE  (sizeof(uint32_t)) 
 
 #define SERIAL_DATA_SIZE      126
 
@@ -57,7 +58,7 @@ extern "C" {
     #define OPT0 
     #define OPT1 
     #define OPT2 
-    #define OPT3 
+    #define OPT3
 #endif
 
 #define OPTIMIZE_CONSTANT(x) \
@@ -65,7 +66,6 @@ extern "C" {
 
 // The literate_bytes macro defines a for loop that iterates from 0 to x - 1, where x is the number of iterations specified.
 #define literate_bytes(x) for (size_t i = 0; i < (x); i++)
-
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
 // needs baud rate implementation
@@ -164,6 +164,12 @@ typedef struct {
  */
 typedef unsigned int overdriver_size_t;
 
+void usc_driver_deinit_all(void);
+
+void usc_overdriver_deinit_all(void);
+
+
+static void set_default_drivers(void) RUN_FIRST;
 
 void queue_add(Queue *queue, const uint32_t data);
 
@@ -232,15 +238,31 @@ void uart_port_config_deinit(uart_port_config_t *uart_config);
  */
 esp_err_t usc_driver_deinit(serial_input_driver_t *config);
 
+void clear_serial_memory(Queue *serial_memory);
+
+/**
+ * @brief Deinitialize all USB drivers.
+ * @param config Pointer to the USB configuration structure.
+ * @param action Pointer to the event callback function.
+ * @param i Index of the overdriver to be set.
+ * @note The index should be between 0 and OVERDRIVER_MAX - 1.
+ * @return ESP_OK if all arguments are valid
+ */
 esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i);
 
+/**
+ * @brief Set the overdrive driver.
+ * @param driver Pointer to the serial input driver structure.
+ * @param i Index of the overdriver to be set.
+ * @note The index should be between 0 and OVERDRIVER_MAX - 1.
+ * @return ESP_OK if the index is valid and the driver is set successfully.
+ */
 esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i);
 /**
  * @brief Deinitialize all USB drivers.
  * @param drivers Pointer to the serial input drivers structure.
  * @return ESP_OK if there was no issue in deinitializing the overdrivers
  */
-void usc_overdriver_deinit_all(void);
 
 #ifdef __cplusplus
 }
