@@ -3,14 +3,14 @@ set(srcs
     main.c
 )
 
-#set(requires
-#    esp_log 
-#)
-
 idf_component_register(
     SRCS ${srcs}
     INCLUDE_DIRS "."
-    #REQUIRES ${requires}
+    REQUIRES
+        debug
+        driver_connection
+        serial_protocol
+        esp_timer
 )
 
 #idf_component_get_property(tusb_lib leeebo__tinyusb_src COMPONENT_LIB)

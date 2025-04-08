@@ -7,6 +7,7 @@
 #include "esp_system.h"
 #include "USC_driver.h"
 #include "esp_log.h"
+#include "memory_pool.h"
 #include "esp_heap_caps.h"
 #include "esp_assert.h"
 //#include "critical_cycle.S"
@@ -39,6 +40,25 @@ static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 static memory_pool_t memory_serial_node;
 
+void usc_driver_deinit_all(void) {
+    for (int i = 0; i < DRIVER_MAX; i++) {
+        drivers[i].config = NULL;
+        drivers[i].driver_action = NULL;
+    }
+}
+
+void usc_overdriver_deinit_all(void) {
+    for (int i = 0; i < OVERDRIVER_MAX; i++) {
+        overdrivers[i].config = NULL;
+        overdrivers[i].driver_action = NULL;
+    }
+}
+
+static void set_default_drivers(void) {
+    usc_overdriver_deinit_all();
+    usc_overdriver_deinit_all();
+}
+
 void queue_add(Queue *queue, const uint32_t data) {
     struct QueueNode *new_block = (struct QueueNode *)memory_pool_alloc(&memory_serial_node);
     if (new_block == NULL) {
@@ -64,8 +84,7 @@ void queue_remove(Queue *queue) {
         void *temp = (void *)queue->head;
         queue->head = queue->head->next;
         memory_pool_free(&memory_serial_node, temp);
-        //queue->count--;
-        atomic_add(&shared_values[0], 1);    
+        atomic_add(&shared_values[0], 1);
         Atomic_Add_u32(&queue->count, -1); // Decrement the count atomically
     }
 }
@@ -233,7 +252,7 @@ static bool handle_serial_key(usc_config_t *config) {
     usc_driver_request_password(config); // Request serial key
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
 
-    char *key = uart_read(&config->uart_config.port, sizeof(serial_key_t));
+    char *key = uart_read(&config->uart_config.port, sizeof(SERIAL_KEY) + 1);
     if (key != NULL) {
         if (strcmp(key, SERIAL_KEY) == 0) {
             config->has_access = true;
@@ -253,7 +272,7 @@ static void maintain_connection(usc_config_t *config) {
 }
 
 static void process_data(usc_config_t *config) {
-    char *temp_data = uart_read(&config->uart_config.port, sizeof(serial_data_t));
+    char *temp_data = uart_read(&config->uart_config.port, SERIAL_REQUEST_SIZE + 1);
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
         queue_add(&config->data, temp_data);
@@ -281,7 +300,7 @@ void usc_driver_read_task(void *pvParameters) {
     }
 }
 
-static void clear_serial_memory(Queue *serial_memory) { // not used yet
+void clear_serial_memory(Queue *serial_memory) { // not used yet
     queue_delete(serial_memory);
 }
 
@@ -298,23 +317,16 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     return ESP_OK;
 }
 
-static esp_err_t manage_overdrivers(usc_stored_config_t *overdriver, usc_config_t *config, usc_event_cb_t action) {
-    if (action == NULL) {
-        return ESP_FAIL;
+esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) {
+    if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX) || action == NULL) {
+        ESP_LOGE("USB_DRIVER", "Invalid overdriver");
+        return ESP_ERR_INVALID_ARG;
     }
 
-    overdriver->driver_action = action;
-    overdriver->config = config;
+    overdrivers[i].config = config; // store the configuration of the implemented serial driver
+    overdrivers[i].driver_action = action; // Set the driver action callback
 
     return ESP_OK;
-}
-
-esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) {
-    if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX)) {
-        ESP_LOGE("USB_DRIVER", "Invalid overdriver index");
-        return false;
-    }
-    return manage_overdrivers(&overdrivers[i], config, action);
 }
 
 esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i) {
@@ -327,12 +339,4 @@ esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i) {
     driver->config.uart_config = uart_config;
     driver->driver_action = overdrivers[i].driver_action;
     return ESP_OK;
-}
-
-// completed, do not change
-void usc_overdriver_deinit_all(void) {
-    for (int i = 0; i < OVERDRIVER_MAX; i++) {
-        overdrivers[i].config = NULL;
-        overdrivers[i].driver_action = NULL;
-    }
 }
