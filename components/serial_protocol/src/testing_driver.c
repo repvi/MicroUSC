@@ -25,10 +25,6 @@ void function_task(void *p) {
     uint32_t data = 0;
 
     //configure GPIO Pin
-<<<<<<< HEAD
-=======
-    gpio_pad_select_gpio(GPIO_NUM_2); // selecting pin 2
->>>>>>> 849a95b5c6356794658d51e42e8c508632a03382
     gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT); // setting pin as output
 
     while (1) {
