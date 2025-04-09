@@ -13,8 +13,9 @@
     1 -> turn off ESP32
     2 -> deep sleep mode
     3 -> pause port data
-    4 -> connect to WiFi
-    5 -> connect to Bluetooth
+    4 -> connect to wifi
+    5 -> connect to bluetooth
+
 */
 
 static const char *TAG = "CMD_HANDLER";
@@ -26,7 +27,7 @@ uint32_t data_returner(void) {
 void get_data(void *p) {
     uint32_t data = 0;
 
-    while (1) {
+    while(1){
         data = data_returner();
 
         switch (data) {
@@ -52,6 +53,15 @@ void get_data(void *p) {
                 break;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+                break;
+            case 8:
+
+                break;
+            case 9:
+
+                break;            
+            case 10:
+
+                break;
     }
 }

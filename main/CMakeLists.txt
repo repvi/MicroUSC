@@ -11,6 +11,7 @@ idf_component_register(
         driver_connection
         serial_protocol
         esp_timer
+        nvs_flash
 )
 
 #idf_component_get_property(tusb_lib leeebo__tinyusb_src COMPONENT_LIB)

@@ -49,7 +49,7 @@ extern "C" {
     #define OPT1         __attribute__((optimize("O1")))
     #define OPT2         __attribute__((optimize("O2")))
     #define OPT3         __attribute__((optimize("O3")))
-#else // disabled
+#else
     #define RUN_FIRST
     #define MALLOC 
     #define HOT   
@@ -66,6 +66,7 @@ extern "C" {
 
 // The literate_bytes macro defines a for loop that iterates from 0 to x - 1, where x is the number of iterations specified.
 #define literate_bytes(x) for (size_t i = 0; i < (x); i++)
+
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
 // needs baud rate implementation
@@ -168,14 +169,11 @@ void usc_driver_deinit_all(void);
 
 void usc_overdriver_deinit_all(void);
 
-
-static void set_default_drivers(void) RUN_FIRST;
-
 void queue_add(Queue *queue, const uint32_t data);
 
 void queue_remove(Queue *queue);
 
-char *queue_top(Queue *queue);
+uint32_t queue_top(Queue *queue);
 
 void queue_delete(Queue *queue);
 
@@ -186,6 +184,7 @@ void s_atomic_add(uint32_t *ptr, uint32_t value);
  *        Index is from 0 to DRIVER_MAX - 1 (0 to 1)
  * @param config Pointer to the USB configuration structure.
  * @param event_cb Pointer to the event callback function.
+ * 
  * @return ESP_OK if port initialization and configuration is valid.
  */
 esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, int i);
@@ -208,6 +207,7 @@ void usc_print_overdriver_configurations(void);
  * @param config Pointer to the USB configuration structure.
  * @param data Pointer to the data to be written.
  * @param len Length of the data to be written.
+ * 
  * @return ESP_OK if configuration is valid for the serial port.
  */
 esp_err_t usc_driver_write(const usc_config_t *config, const char *data, const size_t len);
