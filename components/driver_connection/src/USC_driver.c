@@ -2,7 +2,7 @@
 #include "freertos/task.h"
 #include "freertos/atomic.h"
 #include "freertos/event_groups.h"
-#include <atomic.h>
+//#include <atomic.h>
 #include <string.h>
 #include "esp_system.h"
 #include "USC_driver.h"
@@ -10,7 +10,6 @@
 #include "memory_pool.h"
 #include "esp_heap_caps.h"
 #include "esp_assert.h"
-//#include "critical_cycle.S"
 
 #define TASK_PRIORITY_START             (10) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
@@ -54,8 +53,9 @@ void usc_overdriver_deinit_all(void) {
     }
 }
 
-static void set_default_drivers(void) {
-    usc_overdriver_deinit_all();
+void set_default_drivers(void) RUN_FIRST;
+void set_default_drivers(void) {
+    usc_driver_deinit_all();
     usc_overdriver_deinit_all();
 }
 
@@ -84,8 +84,8 @@ void queue_remove(Queue *queue) {
         void *temp = (void *)queue->head;
         queue->head = queue->head->next;
         memory_pool_free(&memory_serial_node, temp);
-        atomic_add(&shared_values[0], 1);
-        Atomic_Add_u32(&queue->count, -1); // Decrement the count atomically
+        //s_atomic_add(shared_values[0], 1);
+        //Atomic_Add_u32(&queue->count, -1); // Decrement the count atomically
     }
 }
 
@@ -275,7 +275,10 @@ static void process_data(usc_config_t *config) {
     char *temp_data = uart_read(&config->uart_config.port, SERIAL_REQUEST_SIZE + 1);
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
-        queue_add(&config->data, temp_data);
+        // parse the data here
+        // todo: parse the data here
+        //uint32_t data = parse_data(temp_data); // Implement your parsing logic here
+        //queue_add(&config->data, temp_data);
         heap_caps_free(temp_data);
     }
     else {
