@@ -7,6 +7,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#define MICROSECONDS_PER_SEC (1000000)
+
 /*
     Command List:
     0 -> default value
@@ -36,7 +38,7 @@ void get_data(void *p) {
                 break;
             case 2:
                 ESP_LOGI(TAG, "ESP entering deep sleep mode");
-                esp_sleep_enable_timer_wakeup(10 * 1000000);
+                esp_sleep_enable_timer_wakeup(10 * MICROSECONDS_PER_SEC);
                 esp_deep_sleep_start();
                 break;
             case 3:
@@ -52,16 +54,5 @@ void get_data(void *p) {
                 ESP_LOGW(TAG, "Unknown command: %d", data);
                 break;
         }
-
-                break;
-            case 8:
-
-                break;
-            case 9:
-
-                break;            
-            case 10:
-
-                break;
     }
 }
