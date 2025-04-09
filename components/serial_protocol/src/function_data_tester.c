@@ -9,17 +9,16 @@
     3 -> pause port data
     4 -> connect to wifi
     5 -> connect to bluetooth
-
 */
 
 uint32_t data_returner(void){
     return 1;
 }
 
-void get_data(void *p){
+void get_data(void *p) {
     uint32_t data = 0;
 
-    while(1){
+    while(1) {
         data = data_returner();
         switch(data){
             case 1:
@@ -52,5 +51,6 @@ void get_data(void *p){
             case 10:
 
                 break;
+        }
     }
 }
