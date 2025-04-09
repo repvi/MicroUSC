@@ -14,6 +14,7 @@
 #define TASK_PRIORITY_START             (10) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
 #define TASK_CORE                        (1) // Core 1 is used for all other operations other than wifi or any wireless protocols
+#define TASK_AND_ACTION                  (2)
 
 #define SERIAL_REQUEST_DELAY_MS        (30)
 #define SERIAL_KEY_RETRY_DELAY_MS      (50)
@@ -33,21 +34,31 @@ typedef struct {
 } usc_stored_config_t;
 
 static usc_stored_config_t drivers[DRIVER_MAX];
-volatile uint32_t __attribute__((aligned(4))) shared_array[DRIVER_MAX];  // Indexed access [1][3]
+static volatile uint32_t __attribute__((aligned(4))) serial_data[DRIVER_MAX];  // Indexed access [1][3]
+
+usc_task_manager_t driver_task_manager[DRIVER_MAX] = {}; // Task manager for the drivers
 
 static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
-static memory_pool_t memory_serial_node;
+static memory_pool_t memory_serial_node; // mandatory
 
-void usc_driver_deinit_all(void) {
-    for (int i = 0; i < DRIVER_MAX; i++) {
+void init_usc_task_manager(usc_task_manager_t *driver_task_manager, int len) {
+    for (int i = 0; i < len; i++) {
+        driver_task_manager[i].task_handle = NULL;
+        driver_task_manager[i].action_handle = NULL;
+        driver_task_manager[i].active = false;
+    }
+}
+
+void usc_driver_deinit_all(void) { // new to change tasks
+    cycle_drivers() {
         drivers[i].config = NULL;
         drivers[i].driver_action = NULL;
     }
 }
 
 void usc_overdriver_deinit_all(void) {
-    for (int i = 0; i < OVERDRIVER_MAX; i++) {
+    cycle_overdrivers() {
         overdrivers[i].config = NULL;
         overdrivers[i].driver_action = NULL;
     }
@@ -81,11 +92,13 @@ void queue_add(Queue *queue, const uint32_t data) {
 
 void queue_remove(Queue *queue) {
     if (queue->head != NULL) {
+        uint32_t data = queue->head->data; // get pointer to data
         void *temp = (void *)queue->head;
         queue->head = queue->head->next;
         memory_pool_free(&memory_serial_node, temp);
-        //s_atomic_add(shared_values[0], 1);
-        //Atomic_Add_u32(&queue->count, -1); // Decrement the count atomically
+        ESP_LOGE("SEERIAL DATA", "CURRENT %d", &serial_data[0]);
+        s_atomic_set(&serial_data[0], data); // temperory 1
+        ESP_LOGE("SERIAL DATA", "NEW %d", &serial_data[0]);
     }
 }
 
@@ -213,7 +226,7 @@ void usc_print_driver_configurations(void) {
 }
 
 void usc_print_overdriver_configurations(void) {
-    for (int i = 0; i < OVERDRIVER_MAX; i++) {
+    cycle_overdrivers() {
         if (overdrivers[i].driver_action == NULL) {
             ESP_LOGI("OVERDRIVER", " NOT INITIALIZED on index %d", i);
             ESP_LOGI("          ", "----------------------------");
