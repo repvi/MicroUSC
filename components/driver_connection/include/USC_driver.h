@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 #define CURRENT_VERSION_MAJOR             (0)
-#define CURRENT_VERSION_MINOR             (5)
-#define CURRENT_VERSION_PATCH             (25)
+#define CURRENT_VERSION_MINOR             (6)
+#define CURRENT_VERSION_PATCH             (2)
 
 #define to_string(x)        #x
 #define USC_Version()       to_string(CURRENT_VERSION_MAJOR) "." \
@@ -66,7 +66,8 @@ extern "C" {
 
 // The literate_bytes macro defines a for loop that iterates from 0 to x - 1, where x is the number of iterations specified.
 #define literate_bytes(x) for (size_t i = 0; i < (x); i++)
-
+#define cycle_drivers() for (int i = 0; i < DRIVER_MAX; i++) // used for the driver loop
+#define cycle_overdrivers() for (int i = 0; i < OVERDRIVER_MAX; i++) // used for the overdriver loop
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
 // needs baud rate implementation
@@ -160,10 +161,20 @@ typedef struct {
     usc_data_process_t driver_action; ///< Action callback for the overdrive driver.
 } serial_input_driver_t;
 
+typedef struct {
+    TaskHandle_t task_handle; // Task handle for the driver task
+    TaskHandle_t action_handle; // Task handle for the action task
+    bool active;
+} usc_task_manager_t;
+
+extern usc_task_manager_t driver_task_manager[DRIVER_MAX]; // Task manager for the drivers
+
 /**
  * @brief Type definition for overdriver size.
  */
 typedef unsigned int overdriver_size_t;
+
+void init_usc_task_manager(usc_task_manager_t *driver_task_manager, int len);
 
 void usc_driver_deinit_all(void);
 
@@ -177,7 +188,7 @@ uint32_t queue_top(Queue *queue);
 
 void queue_delete(Queue *queue);
 
-void s_atomic_add(uint32_t *ptr, uint32_t value);
+void s_atomic_set(uint32_t *ptr, uint32_t value);
 
 /**
  * @brief Initialize the USB driver.

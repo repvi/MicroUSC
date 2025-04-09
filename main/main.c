@@ -14,6 +14,8 @@
 
 // 115200 baud rate
 
+//  xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
+// xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {
@@ -45,6 +47,8 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    init_usc_task_manager(&driver_task_manager, DRIVER_MAX); // Initialize the task manager for the drivers
 
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig

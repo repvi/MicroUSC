@@ -8,11 +8,10 @@
 // l32r a2, my_constant  # Load the 32-bit constant at address 'my_constant' into register a2
 
 .section .text
-.global s_atomic_add
-
+.global s_atomic_set
 .align 4
 
-s_atomic_add:
+s_atomic_set:
     retry:
         //entry a1, 16          // Create stack frame
         l32i    a4, a2, 0  // Load current value from [a2]
