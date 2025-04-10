@@ -167,14 +167,12 @@ typedef struct {
     bool active;
 } usc_task_manager_t;
 
-extern usc_task_manager_t driver_task_manager[DRIVER_MAX]; // Task manager for the drivers
-
 /**
  * @brief Type definition for overdriver size.
  */
 typedef unsigned int overdriver_size_t;
 
-void init_usc_task_manager(usc_task_manager_t *driver_task_manager, int len);
+void init_usc_task_manager(void);
 
 void usc_driver_deinit_all(void);
 

@@ -2,18 +2,7 @@
 #include "esp_heap_caps.h"
 #include <string.h>
 
-#define TIMEOUT pdMS_TO_TICKS     (100)
 #define BUFFER_SIZE               (256)
-
-/*
-uart_config_t uart_config = {
-    .baud_rate = 115200,
-    .data_bits = UART_DATA_8_BITS,
-    .parity = UART_PARITY_DISABLE,
-    .stop_bits = UART_STOP_BITS_1,
-    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-};
-*/
 
 esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config) {
     esp_err_t res = uart_param_config(port_config.port, &uart_config);
@@ -64,6 +53,45 @@ char *uart_read(uart_port_t *uart, size_t len) {
 
     buf[total_size - 1] = '\0';
     return buf;
+}
+
+uint8_t *uart_read_u(uart_port_t *uart, size_t len, TickType_t timeout) {
+    uint8_t *buf = (uint8_t *)heap_caps_malloc(len, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    if (buf == NULL) { // failed to allocate memory
+        ESP_LOGE("uart_read", "Failed to allocate memory for buffer");
+        return NULL;
+    }
+
+    memset(buf, '\0', len); // Clear the buffer
+
+    uint8_t *ptr = buf;
+    size_t total_size = 0;
+    size_t timeout_count = 0;
+    
+    while (total_size < BUFFER_SIZE) {
+        size_t size = uart_read_bytes(*uart, ptr, len - total_size, TIMEOUT); // needs to slow down
+        
+        if (size < 0) {
+            timeout_count++;
+            if (timeout_count >= 6) {
+                return NULL;
+            }
+            continue;
+        }
+
+        total_size += size;
+        ptr += size;
+
+        // Check for newline character in the newly read data
+        for (size_t i = total_size - size; i < total_size; i++) {
+            if (buf[i] == 255) {
+                buf[i] = '\0'; // Null-terminate the string
+                return buf;    // Return the buffer on success
+            }
+        }
+    }
+    
+    return NULL; // Return NULL if no newline character is found
 }
 
 void uart_port_config_deinit(uart_port_config_t *uart_config) {

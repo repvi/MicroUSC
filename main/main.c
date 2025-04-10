@@ -40,6 +40,16 @@ IRAM_ATTR void normal_function(void) {
 DRAM_ATTR uint32_t cache_disabled_buffer[64];
 */
 
+/*
+uart_config_t uart_config = {
+    .baud_rate = 115200,
+    .data_bits = UART_DATA_8_BITS,
+    .parity = UART_PARITY_DISABLE,
+    .stop_bits = UART_STOP_BITS_1,
+    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+};
+*/
+
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -48,7 +58,7 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    init_usc_task_manager(&driver_task_manager, DRIVER_MAX); // Initialize the task manager for the drivers
+    init_usc_task_manager(); // Initialize the task manager for the drivers
 
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
