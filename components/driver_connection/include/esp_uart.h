@@ -13,6 +13,8 @@ extern "C" {
 #include "esp_log.h"
 #include "esp_err.h"
 
+#define TIMEOUT pdMS_TO_TICKS     (100)
+#define INCLUDE_DELAY             (1)
 /**
  * @struct uart_port_config_t
  * @brief Configuration structure for UART ports.
@@ -23,13 +25,11 @@ typedef struct {
     uart_port_t port; ///< UART port identifier.
 } uart_port_config_t;
 
-typedef unsigned int serial_size_t;
-
-typedef int baud_rate_t;
-
 esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config);
 
 char *uart_read(uart_port_t *uart, size_t len);
+
+uint8_t *uart_read_u(uart_port_t *uart, size_t len, TickType_t timeout);
 
 void uart_port_config_deinit(uart_port_config_t *uart_config);
 

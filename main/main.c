@@ -2,6 +2,7 @@
 #include "speed_test.h"
 #include "USC_driver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
+#include "testing_driver.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -14,6 +15,8 @@
 
 // 115200 baud rate
 
+// xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
+// xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {
@@ -36,6 +39,16 @@ IRAM_ATTR void normal_function(void) {
 
 // Data that must be accessible during cache disabled periods
 DRAM_ATTR uint32_t cache_disabled_buffer[64];
+*/
+
+/*
+uart_config_t uart_config = {
+    .baud_rate = 115200,
+    .data_bits = UART_DATA_8_BITS,
+    .parity = UART_PARITY_DISABLE,
+    .stop_bits = UART_STOP_BITS_1,
+    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+};
 */
 
 void app_main(void) {
@@ -68,12 +81,15 @@ void app_main(void) {
         .driver_name = "Driver example"
     };
     
-    usc_data_process_t driver_action = NULL; // point to the function
-    // you created
-    
+    usc_data_process_t driver_action = &system_task; // point to the function you created
     
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
-    ESP_ERROR_CHECK(usc_driver_init(&driver_example, setting, pins, driver_action, 0));
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
+
+    while (1) {
+        // continue forever
+        vTaskDelay(portTICK_PERIOD_MS); // Minimum 1ms delay
+    };
 }

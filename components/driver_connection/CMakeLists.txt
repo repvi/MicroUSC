@@ -7,4 +7,5 @@ idf_component_register(
         memory_storage
         freertos
         esp_system
+        debug
 )

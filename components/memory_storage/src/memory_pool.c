@@ -6,7 +6,7 @@
 
 static bool set_memory_pool_vals(memory_pool_t *pool, const size_t block_size, const size_t num_blocks) {
     if (!pool || block_size == 0 || num_blocks == 0 || !pool->memory) {
-        // Handle invalid input
+        ESP_LOGE("MEMORY_POOL", "Invalid memory pool or parameters");
         return false;
     }
 
@@ -33,6 +33,7 @@ static bool memory_pool_configure(memory_pool_t *pool, const size_t block_size, 
 
     pool->memory = heap_caps_malloc_prefer(total_size, 2,  MALLOC_CAP_32BIT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     if (pool->memory == NULL) {
+        ESP_LOGE("MEMORY_POOL", "Unable to allocate memory for the pool");
         return false;
     }
 
@@ -41,6 +42,7 @@ static bool memory_pool_configure(memory_pool_t *pool, const size_t block_size, 
 
 bool memory_pool_init(memory_pool_t *pool, const size_t block_size, const size_t num_blocks) {
     if (!pool || block_size == 0 || num_blocks == 0) {
+        ESP_LOGE("MEMORY_POOL", "Invalid memory pool or parameters");
         return false;
     }
 
