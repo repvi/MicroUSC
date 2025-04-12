@@ -1,4 +1,6 @@
 #include "testing_driver.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "string.h"
 #include "stddef.h"
 #include "stdint.h"
@@ -20,7 +22,7 @@ uint32_t getData(void) {
     return 1;
 }
 
-void function(void *p) {
+void system_task(void *p) {
     uint32_t data = 0;
 
     while (1) {
@@ -49,6 +51,12 @@ void function(void *p) {
             case 10:
                 break;
         }
+
+        vTaskDelay(portTICK_PERIOD_MS); // delay for one second
+        // this is used to delay the task for a certain amount of time
+        // it is used to prevent the task from running too fast and consuming too much CPU time
+        // Used to reset the timer for the task
+        printf("Running system task...\n"); // Debug message to show the task is running
     }
 }
 

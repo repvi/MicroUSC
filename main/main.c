@@ -2,6 +2,7 @@
 #include "speed_test.h"
 #include "USC_driver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
+#include "testing_driver.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -14,7 +15,7 @@
 
 // 115200 baud rate
 
-//  xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
+// xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
 // xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
 /*
 // Function that runs from IRAM (faster but limited space)
@@ -58,8 +59,6 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    init_usc_task_manager(); // Initialize the task manager for the drivers
-
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
         .data_bits = UART_DATA_8_BITS,
@@ -82,12 +81,15 @@ void app_main(void) {
         .driver_name = "Driver example"
     };
     
-    usc_data_process_t driver_action = NULL; // point to the function
-    // you created
-    
+    usc_data_process_t driver_action = &system_task; // point to the function you created
     
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
-    ESP_ERROR_CHECK(usc_driver_init(&driver_example, setting, pins, driver_action, 0));
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
+
+    while (1) {
+        // continue forever
+        vTaskDelay(portTICK_PERIOD_MS); // Minimum 1ms delay
+    };
 }
