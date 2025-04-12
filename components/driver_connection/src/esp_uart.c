@@ -4,6 +4,9 @@
 
 #define BUFFER_SIZE               (256)
 
+#define DLEAY_MILISECOND_10      (10) // 1 second delay
+#define DLEAY_MILISECOND_50      (50) // 1 second delay
+
 esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config) {
     esp_err_t res = uart_param_config(port_config.port, &uart_config);
     if (res == ESP_OK) {
@@ -31,7 +34,7 @@ char *uart_read(uart_port_t *uart, size_t len) {
     while (total_size < BUFFER_SIZE) {
         int size = uart_read_bytes(*uart, ptr, len - total_size, TIMEOUT); // needs to slow down
         
-        if (size < 0) {
+        if (size <= 0) {
             timeout_count++;
             if (timeout_count >= 6) {
                 return buf;
@@ -49,6 +52,10 @@ char *uart_read(uart_port_t *uart, size_t len) {
                 return buf;    // Return the buffer on success
             }
         }
+
+        #if (INCLUDE_DELAY == 1)
+        vTaskDelay(DLEAY_MILISECOND_50 / portTICK_PERIOD_MS); // 10ms delay
+        #endif
     }
 
     buf[total_size - 1] = '\0';
@@ -66,12 +73,15 @@ uint8_t *uart_read_u(uart_port_t *uart, size_t len, TickType_t timeout) {
 
     uint8_t *ptr = buf;
     size_t total_size = 0;
-    size_t timeout_count = 0;
+    TickType_t timeout_count = 0;
     
     while (total_size < BUFFER_SIZE) {
-        size_t size = uart_read_bytes(*uart, ptr, len - total_size, TIMEOUT); // needs to slow down
+        #if (INCLUDE_DELAY == 1)
+        vTaskDelay(DLEAY_MILISECOND_10 / portTICK_PERIOD_MS); // 10ms delay
+        #endif
+        int size = uart_read_bytes(*uart, ptr, len - total_size, TIMEOUT); // needs to slow down
         
-        if (size < 0) {
+        if (size <= 0) {
             timeout_count++;
             if (timeout_count >= 6) {
                 return NULL;
@@ -99,3 +109,5 @@ void uart_port_config_deinit(uart_port_config_t *uart_config) {
     uart_config->rx = GPIO_NUM_NC; // -1
     uart_config->tx = GPIO_NUM_NC; // -1
 }
+
+#undef INCLUDE_DELAY

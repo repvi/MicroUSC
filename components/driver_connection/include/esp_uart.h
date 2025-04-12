@@ -14,7 +14,7 @@ extern "C" {
 #include "esp_err.h"
 
 #define TIMEOUT pdMS_TO_TICKS     (100)
-
+#define INCLUDE_DELAY             (1)
 /**
  * @struct uart_port_config_t
  * @brief Configuration structure for UART ports.
@@ -24,8 +24,6 @@ typedef struct {
     gpio_num_t rx;  ///< GPIO pin for UART receive.
     uart_port_t port; ///< UART port identifier.
 } uart_port_config_t;
-
-typedef int baud_rate_t;
 
 esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config);
 

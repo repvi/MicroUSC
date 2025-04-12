@@ -28,32 +28,35 @@ extern "C" {
 
 #define SERIAL_DATA_SIZE      126
 
+#define ESP32_ARCHITECTURE_ALIGNMENT_VAR (sizeof(uint32_t)) // used for the ESP32 architecture
 
 #if defined(__GNUC__) || defined(__clang__)
-    #define FUNCTION_ATTRIBUTES       (1)
-#else
-    #define FUNCTION_ATTRIBUTES       (0)
-#endif
-
-#define INSIDE_SCOPE(x, max) (0 <= (x) && (x) < (max))
-#define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
-#define developer_input(x) (x)
-
-#if (FUNCTION_ATTRIBUTES == 1) 
     #define RUN_FIRST      __attribute__((constructor)) // probably might not use
     #define MALLOC         __attribute__((malloc)) // used for dynamic memory functions
     #define HOT            __attribute__((hot)) // for critical operations (Need most optimization)
     #define COLD           __attribute__((cold)) // not much much. Use less memory but slower execution of function. Used like in initializing
     
+    #define UNUSED __attribute__((unused))
+    #define DEPRECATED __attribute__((deprecated))
+    #define USED __attribute__((used))
+
     #define OPT0         __attribute__((optimize("O0")))
     #define OPT1         __attribute__((optimize("O1")))
     #define OPT2         __attribute__((optimize("O2")))
     #define OPT3         __attribute__((optimize("O3")))
+
+    #if defined(A)
+
+    #endif
 #else
     #define RUN_FIRST
     #define MALLOC 
     #define HOT   
     #define COLD
+
+    #define UNUSED
+    #define DEPRECATED
+    #define USED
 
     #define OPT0 
     #define OPT1 
@@ -63,6 +66,11 @@ extern "C" {
 
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
+
+    
+#define INSIDE_SCOPE(x, max) (0 <= (x) && (x) < (max))
+#define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
+#define developer_input(x) (x)
 
 // The literate_bytes macro defines a for loop that iterates from 0 to x - 1, where x is the number of iterations specified.
 #define literate_bytes(x) for (size_t i = 0; i < (x); i++)
@@ -79,7 +87,6 @@ extern "C" {
 #endif
 
 ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE is not defined!");
-
 typedef struct stored_uart_data_t {
     uint32_t data; // change in the future
     struct stored_uart_data_t *next;
@@ -150,7 +157,7 @@ typedef struct {
     bool has_access; ///< Flag indicating if access is granted.
     Queue data; // UART_NUM_MAX is used as the size of the stored data in the port
     usc_status_t status; ///< Current status of the USB connection.
-    baud_rate_t baud_rate; ///< Baud rate of the UART (not implemented yet).
+    int baud_rate; ///< Baud rate of the UART (not implemented yet).
 } usc_config_t;
 
 /**
@@ -172,8 +179,6 @@ typedef struct {
  */
 typedef unsigned int overdriver_size_t;
 
-void init_usc_task_manager(void);
-
 void usc_driver_deinit_all(void);
 
 void usc_overdriver_deinit_all(void);
@@ -186,7 +191,7 @@ uint32_t queue_top(Queue *queue);
 
 void queue_delete(Queue *queue);
 
-void s_atomic_set(uint32_t *ptr, uint32_t value);
+void s_atomic_set(volatile uint32_t *ptr, uint32_t value);
 
 /**
  * @brief Initialize the USB driver.
@@ -196,7 +201,7 @@ void s_atomic_set(uint32_t *ptr, uint32_t value);
  * 
  * @return ESP_OK if port initialization and configuration is valid.
  */
-esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, int i);
+esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, UBaseType_t i);
 
 /**
  * @brief Prints the configurations of all initialized drivers.
