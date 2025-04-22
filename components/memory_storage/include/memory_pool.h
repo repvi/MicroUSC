@@ -4,6 +4,10 @@
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef char serial_data_t[15];
 
 // Might not be used in main program
@@ -61,5 +65,9 @@ void memory_pool_free(memory_pool_t *pool, void *block);
  * @param pool Pointer to the memory_pool_t structure.
  */
 void memory_pool_destroy(memory_pool_t* pool);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // MEMORY_POOL_H
