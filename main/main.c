@@ -17,6 +17,10 @@
 
 // xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
 // xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
+
+// idf.py -D CMAKE_VERBOSE_MAKEFILE=ON build
+//  xtensa-esp32-elf-gcc -S -o output.S example.c     
+// xtensa-esp32-elf-objdump -t build/ESP32_USC_DRIVERS.elf | findstr "example_function"
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {

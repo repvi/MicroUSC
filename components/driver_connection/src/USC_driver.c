@@ -44,15 +44,17 @@ static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
 
 static memory_pool_t memory_serial_node; // mandatory
 
-static void init_usc_task_manager(void) {
+static esp_err_t init_usc_task_manager(void) {
     cycle_drivers() {
         driver_task_manager[i].task_handle = NULL;
         driver_task_manager[i].action_handle = NULL;
         driver_task_manager[i].active = false;
     }
+
+    return ESP_OK;
 }
 
-void usc_driver_deinit_all(void) { // new to change tasks
+esp_err_t usc_driver_deinit_all(void) { // new to change tasks
     cycle_drivers() {
         if (driver_task_manager[i].active) {
             driver_task_manager[i].active = false; // Reset the active flag
@@ -64,20 +66,24 @@ void usc_driver_deinit_all(void) { // new to change tasks
         drivers[i].config = NULL;
         drivers[i].driver_action = NULL;
     }
+
+    return ESP_OK
 }
 
-void usc_overdriver_deinit_all(void) {
+esp_err_t usc_overdriver_deinit_all(void) {
     cycle_overdrivers() {
         overdrivers[i].config = NULL;
         overdrivers[i].driver_action = NULL;
     }
+
+    return ESP_OK;
 }
 
 //void set_default_drivers(void) RUN_FIRST;
 void RUN_FIRST set_system_drivers(void) {
-    init_usc_task_manager();
-    usc_driver_deinit_all(); // used to set the default drivers
-    usc_overdriver_deinit_all(); // used to set the default drivers
+    ESP_ERROR_CHECK(init_usc_task_manager());
+    ESP_ERROR_CHECK(usc_driver_deinit_all()); // used to set the default drivers
+    ESP_ERROR_CHECK(usc_overdriver_deinit_all()); // used to set the default drivers
 }
 
 void queue_add(Queue *queue, const uint32_t data) {
@@ -211,6 +217,7 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
     driver_task_manager[i].active = true; // Set the task as active
     create_usc_driver_task(config, i); // create the task for the serial driver implemented
     create_usc_driver_action_task(driver_process, i);
+    
     printf("Index %d\n", i); // Debugging line to check task name and priority
     return ESP_OK;
 }
@@ -299,7 +306,9 @@ static uint32_t parse_data(uint8_t *data) {
 }
 
 static void process_data(usc_config_t *config) {
-    uint8_t *temp_data = uart_read_u(&config->uart_config.port, SERIAL_REQUEST_SIZE + 1, TIMEOUT);
+   // uint8_t *temp_data = uart_read_u(&config->uart_config.port, SERIAL_REQUEST_SIZE + 1, TIMEOUT);
+    uint8_t *temp_data = heap_caps_malloc(SERIAL_REQUEST_SIZE + 1, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // Allocate memory for the data 
+    memset(temp_data, 6, SERIAL_REQUEST_SIZE + 1); // Initialize the memory to zero
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
         uint32_t data = parse_data(temp_data);
@@ -321,13 +330,14 @@ void usc_driver_read_task(void *pvParameters) {
     printf("Current task: %d\n", current_task_config.active);
 
     while (current_task_config.active) {
+        #if (NEEDS_SERIAL_KEY == 1)
         if (!config->has_access) {
             if (!handle_serial_key(config)) {
                 printf("Serial key check failed, retrying...\n"); // Debugging line to check if the serial key check failed
                 continue;                 // Retry if serial key check fails
             }
         }
-
+        #endif
         //maintain_connection(config);     // Ping the driver to check connection
         process_data(config);            // Read and process incoming data
 
