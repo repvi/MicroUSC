@@ -11,29 +11,54 @@
 
 // retw is used to deallocate memroy and return to the caller.
 // wsr is used to write to the special register scompare1, which is used for atomic operations.
+.section .data
+.align 4
+lock: .word 0x0, 0x0, 0x0, 0x0, 0x0  // Initialize lock variable to 0
+
 .section .iram1,"ax"
+.align 4
+
+.global get_atomic_lock
+.type get_atomic_lock, @function
+get_atomic_lock:
+    entry   sp, 16           // Create stack frame
+    mov     a8, 0x0          // Initialize a8 to 0
+    1:
+        sub     a9, a8, 10
+        add     a8, a8, 1       // increment a8 by 1, (a8++)
+        bltz    a9, 1b          // Loop until a8 is less than 10
+    
+        rsil    a9, 15          // Disable interrupts, reusing register a9
+        movi    a10, lock,      // Load the address of the lock variable into a2
+        slli    a11, a2, 2      // Shift left logical immediate by 2 bits (multiply by 4)    
+        addi    a10, a10, a11
+
+        
+        mov     a8, 0x0         // Initialize a8 to 0
+
+    .size get_atomic_lock, .-get_atomic_lock
+    .align 4
+
 .global s_atomic_set
-.align 4
-
+.type s_atomic_set, @function
 s_atomic_set:
-    entry sp, 16          // Create stack frame
+    entry   sp, 16         // Create stack frame
     retry:
-        wsr a4, scompare1 // Set the compare register to a4
-        l32i    a4, a2, 0  // Load current value from [a2]
-        add     a5, a4, a3 // Compute new value (a5 = a4 + a3)
-        s32c1i  a5, a2, 0  // Atomic compare-and-swap
-        bnez    a5, retry   // Retry on failure
+        rsil    a8, 15     // Disable interrupts
+        l32i    a9, a2, 0  // Load current value from [a2]
+        add     a10, a9, a3 // Compute new value (a5 = a10 + a3)
+        s32c1i  a10, a2, 0  // Atomic compare-and-swap
+        bnez    a5, retry  // Retry on failure
+    
     mov     a2, a4         // Return original value
-    //ret                    // Exit
     retw           // Deallocate memory and return to caller
+    .size s_atomic_set, .-s_atomic_set
+    .align 4
 
-
-
-.section .text
 .global s_atomic_get
-.align 4
-
+.type s_atomic_get, @function
 s_atomic_get:
-    //entry a1, 16          // Create stack frame
     l32i    a4, a2, 0     // Load current value from [a2]
-    ret                    // Exit
+    ret
+    .size s_atomic_get, .-s_atomic_get
+    .align 4

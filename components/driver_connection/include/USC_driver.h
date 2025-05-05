@@ -1,9 +1,9 @@
 #ifndef __USB_DRIVER_H
 #define __USB_DRIVER_H
 
-#include "USC_driver_config.h"
 #include "esp_uart.h"
 #include "memory_pool.h"
+#include "atomic_sys_op.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,27 +14,9 @@ typedef struct stored_uart_data_t {
     struct stored_uart_data_t *next;
 } stored_uart_data_t;
 
-/**
- * @brief Type definition for USB event callback function.
- * @param void *arg: Argument passed to the callback.
- */
 typedef void (*usc_event_cb_t)(void *);
-
-/**
- * @brief Type definition for USB action callback function.
- *
- * @param void *arg: Argument passed to the callback.
- */
 typedef void (*usc_data_process_t)(void *);
-
-/**
- * @brief Type definition for driver name.
- */
 typedef char driver_name_t[20];
-
-/**
- * @brief Type definition for serial key.
- */
 typedef char serial_key_t[10];
 
 /**
@@ -56,30 +38,16 @@ typedef enum {
     TIME_OUT,              ///< Operation timed out.
 } usc_status_t;
 
-
-struct QueueNode {
-    uint32_t data; // change in the future
-    struct QueueNode *next;
-};
-
-typedef struct {
-    struct QueueNode *head;
-    struct QueueNode *tail;
-    size_t count;
-} Queue;
-
-#define SIZE_OF_SERIAL_MEMORY_BLOCK    (sizeof(struct QueueNode)) // must be defined
-
 /**
  * @brief Structure for USB configuration.
  */
 typedef struct {
     uart_port_config_t uart_config; ///< UART configuration structure.
     driver_name_t driver_name; ///< Name of the driver.
-    bool has_access; ///< Flag indicating if access is granted.
     Queue data; // UART_NUM_MAX is used as the size of the stored data in the port
     usc_status_t status; ///< Current status of the USB connection.
-    int baud_rate; ///< Baud rate of the UART (not implemented yet).
+    uint32_t baud_rate; ///< Baud rate of the UART (not implemented yet).
+    bool has_access; ///< Flag indicating if access is granted.
 } usc_config_t;
 
 /**
@@ -101,19 +69,15 @@ typedef struct {
  */
 typedef unsigned int overdriver_size_t;
 
+uint32_t usb_driver_get_data(const int i);
+
 esp_err_t usc_driver_deinit_all(void);
 
 esp_err_t usc_overdriver_deinit_all(void);
 
 void queue_add(Queue *queue, const uint32_t data);
 
-void queue_remove(Queue *queue);
-
-uint32_t queue_top(Queue *queue);
-
-void queue_delete(Queue *queue);
-
-void s_atomic_set(volatile uint32_t *ptr, uint32_t value);
+uint32_t usb_driver_get_data(const int i);
 
 /**
  * @brief Initialize the USB driver.
@@ -123,7 +87,12 @@ void s_atomic_set(volatile uint32_t *ptr, uint32_t value);
  * 
  * @return ESP_OK if port initialization and configuration is valid.
  */
-esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, UBaseType_t i);
+esp_err_t usc_driver_init( usc_config_t *config, 
+                           uart_config_t uart_config, 
+                           uart_port_config_t port_config, 
+                           usc_data_process_t driver_process, 
+                           UBaseType_t i, 
+                           QueueHandle_t uart_queue);
 
 /**
  * @brief Prints the configurations of all initialized drivers.
