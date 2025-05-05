@@ -1,7 +1,3 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-//#include "freertos/atomic.h"
-#include "freertos/event_groups.h"
 #include <string.h>
 #include "esp_system.h"
 #include "USC_driver.h"
@@ -12,22 +8,9 @@
 
 #include "speed_test.h"
 
-#define TASK_PRIORITY_START             (10) // Used for the serial communication task
-#define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
-#define TASK_CORE                        (1) // Core 1 is used for all other operations other than wifi or any wireless protocols
-#define TASK_AND_ACTION                  (2)
+#include <stdatomic.h>
 
-#define SERIAL_REQUEST_DELAY_MS        (30)
-#define SERIAL_KEY_RETRY_DELAY_MS      (50)
-#define LOOP_DELAY_MS                  (10)
-
-#define OVERDRIVER_MAX                  (3)
-
-#define MEMORY_BLOCK_MAX               (20)
-
-#define DRIVER_NAME_SIZE              (sizeof(driver_name_t))
-
-#define DELAY_MILISECOND_50            (50) // 1 second delay
+//static memory_pool_t memory_serial_node = {}; // mandatory
 
 // save a lot of memory
 typedef struct {
@@ -35,14 +18,26 @@ typedef struct {
     usc_data_process_t driver_action;        ///< Action callback for the overdrive driver
 } usc_stored_config_t;
 
-static usc_stored_config_t drivers[DRIVER_MAX];
-static volatile uint32_t __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR))) serial_data[DRIVER_MAX];  // Indexed access [1][3]
+static usc_stored_config_t drivers[DRIVER_MAX] = {};
+
+// __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
+static atomic_uint_least32_t serial_data[DRIVER_MAX] ESP32_ALIGNMENT = {};  // Indexed access [1][3]
 
 static usc_task_manager_t driver_task_manager[DRIVER_MAX] = {}; // Task manager for the drivers
 
-static usc_stored_config_t overdrivers[OVERDRIVER_MAX];
+static usc_stored_config_t overdrivers[OVERDRIVER_MAX] = {};
 
-static memory_pool_t memory_serial_node; // mandatory
+uint32_t usb_driver_get_data(const int i) {
+    return queue_top(&drivers[i].config->data);
+}
+
+portMUX_TYPE queueLock = portMUX_INITIALIZER_UNLOCKED; // example of a mutex lock
+
+void usb_driver_clean_data(const int i) {
+    portENTER_CRITICAL(&queueLock); // Lock the queue
+    queue_clean(&drivers[i].config->data);
+    portEXIT_CRITICAL(&queueLock); // Unlock the queue
+}
 
 static esp_err_t init_usc_task_manager(void) {
     cycle_drivers() {
@@ -50,7 +45,6 @@ static esp_err_t init_usc_task_manager(void) {
         driver_task_manager[i].action_handle = NULL;
         driver_task_manager[i].active = false;
     }
-
     return ESP_OK;
 }
 
@@ -67,7 +61,7 @@ esp_err_t usc_driver_deinit_all(void) { // new to change tasks
         drivers[i].driver_action = NULL;
     }
 
-    return ESP_OK
+    return ESP_OK;
 }
 
 esp_err_t usc_overdriver_deinit_all(void) {
@@ -75,7 +69,6 @@ esp_err_t usc_overdriver_deinit_all(void) {
         overdrivers[i].config = NULL;
         overdrivers[i].driver_action = NULL;
     }
-
     return ESP_OK;
 }
 
@@ -84,55 +77,6 @@ void RUN_FIRST set_system_drivers(void) {
     ESP_ERROR_CHECK(init_usc_task_manager());
     ESP_ERROR_CHECK(usc_driver_deinit_all()); // used to set the default drivers
     ESP_ERROR_CHECK(usc_overdriver_deinit_all()); // used to set the default drivers
-}
-
-void queue_add(Queue *queue, const uint32_t data) {
-    struct QueueNode *new_block = (struct QueueNode *)memory_pool_alloc(&memory_serial_node);
-    if (new_block == NULL) {
-        return; // not allocated
-    }
-
-    new_block->data = data;
-
-    if (queue->head != NULL) {
-        queue->tail->next = new_block;
-        queue->tail = queue->tail->next;
-    }
-    else {
-        queue->head = new_block;
-        queue->tail = queue->head;
-    }
-
-    queue->count++;
-}
-
-void queue_remove(Queue *queue) {
-    if (queue->head != NULL) {
-        uint32_t data = queue->head->data; // get pointer to data
-        void *temp = (void *)queue->head;
-        queue->head = queue->head->next;
-        memory_pool_free(&memory_serial_node, temp);
-        ESP_LOGE("SEERIAL DATA", "CURRENT %lu", serial_data[0]);
-        s_atomic_set(&serial_data[0], data); // needs to be checked if it works
-        ESP_LOGE("SERIAL DATA", "NEW %lu", serial_data[0]);
-    }
-}
-
-uint32_t queue_top(Queue *queue) {
-    if (queue->head != NULL) {
-        uint32_t data = queue->head->data; // get pointer to data
-        queue_remove(queue);
-        return data;
-    }
-    else {
-        return 0; // default
-    }
-}
-
-void queue_delete(Queue *queue) {
-    while (queue->head != NULL) {
-        queue_remove(queue);   
-    }
 }
 
 static void check_driver_name(char *name) {
@@ -146,26 +90,27 @@ static void check_driver_name(char *name) {
 
 void usc_driver_read_task(void *pvParameters); // header
 
-static void create_usc_driver_task(usc_config_t *config, const UBaseType_t i) {
-    UBaseType_t driver_TASK_Priority_START = TASK_PRIORITY_START + i;
+static void create_usc_driver_task( usc_config_t *config, 
+                                    const UBaseType_t i) { // might neeed adjustment
+    const UBaseType_t driver_TASK_Priority_START = TASK_PRIORITY_START + i;
     if (strcmp(config->driver_name, "") == 0) {
         sprintf(config->driver_name, "Unknown Driver %d", i);
     }
 
     xTaskCreatePinnedToCore(
-        usc_driver_read_task,               // Task function
-        config->driver_name,                // Task name
-        TASK_STACK_SIZE,                    // Stack size
-        (void *)config,                     // Task parameters
-        driver_TASK_Priority_START++,       // Increment priority for next task
+        usc_driver_read_task,                // Task function
+        config->driver_name,                 // Task name
+        TASK_STACK_SIZE,                     // Stack size
+        (void *)config,                      // Task parameters
+        driver_TASK_Priority_START,          // Increment priority for next task
         &driver_task_manager[i].task_handle, // Task handle
-        TASK_CORE                           // Core to pin the task
+        TASK_CORE                            // Core to pin the task
     );
 }
 
-static void create_usc_driver_action_task(usc_data_process_t driver_process, const UBaseType_t i) {
-    const int OFFSET = TASK_PRIORITY_START + DRIVER_MAX + i;
-
+static void create_usc_driver_action_task( usc_data_process_t driver_process, 
+                                           const UBaseType_t i) {
+    const UBaseType_t OFFSET = TASK_PRIORITY_START + DRIVER_MAX + i;
     char task_name[15];
     sprintf(task_name, "Action #%d", i);
 
@@ -180,9 +125,14 @@ static void create_usc_driver_action_task(usc_data_process_t driver_process, con
     );
 }
 
-esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_port_config_t port_config, usc_data_process_t driver_process, UBaseType_t i) {
+esp_err_t usc_driver_init( usc_config_t *config, 
+                           uart_config_t uart_config, 
+                           uart_port_config_t port_config, 
+                           usc_data_process_t driver_process, 
+                           UBaseType_t i,
+                           QueueHandle_t uart_queue) {
     // Validate UART configuration
-    if (DRIVER_MAX <= i) {
+    if (i >= DRIVER_MAX) {
         ESP_LOGE("USB_DRIVER", "Invalid driver index");
         return ESP_ERR_INVALID_ARG;
     }
@@ -194,15 +144,9 @@ esp_err_t usc_driver_init(usc_config_t *config, uart_config_t uart_config, uart_
 
     config->uart_config = port_config;
     // Initialize UART and memory pool
-    if (developer_input(uart_init(config->uart_config, uart_config) != ESP_OK)) {
+    if (developer_input(uart_init(config->uart_config, uart_config, uart_queue) != ESP_OK)) {
         ESP_LOGE("USB_DRIVER", "Initialization failed");
         return ESP_FAIL;
-    }
-
-    if (!memory_serial_node.memory) {
-        if (unlikely(!memory_pool_init(&memory_serial_node, SIZE_OF_SERIAL_MEMORY_BLOCK, MEMORY_BLOCK_MAX))) {
-            return ESP_ERR_NO_MEM;
-        }
     }
 
     // Initialize driver name
@@ -230,7 +174,7 @@ void usc_print_driver_configurations(void) {
         }
         else {
             ESP_LOGI("DRIVER", " %s", drivers[i].config->driver_name);
-            ESP_LOGI("Baud Rate", " %d", drivers[i].config->baud_rate);
+            ESP_LOGI("Baud Rate", " %lu", drivers[i].config->baud_rate);
             ESP_LOGI("Status", " %d", drivers[i].config->status);
             ESP_LOGI("Has Access", " %d", drivers[i].config->has_access);
             ESP_LOGI("UART Port", " %d", drivers[i].config->uart_config.port);
@@ -249,13 +193,15 @@ void usc_print_overdriver_configurations(void) {
         }
         else {
             ESP_LOGI("OVERDRIVER", " %s", overdrivers[i].config->driver_name);
-            ESP_LOGI("Baud Rate", " %d", overdrivers[i].config->baud_rate);
+            ESP_LOGI("Baud Rate", " %lu", overdrivers[i].config->baud_rate);
             ESP_LOGI("          ", "----------------------------");
         }
     }
 }
 
-esp_err_t usc_driver_write(const usc_config_t *config, const char *data, const size_t len) {
+esp_err_t usc_driver_write( const usc_config_t *config, 
+                            const char *data, 
+                            const size_t len) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
         literate_bytes(len) {
             if (uart_write_bytes(config->uart_config.port, &data[i], 1) == -1) {
@@ -277,13 +223,14 @@ esp_err_t usc_driver_ping(usc_config_t *config) {
     return usc_driver_write(config, PING, sizeof(PING));
 }
 
+// needs to be changed to use the queue
 static bool handle_serial_key(usc_config_t *config) {
     usc_driver_request_password(config); // Request serial key
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
     printf("Waiting for serial key...\n"); // Debugging line to check if the task is running
-    char *key = uart_read(&config->uart_config.port, sizeof(SERIAL_KEY) + 1);
-    printf("Serial key: %s\n", key); // Debugging line to check if the task is running
+    char *key = NULL; //uart_read(&config->uart_config.port, sizeof(SERIAL_KEY) + 1);
     if (key != NULL) {
+        printf("Serial key: %s\n", key); // Debugging line to check if the task is running
         if (strcmp(key, SERIAL_KEY) == 0) {
             config->has_access = true;
             config->status = CONNECTED;
@@ -301,18 +248,17 @@ static void maintain_connection(usc_config_t *config) {
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Allow time for the ping
 }
 
-static uint32_t parse_data(uint8_t *data) {
+static inline uint32_t parse_data(uint8_t *data) {
     return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
 }
 
+// needs to be finished
 static void process_data(usc_config_t *config) {
-   // uint8_t *temp_data = uart_read_u(&config->uart_config.port, SERIAL_REQUEST_SIZE + 1, TIMEOUT);
-    uint8_t *temp_data = heap_caps_malloc(SERIAL_REQUEST_SIZE + 1, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // Allocate memory for the data 
-    memset(temp_data, 6, SERIAL_REQUEST_SIZE + 1); // Initialize the memory to zero
+    uint8_t *temp_data = NULL; //uart_read(&config->uart_config.port, SERIAL_REQUEST_SIZE + 1);
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
         uint32_t data = parse_data(temp_data);
-        queue_add(&config->data, data);
+        queue_add(&config->data, data); // Add the data to the queue
         heap_caps_free(temp_data);
     }
     else {
@@ -322,39 +268,37 @@ static void process_data(usc_config_t *config) {
 
 void usc_driver_read_task(void *pvParameters) {
     usc_config_t *config = (usc_config_t *)pvParameters;
-    UBaseType_t priority =  uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task
-    usc_task_manager_t current_task_config = driver_task_manager[priority]; // get the task configuration
+    UBaseType_t priority =  uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task, more temportary
+    usc_task_manager_t *current_task_config = &driver_task_manager[priority]; // get the task configuration
+    bool *active = &current_task_config->active; // Check if the driver has access
     // prioirty should give the id number minus the offset of the task
-    //ESP_LOGI("TASK", "Task %s with priority %d", config->driver_name, priority);
-    printf("TASK %s with priority %d\n", config->driver_name, priority); // Debugging line to check task name and priority`
-    printf("Current task: %d\n", current_task_config.active);
+    ESP_LOGI("TASK", "%s with priority %u\n", config->driver_name, priority); // Debugging line to check task name and priority`
+    ESP_LOGI("TASK", "Task status: %d\n", current_task_config->active);
 
-    while (current_task_config.active) {
-        #if (NEEDS_SERIAL_KEY == 1)
-        if (!config->has_access) {
-            if (!handle_serial_key(config)) {
-                printf("Serial key check failed, retrying...\n"); // Debugging line to check if the serial key check failed
-                continue;                 // Retry if serial key check fails
-            }
+    #if (NEEDS_SERIAL_KEY == 1)
+    while ((*active) && !config->has_access) {
+        if (!handle_serial_key(config)) {
+            printf("Serial key check failed, retrying...\n"); // Debugging line to check if the serial key check failed
         }
-        #endif
+        // Wait for the task to be activated
+        vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
+    }
+    #endif
+
+
+    while (*active) {
         //maintain_connection(config);     // Ping the driver to check connection
         process_data(config);            // Read and process incoming data
 
-        printf("Testing task......\n"); // Debugging line to check if the task is running
+        ESP_LOGI("TASK", "Task %s is running with priority %u\n", config->driver_name, priority); // Debugging line to check task name and priority
+        ESP_LOGI("TASK", "Task %s is running\n", config->driver_name); // Debugging line to check task name and priority
         vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
     }
 
-    printf("Task is terminating...\n"); // Debugging line to check if the task is terminating
-
+    ESP_LOGI("TASK", "Task %s is terminating...\n", config->driver_name); // Debugging line to check task name and priority
     //ESP_LOGI("TASK", "Task %s terminated", config->driver_name);
-    vTaskDelete(current_task_config.action_handle); // Delete the action task
+    //vTaskDelete(current_task_config->action_handle); // Delete the action task
     vTaskDelete(NULL); // Delete the task
-    // tempoarily delete the task
-}
-
-void clear_serial_memory(Queue *serial_memory) { // not used yet
-    queue_delete(serial_memory);
 }
 
 esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
@@ -369,7 +313,9 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     return ESP_OK;
 }
 
-esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) {
+esp_err_t usc_set_overdrive( usc_config_t *config, 
+                             usc_event_cb_t action, 
+                             int i) {
     if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX) || action == NULL) {
         ESP_LOGE("USB_DRIVER", "Invalid overdriver");
         return ESP_ERR_INVALID_ARG;
@@ -381,7 +327,8 @@ esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i) 
     return ESP_OK;
 }
 
-esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i) {
+esp_err_t overdrive_usc_driver( serial_input_driver_t *driver, 
+                                int i) {
     if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX) && overdrivers[i].driver_action == NULL) {
         return ESP_FAIL;
     }

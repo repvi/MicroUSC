@@ -90,7 +90,9 @@ void app_main(void) {
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
+
+    // uncomment the line below to test the speed of the function
+    //CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
 
     while (1) {
         // continue forever
