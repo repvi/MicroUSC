@@ -45,7 +45,7 @@ uint32_t queue_top(Queue *queue) {
 }
 
 void queue_clean(Queue *queue) {
-    for (size_t i = 0; i < QUEUE_MAX_SIZE; i++) {
-        atomic_store(&queue->serial_data[i], 0); // clear the queue
+    for (uint32_t *begin = queue->serial_data, *end = begin + QUEUE_MAX_SIZE; begin < end; begin++) {
+        begin = 0; // clear the queue
     }
 }
