@@ -12,53 +12,44 @@
 
 //static memory_pool_t memory_serial_node = {}; // mandatory
 
-// save a lot of memory
-typedef struct {
-    usc_config_t *config;                    ///< Array of USB configurations
-    usc_data_process_t driver_action;        ///< Action callback for the overdrive driver
-} usc_stored_config_t;
-
-static usc_stored_config_t drivers[DRIVER_MAX] = {};
+usc_stored_config_t drivers[DRIVER_MAX] = {{0}};
 
 // __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
-static atomic_uint_least32_t serial_data[DRIVER_MAX] ESP32_ALIGNMENT = {};  // Indexed access [1][3]
+atomic_uint_least32_t serial_data[DRIVER_MAX] ESP32_ALIGNMENT = {{0}};  // Indexed access [1][3]
 
-static usc_task_manager_t driver_task_manager[DRIVER_MAX] = {}; // Task manager for the drivers
+usc_task_manager_t driver_task_manager[DRIVER_MAX] = {{0}}; // Task manager for the drivers
 
-static usc_stored_config_t overdrivers[OVERDRIVER_MAX] = {};
+usc_stored_config_t overdrivers[OVERDRIVER_MAX] = {{0}};
 
 uint32_t usb_driver_get_data(const int i) {
     return queue_top(&drivers[i].config->data);
 }
 
-portMUX_TYPE queueLock = portMUX_INITIALIZER_UNLOCKED; // example of a mutex lock
+// delete in the future
+//static portMUX_TYPE queueLock = portMUX_INITIALIZER_UNLOCKED; // example of a mutex lock
 
+// needs to be finsihed
 void usb_driver_clean_data(const int i) {
-    portENTER_CRITICAL(&queueLock); // Lock the queue
-    queue_clean(&drivers[i].config->data);
-    portEXIT_CRITICAL(&queueLock); // Unlock the queue
+    usc_stored_config_t *driver = &drivers[i]; // Get the driver configuration
+    portENTER_CRITICAL(&driver->critical_lock); // Lock the queue
+    queue_clean(&driver->config->data);
+    portEXIT_CRITICAL(&driver->critical_lock); // Unlock the queue
 }
 
-static esp_err_t init_usc_task_manager(void) {
-    cycle_drivers() {
-        driver_task_manager[i].task_handle = NULL;
-        driver_task_manager[i].action_handle = NULL;
-        driver_task_manager[i].active = false;
-    }
-    return ESP_OK;
-}
-
-esp_err_t usc_driver_deinit_all(void) { // new to change tasks
-    cycle_drivers() {
-        if (driver_task_manager[i].active) {
-            driver_task_manager[i].active = false; // Reset the active flag
+esp_err_t usc_driver_deinit_all_tasks(void) { // new to change tasks
+    cycle_usc_tasks() {
+        if (usc_task->active) {
+            usc_task->active = false; // Reset the active flag
             vTaskDelay(pdMS_TO_TICKS(DELAY_MILISECOND_50));  // Delay for 1 second
             
-            driver_task_manager[i].task_handle = NULL; // Reset the task handle
-            driver_task_manager[i].action_handle = NULL; // Reset the action task handle
+            usc_task->task_handle = NULL; // Reset the task handle
+            usc_task->action_handle = NULL; // Reset the action task handle
         }
-        drivers[i].config = NULL;
-        drivers[i].driver_action = NULL;
+    }
+
+    cycle_drivers() {
+        driver->config = NULL; // Reset the driver configuration
+        driver->driver_action = NULL; // Reset the driver action callback
     }
 
     return ESP_OK;
@@ -66,17 +57,10 @@ esp_err_t usc_driver_deinit_all(void) { // new to change tasks
 
 esp_err_t usc_overdriver_deinit_all(void) {
     cycle_overdrivers() {
-        overdrivers[i].config = NULL;
-        overdrivers[i].driver_action = NULL;
+        overdriver->config = NULL;
+        overdriver->driver_action = NULL;
     }
     return ESP_OK;
-}
-
-//void set_default_drivers(void) RUN_FIRST;
-void RUN_FIRST set_system_drivers(void) {
-    ESP_ERROR_CHECK(init_usc_task_manager());
-    ESP_ERROR_CHECK(usc_driver_deinit_all()); // used to set the default drivers
-    ESP_ERROR_CHECK(usc_overdriver_deinit_all()); // used to set the default drivers
 }
 
 static void check_driver_name(char *name) {
@@ -85,24 +69,21 @@ static void check_driver_name(char *name) {
         snprintf(name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name);
         name[DRIVER_NAME_SIZE - 1] = '\0';
         no_name++;
-    }    
+    }
 }
 
 void usc_driver_read_task(void *pvParameters); // header
 
 static void create_usc_driver_task( usc_config_t *config, 
                                     const UBaseType_t i) { // might neeed adjustment
-    const UBaseType_t driver_TASK_Priority_START = TASK_PRIORITY_START + i;
-    if (strcmp(config->driver_name, "") == 0) {
-        sprintf(config->driver_name, "Unknown Driver %d", i);
-    }
+    const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
 
     xTaskCreatePinnedToCore(
         usc_driver_read_task,                // Task function
         config->driver_name,                 // Task name
         TASK_STACK_SIZE,                     // Stack size
         (void *)config,                      // Task parameters
-        driver_TASK_Priority_START,          // Increment priority for next task
+        DRIVER_TASK_Priority_START,          // Increment priority for next task
         &driver_task_manager[i].task_handle, // Task handle
         TASK_CORE                            // Core to pin the task
     );
@@ -112,7 +93,7 @@ static void create_usc_driver_action_task( usc_data_process_t driver_process,
                                            const UBaseType_t i) {
     const UBaseType_t OFFSET = TASK_PRIORITY_START + DRIVER_MAX + i;
     char task_name[15];
-    sprintf(task_name, "Action #%d", i);
+    snprintf(task_name, sizeof(task_name), "Action #%d", i);
 
     xTaskCreatePinnedToCore(
         driver_process,                        // Task function
@@ -125,11 +106,11 @@ static void create_usc_driver_action_task( usc_data_process_t driver_process,
     );
 }
 
-esp_err_t usc_driver_init( usc_config_t *config, 
-                           uart_config_t uart_config, 
-                           uart_port_config_t port_config, 
-                           usc_data_process_t driver_process, 
-                           UBaseType_t i,
+esp_err_t usc_driver_init( usc_config_t *config,
+                           const uart_config_t uart_config,
+                           const uart_port_config_t port_config,
+                           usc_data_process_t driver_process,
+                           const UBaseType_t i,
                            QueueHandle_t uart_queue) {
     // Validate UART configuration
     if (i >= DRIVER_MAX) {
@@ -156,8 +137,12 @@ esp_err_t usc_driver_init( usc_config_t *config,
     // Set status and create the task
     config->status = NOT_CONNECTED; // As default
     config->baud_rate = uart_config.baud_rate; // in case, recommended to set
-    drivers[i].config = config; // store the configuration of the implemented serial driver
-    drivers[i].driver_action = driver_process; // Set the driver action callback
+
+    usc_stored_config_t *driver = &drivers[i]; // Get the driver configuration
+    driver->config = config; // store the configuration of the implemented serial driver
+    driver->driver_action = driver_process; // Set the driver action callback
+    driver->critical_lock = ( portMUX_TYPE )portMUX_INITIALIZER_UNLOCKED; // Initialize the mutex lock
+
     driver_task_manager[i].active = true; // Set the task as active
     create_usc_driver_task(config, i); // create the task for the serial driver implemented
     create_usc_driver_action_task(driver_process, i);
@@ -166,53 +151,19 @@ esp_err_t usc_driver_init( usc_config_t *config,
     return ESP_OK;
 }
 
-void usc_print_driver_configurations(void) {
-    for (int i = 0; i < DRIVER_MAX; i++) {
-        if (drivers[i].driver_action == NULL) {
-            ESP_LOGI("DRIVER", "NOT INITIALIZED on index %d", i);
-            ESP_LOGI("      ", "----------------------------");
-        }
-        else {
-            ESP_LOGI("DRIVER", " %s", drivers[i].config->driver_name);
-            ESP_LOGI("Baud Rate", " %lu", drivers[i].config->baud_rate);
-            ESP_LOGI("Status", " %d", drivers[i].config->status);
-            ESP_LOGI("Has Access", " %d", drivers[i].config->has_access);
-            ESP_LOGI("UART Port", " %d", drivers[i].config->uart_config.port);
-            ESP_LOGI("UART TX Pin", " %d", drivers[i].config->uart_config.tx);
-            ESP_LOGI("UART RX Pin", " %d", drivers[i].config->uart_config.rx);
-            ESP_LOGI("      ", "----------------------------");
-        }
-    }
-}
-
-void usc_print_overdriver_configurations(void) {
-    cycle_overdrivers() {
-        if (overdrivers[i].driver_action == NULL) {
-            ESP_LOGI("OVERDRIVER", " NOT INITIALIZED on index %d", i);
-            ESP_LOGI("          ", "----------------------------");
-        }
-        else {
-            ESP_LOGI("OVERDRIVER", " %s", overdrivers[i].config->driver_name);
-            ESP_LOGI("Baud Rate", " %lu", overdrivers[i].config->baud_rate);
-            ESP_LOGI("          ", "----------------------------");
-        }
-    }
-}
-
-esp_err_t usc_driver_write( const usc_config_t *config, 
-                            const char *data, 
+esp_err_t usc_driver_write( const usc_config_t *config,
+                            const char *data,
                             const size_t len) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
-        literate_bytes(len) {
-            if (uart_write_bytes(config->uart_config.port, &data[i], 1) == -1) {
+        literate_bytes(data, const char, len) {
+            if (uart_write_bytes(config->uart_config.port, begin, 1) == -1) {
                 return ESP_FAIL;
             }
+            // some delay to allow the data to be sent
         }
         return ESP_OK;
     }
-    else {
-        return (uart_write_bytes(config->uart_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
-    }
+    return (uart_write_bytes(config->uart_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
 }
 
 esp_err_t usc_driver_request_password(usc_config_t *config) {
@@ -313,9 +264,9 @@ esp_err_t usc_driver_deinit(serial_input_driver_t *driver) {
     return ESP_OK;
 }
 
-esp_err_t usc_set_overdrive( usc_config_t *config, 
-                             usc_event_cb_t action, 
-                             int i) {
+esp_err_t usc_set_overdrive( const usc_config_t *config, 
+                             const usc_event_cb_t action, 
+                             const int i) {
     if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX) || action == NULL) {
         ESP_LOGE("USB_DRIVER", "Invalid overdriver");
         return ESP_ERR_INVALID_ARG;
@@ -328,7 +279,7 @@ esp_err_t usc_set_overdrive( usc_config_t *config,
 }
 
 esp_err_t overdrive_usc_driver( serial_input_driver_t *driver, 
-                                int i) {
+                                const int i) {
     if (OUTSIDE_SCOPE(i, OVERDRIVER_MAX) && overdrivers[i].driver_action == NULL) {
         return ESP_FAIL;
     }

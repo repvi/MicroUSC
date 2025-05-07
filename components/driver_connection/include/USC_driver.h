@@ -9,6 +9,37 @@
 extern "C" {
 #endif
 
+struct usc_stored_config_t;
+struct usc_task_manager_t;
+
+#define literate_bytes(var, type, len) \
+    for ( \
+        type* begin = (var), \
+        *end = (var) + (len); \
+        (begin) < (end); (begin)++ \
+    ) // used for the byte loop
+
+#define cycle_drivers() \
+    for ( \
+        usc_stored_config_t *driver = (drivers), \
+        *end = (drivers) + (DRIVER_MAX); \
+        driver < end; driver++ \
+    ) // used for the driver loop
+
+#define cycle_overdrivers() \
+    for ( \
+        usc_stored_config_t *overdriver = (overdrivers), \
+        *end = overdrivers + (OVERDRIVER_MAX); \
+        overdriver < end; overdriver++ \
+    ) // used for the overdriver loop
+
+#define cycle_usc_tasks() \
+    for ( \
+        usc_task_manager_t *usc_task = (driver_task_manager), \
+        *end = (driver_task_manager) + (DRIVER_MAX); \
+        usc_task < end; usc_task++ \
+    ) // used for the driver loop
+
 typedef struct stored_uart_data_t {
     uint32_t data; // change in the future
     struct stored_uart_data_t *next;
@@ -18,6 +49,8 @@ typedef void (*usc_event_cb_t)(void *);
 typedef void (*usc_data_process_t)(void *);
 typedef char driver_name_t[20];
 typedef char serial_key_t[10];
+
+#define DRIVER_NAME_SIZE              ( sizeof( driver_name_t ) )
 
 /**
  * @brief Status of driver connection
@@ -64,6 +97,22 @@ typedef struct {
     bool active;
 } usc_task_manager_t;
 
+// save a lot of memory
+typedef struct {
+    usc_config_t *config;                    ///< Array of USB configurations
+    portMUX_TYPE critical_lock;              ///< Mutex lock for the queue
+    usc_data_process_t driver_action;        ///< Action callback for the overdrive driver
+} usc_stored_config_t;
+
+extern usc_stored_config_t drivers[DRIVER_MAX];
+
+// __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
+extern atomic_uint_least32_t serial_data[DRIVER_MAX] ESP32_ALIGNMENT;  // Indexed access [1][3]
+
+extern usc_task_manager_t driver_task_manager[DRIVER_MAX]; // Task manager for the drivers
+
+extern usc_stored_config_t overdrivers[OVERDRIVER_MAX];
+
 /**
  * @brief Type definition for overdriver size.
  */
@@ -71,14 +120,13 @@ typedef unsigned int overdriver_size_t;
 
 uint32_t usb_driver_get_data(const int i);
 
-esp_err_t usc_driver_deinit_all(void);
+extern esp_err_t usc_driver_deinit_all(void); // used in the kernel for the driver
 
-esp_err_t usc_overdriver_deinit_all(void);
+extern esp_err_t usc_overdriver_deinit_all(void); // used in the kernel for the overdriver
 
 void queue_add(Queue *queue, const uint32_t data);
 
 uint32_t usb_driver_get_data(const int i);
-
 /**
  * @brief Initialize the USB driver.
  *        Index is from 0 to DRIVER_MAX - 1 (0 to 1)
@@ -88,23 +136,11 @@ uint32_t usb_driver_get_data(const int i);
  * @return ESP_OK if port initialization and configuration is valid.
  */
 esp_err_t usc_driver_init( usc_config_t *config, 
-                           uart_config_t uart_config, 
-                           uart_port_config_t port_config, 
+                           const uart_config_t uart_config, 
+                           const uart_port_config_t port_config, 
                            usc_data_process_t driver_process, 
-                           UBaseType_t i, 
+                           const UBaseType_t i, 
                            QueueHandle_t uart_queue);
-
-/**
- * @brief Prints the configurations of all initialized drivers.
- * Iterates through each driver and logs its configuration details if it is initialized.
- */
-void usc_print_driver_configurations(void);
-
-/**
- * @brief Prints the configurations of all overdrivers.
- * Iterates through each overdriver and logs its configuration details if it is initialized.
- */
-void usc_print_overdriver_configurations(void);
 
 /**
  * @brief Write data using the USB driver.
@@ -115,7 +151,9 @@ void usc_print_overdriver_configurations(void);
  * 
  * @return ESP_OK if configuration is valid for the serial port.
  */
-esp_err_t usc_driver_write(const usc_config_t *config, const char *data, const size_t len);
+esp_err_t usc_driver_write( const usc_config_t *config, 
+                            const char *data, 
+                            const size_t len);
 
 /**
  * @brief Request a password using the USB driver.
@@ -153,7 +191,9 @@ void clear_serial_memory(Queue *serial_memory);
  * @note The index should be between 0 and OVERDRIVER_MAX - 1.
  * @return ESP_OK if all arguments are valid
  */
-esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i);
+esp_err_t usc_set_overdrive( const usc_config_t *config, 
+                             const usc_event_cb_t action, 
+                             const int i);
 
 /**
  * @brief Set the overdrive driver.
@@ -162,12 +202,26 @@ esp_err_t usc_set_overdrive(usc_config_t *config, usc_event_cb_t action, int i);
  * @note The index should be between 0 and OVERDRIVER_MAX - 1.
  * @return ESP_OK if the index is valid and the driver is set successfully.
  */
-esp_err_t overdrive_usc_driver(serial_input_driver_t *driver, int i);
+esp_err_t overdrive_usc_driver( serial_input_driver_t *driver, 
+                                const int i);
 /**
  * @brief Deinitialize all USB drivers.
  * @param drivers Pointer to the serial input drivers structure.
  * @return ESP_OK if there was no issue in deinitializing the overdrivers
  */
+
+
+/**
+ * @brief Prints the configurations of all initialized drivers.
+ * Iterates through each driver and logs its configuration details if it is initialized.
+ */
+void usc_print_driver_configurations(void);
+
+/**
+ * @brief Prints the configurations of all overdrivers.
+ * Iterates through each overdriver and logs its configuration details if it is initialized.
+ */
+void usc_print_overdriver_configurations(void);
 
 #ifdef __cplusplus
 }

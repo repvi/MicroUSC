@@ -12,8 +12,8 @@ extern "C" {
 #include <stddef.h>
 
 #define CURRENT_VERSION_MAJOR             (0)
-#define CURRENT_VERSION_MINOR             (6)
-#define CURRENT_VERSION_PATCH             (2)
+#define CURRENT_VERSION_MINOR             (10)
+#define CURRENT_VERSION_PATCH             (3)
 
 #define to_string(x)        #x
 #define USC_Version()       to_string(CURRENT_VERSION_MAJOR) "." \
@@ -77,10 +77,6 @@ extern "C" {
 #define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
 #define developer_input(x) (x)
 
-// The literate_bytes macro defines a for loop that iterates from 0 to x - 1, where x is the number of iterations specified.
-#define literate_bytes(x) for (size_t i = 0; i < (x); i++)
-#define cycle_drivers() for (int i = 0; i < DRIVER_MAX; i++) // used for the driver loop
-#define cycle_overdrivers() for (int i = 0; i < OVERDRIVER_MAX; i++) // used for the overdriver loop
 // DRAM_ATTR // put in IRAM, not in flash, not in PSRAM
 
 // needs baud rate implementation
@@ -117,8 +113,6 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 #define OVERDRIVER_MAX                  (3)
 
 #define MEMORY_BLOCK_MAX               (20)
-
-#define DRIVER_NAME_SIZE              ( sizeof( driver_name_t ) )
 
 #define DELAY_MILISECOND_50            (50) // 1 second delay
 
