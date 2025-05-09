@@ -2,7 +2,8 @@
 #define __TINY_KERNEL_H
 
 #include "USC_driver_config.h"
-#include "status.h"
+#include "generic.h"
+#include "status.h" // make available for the developer
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,4 +15,4 @@ void RUN_FIRST set_system_drivers(void);
 }
 #endif
 
-#endif
+#endif // __TINY_KERNEL_H

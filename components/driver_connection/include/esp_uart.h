@@ -16,6 +16,11 @@ extern "C" {
 #define TIMEOUT pdMS_TO_TICKS     (100)
 
 #define INCLUDE_DELAY             (0)
+
+#define BUFFER_SIZE               (256)
+
+#define UART_QUEUE_SIZE           (10)
+
 /**
  * @struct uart_port_config_t
  * @brief Configuration structure for UART ports.
