@@ -2,8 +2,6 @@
 #include "esp_heap_caps.h"
 #include <string.h>
 
-#define BUFFER_SIZE               (256)
-
 #define DLEAY_MILISECOND_10      (10) // 1 second delay
 #define DLEAY_MILISECOND_50      (50) // 1 second delay
 

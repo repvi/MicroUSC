@@ -7,6 +7,7 @@ extern "C" {
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <freertos/semphr.h>
 #include "freertos/event_groups.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -103,8 +104,8 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 
 #define TASK_PRIORITY_START             ( ( UBaseType_t ) ( 10 ) ) // Used for the serial communication task
 #define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
-#define TASK_CORE                        (1) // Core 1 is used for all other operations other than wifi or any wireless protocols
-#define TASK_AND_ACTION                  (2)
+#define TASK_CORE_READER                 (1) // Core 0 is used for all other operations other than wifi or any wireless protocols
+#define TASK_CORE_ACTION                 (0)
 
 #define SERIAL_REQUEST_DELAY_MS        (30)
 #define SERIAL_KEY_RETRY_DELAY_MS      (50)
@@ -116,6 +117,8 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 
 #define DELAY_MILISECOND_50            (50) // 1 second delay
 
+
+#define SEMAPHORE_DELAY pdMS_TO_TICKS(3) // 3ms delay for the semaphore
 
 #ifdef __cplusplus
 }
