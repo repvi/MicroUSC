@@ -1,6 +1,7 @@
+file(GLOB_RECURSE SOURCES "*.c")
+
 idf_component_register(
-    SRC_DIRS  "status"
-    SRCS "tiny_kernel.c"
+    SRCS ${SOURCES}
     INCLUDE_DIRS "include"
     REQUIRES
         driver
@@ -9,5 +10,4 @@ idf_component_register(
         esp_system
         debug
         driver_connection
-        memory_storage
 )

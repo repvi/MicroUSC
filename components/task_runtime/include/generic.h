@@ -7,63 +7,37 @@
 extern "C" {
 #endif
 
-#ifdef cycle_overdrivers
+#ifdef cycle_overdrivers // redefined thr macro in this case
 #undef cycle_overdrivers
 #define cycle_overdrivers() define_iteration_with_semaphore(overdrivers, usc_driver_t, driver, OVERDRIVER_MAX) 
 
 #endif
 
-esp_err_t set_driver_default(usc_driver_t *driver) {
-    driver->sync_signal = xSemaphoreCreateBinary(); 
-    if (driver->sync_signal == NULL) {
-        ESP_LOGE("[DRIVER SET]", "Failed to create mutex lock"); 
-        return ESP_ERR_NO_MEM; 
-    } 
-    xSemaphoreGive(driver->sync_signal); /* Unlock the queue */ 
-    driver->driver_tasks.active = false; 
+// Both will have the same name, but have differeent values and purposes
+#define cycle_drivers_init_mode() define_iteration(drivers, usc_driver_t, driver, DRIVER_MAX) // used for the driver loop
+#define cycle_overdrivers_init_mode() define_iteration(overdrivers, usc_driver_t, driver, OVERDRIVER_MAX) // used for the driver loop
 
-    return ESP_OK;
-}
+esp_err_t set_driver_default(usc_driver_t *driver);
 
-void set_driver_default_task(usc_driver_t *driver) {    
-    usc_task_manager_t *task = &driver->driver_tasks; 
-    if (task->active) {
-        task->task_handle = NULL; /* Reset the task handle */ 
-        task->action_handle = NULL; /* Reset the action task handle */ 
-        task->active = false; /* Reset the active flag */ 
-    }
-}
+void set_driver_default_task(usc_driver_t *driver);
 
-void set_driver_inactive(usc_driver_t *driver) {
-    usc_task_manager_t *task = &driver->driver_tasks; 
-    usc_config_t *driver_setting = &driver->driver_setting; 
-    if (task->task_handle != NULL) { 
-        task->active = false; /* Reset the active flag */ 
-        xSemaphoreGive(driver->sync_signal); /* Unlock the queue */ 
-        vTaskDelay(pdMS_TO_TICKS(DELAY_MILISECOND_50));  /* Delay for 1 second */ 
-        while (!xSemaphoreTake(driver->sync_signal, SEMAPHORE_DELAY)); 
-        task->task_handle = NULL; /* Reset the task handle */ 
-        task->action_handle = NULL; /* Reset the action task handle */ 
-    } 
-    driver_setting->status = NOT_CONNECTED; /* Reset the driver status */ 
-    xSemaphoreGive(driver->sync_signal); /* Unlock the queue */ 
-}
+void set_driver_inactive(usc_driver_t *driver);
 
 #define DEFINE_USC_DRIVER_INIT(driver_type) \
     esp_err_t init_usc_##driver_type(void) { \
         esp_err_t ret; \
-        cycle_##driver_type() { \
-            ret = set_driver_default(driver); \
+        cycle_##driver_type##_init_mode() { printf("From init_##driver_type(void)\n"); \
+            ret = set_driver_default(driver); printf("Set to default\n"); \
             if (ret != ESP_OK) { \
                 return ret; \
-            } \
+            } printf("Next....\n"); \
         } \
         return ESP_OK; \
     } \
     \
     esp_err_t init_usc_##driver_type##_task_manager(void) { \
         cycle_##driver_type() { \
-            set_driver_default_task(driver); \
+            set_driver_default_task(driver_type); \
         } \
         return ESP_OK; \
     } \
@@ -71,7 +45,7 @@ void set_driver_inactive(usc_driver_t *driver) {
     esp_err_t usc_##driver_type##_deinit_all(void) { \
         cycle_##driver_type() { \
             if (hasSemaphore == pdTRUE) { \
-                set_driver_inactive(driver); \
+                set_driver_inactive(driver_type); \
             } \
         } \
         return ESP_OK; \
@@ -80,6 +54,10 @@ void set_driver_inactive(usc_driver_t *driver) {
 // driver_setting->has_access = false; /* Reset the access flag */ 
 
 #define DEFINE_USC_OVERDRIVER_INIT(driver_type) DEFINE_USC_DRIVER_INIT(driver_type)
+
+// already defined in the header file
+#undef cycle_overdrivers
+#define cycle_overdrivers() define_iteration_with_semaphore(overdrivers, usc_driver_t, overdriver, OVERDRIVER_MAX) 
 
 #ifdef __cplusplus
 }
