@@ -1,6 +1,6 @@
 #include "status_var.h"
-#include "USC_driver.h"
 #include "esp_system.h"
+#include "USC_driver.h"
 
 void usc_print_driver_configurations(void) {
     int i = 0;
@@ -12,7 +12,6 @@ void usc_print_driver_configurations(void) {
             }
             else {
                 const usc_config_t *config = &driver->driver_setting;
-
                 ESP_LOGI("DRIVER", " %s",      config->driver_name);
                 ESP_LOGI("Baud Rate", " %lu",  config->baud_rate);
                 ESP_LOGI("Status", " %d",      config->status);

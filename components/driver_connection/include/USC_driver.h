@@ -22,19 +22,19 @@ struct usc_task_manager_t;
 #define define_iteration(var, type, name, len) \
     for ( \
         type* (name) = (var), \
-        *end = (var) + (len); \
+        *(end) = (var) + (len); \
         (name) < (end); (name)++ \
     ) // used for the byte loop
 
 #define define_iteration_with_semaphore(var, type, name, len) \
-    bool (hasSemaphore) = xSemaphoreTake(var->sync_signal, SEMAPHORE_DELAY);\
     for ( \
         type* (name) = (var), \
-        *end = (var) + (len); \
+        *(end) = (var) + (len); \
         (name) < (end); \
-        (name) += hasSemaphore, \
-        (hasSemaphore) = xSemaphoreTake(name->sync_signal, SEMAPHORE_DELAY) \
+        xSemaphoreGive((name)->sync_signal), (name)++ \
     ) /* used for the byte loop */ \
+    if (xSemaphoreTake((name)->sync_signal, portMAX_DELAY) == pdTRUE) \
+        for (bool hasSemaphore = true; hasSemaphore; hasSemaphore = false)
 
 #define cycle_usc_tasks() { \
         for ( \

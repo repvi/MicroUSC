@@ -1,7 +1,5 @@
-file(GLOB_RECURSE SOURCES "*.c")
-
 idf_component_register(
-    SRCS ${SOURCES}
+    SRC_DIRS "." "status"
     INCLUDE_DIRS "include"
     REQUIRES
         driver
