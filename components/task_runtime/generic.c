@@ -10,16 +10,15 @@ esp_err_t set_driver_default(usc_driver_t *driver) {
     return ESP_OK;
 }
 
-void set_driver_default_task(usc_driver_t *driver) {    
+esp_err_t set_driver_default_task(usc_driver_t *driver) {    
     usc_task_manager_t *task = &driver->driver_tasks; 
-    if (task->active) {
-        task->task_handle = NULL; /* Reset the task handle */ 
-        task->action_handle = NULL; /* Reset the action task handle */ 
-        task->active = false; /* Reset the active flag */ 
-    }
+    task->task_handle = NULL; /* Reset the task handle */ 
+    task->action_handle = NULL; /* Reset the action task handle */ 
+    task->active = false; /* Reset the active flag */ 
+    return ESP_OK; /* Task is already inactive */
 }
 
-void set_driver_inactive(usc_driver_t *driver) { // need to finish the code at the beginning
+esp_err_t set_driver_inactive(usc_driver_t *driver) { // need to finish the code at the beginning
     usc_task_manager_t *task = &driver->driver_tasks; 
     usc_config_t *driver_setting = &driver->driver_setting; 
     if (task->task_handle != NULL) { 
@@ -32,4 +31,5 @@ void set_driver_inactive(usc_driver_t *driver) { // need to finish the code at t
     } 
     driver_setting->status = NOT_CONNECTED; /* Reset the driver status */ 
     xSemaphoreGive(driver->sync_signal); /* Unlock the queue */ 
+    return ESP_OK;
 }

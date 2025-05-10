@@ -8,25 +8,37 @@
 #define CORE           (0)
 #define SECONDARY      (1)
 
-DEFINE_USC_DRIVER_INIT(drivers);
-DEFINE_USC_OVERDRIVER_INIT(overdrivers);
-#define SETUP_USC_DRIVER_INIT(driver_name)  \
-    static esp_err_t init_usc_##driver_name##_status(void) { printf("Starting driver initialization\n"); \
-        esp_err_t status = init_usc_##driver_name(); printf("Worked: 1"); \
+#ifdef cycle_overdrivers // redefined thr macro in this case
+#undef cycle_overdrivers
+#define cycle_overdrivers() define_iteration_with_semaphore(overdrivers, usc_driver_t, driver, OVERDRIVER_MAX) 
+
+#endif
+//DEFINE_USC_DRIVER_INIT(drivers);
+//DEFINE_USC_OVERDRIVER_INIT(overdrivers);
+// ESP_EARLY_LOGD
+#define SETUP_USC_DRIVER_INIT(driver_name) \
+    static esp_err_t init_usc_##driver_name##_status(void) { \
+        esp_err_t status = init_usc_##driver_name(); \
         if (status != ESP_OK) { \
-            ESP_EARLY_LOGD(TAG, "Failed to initialize %s: %s", #driver_name, esp_err_to_name(status)); \
+            ESP_LOGE(TAG, "Failed to initialize %s: %s", #driver_name, esp_err_to_name(status)); \
             return status; \
-        }  printf("Setting....");\
-        status = init_usc_##driver_name##_task_manager(); printf("Didn't crash here");\
+        } \
+        status = init_usc_##driver_name##_task_manager(); \
         if (status != ESP_OK) { \
-            ESP_EARLY_LOGD(TAG, "Failed to initialize %s task manager: %s", #driver_name, esp_err_to_name(status)); \
+            ESP_LOGE(TAG, "Failed to initialize %s task manager: %s", #driver_name, esp_err_to_name(status)); \
             return status; \
         } \
         return ESP_OK; \
     }
 
-SETUP_USC_DRIVER_INIT(drivers);
-SETUP_USC_DRIVER_INIT(overdrivers); // Initialize the overdrivers
+#define SETUP_USC_OVERDRIVER_INIT(d) SETUP_USC_DRIVER_INIT(d) // Initialize the overdrivers 
+
+
+#define REGISTER_DRIVER(d) DEFINE_USC_DRIVER_INIT(d); SETUP_USC_DRIVER_INIT(d);
+#define REGISTER_OVERDRIVER(d) DEFINE_USC_OVERDRIVER_INIT(d); SETUP_USC_OVERDRIVER_INIT(d);
+
+//SETUP_USC_DRIVER_INIT(drivers);
+//SETUP_USC_DRIVER_INIT(overdrivers); // Initialize the overdrivers
 // name is only the definiition of the function, not the function itself
 /*
 ESP_SYSTEM_INIT_FN(tiny_kernel, SECONDARY, BIT(0), 120) {
@@ -38,9 +50,15 @@ ESP_SYSTEM_INIT_FN(tiny_kernel, SECONDARY, BIT(0), 120) {
     return ESP_OK;
 }
 */
+
+// cannot have different nammes
+REGISTER_DRIVER(drivers) // initialize the drivers
+REGISTER_OVERDRIVER(overdrivers) // Initialize the overdrivers
+
 void init_tiny_kernel(void) {
-    printf("Starting initialization\n");
     ESP_ERROR_CHECK(init_usc_drivers_status());
     ESP_ERROR_CHECK(init_usc_overdrivers_status());
-    printf("System drivers initialized successfully\n");
+    ESP_LOGI(TAG, "System drivers initialized successfully\n");
+    usc_print_driver_configurations(); // Print the driver configurations
+    usc_print_overdriver_configurations();
 }

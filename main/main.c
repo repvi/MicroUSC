@@ -67,9 +67,6 @@ void app_main(void) {
 
     init_tiny_kernel();
 
-    usc_print_driver_configurations(); // Print the driver configurations
-    usc_print_overdriver_configurations(); // Print the overdriver configurations
-
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
         .data_bits = UART_DATA_8_BITS,
