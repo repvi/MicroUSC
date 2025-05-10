@@ -21,10 +21,8 @@ extern "C" {
                             to_string(CURRENT_VERSION_MINOR) "." \
                             to_string(CURRENT_VERSION_PATCH)
 
-#undef to_string
-
 #if defined(__GNUC__) || defined(__clang__)
-    #define RUN_FIRST      __attribute__((constructor)) // probably might not use
+    #define RUN_FIRST      __attribute__((constructor, used, noinline)) // probably might not use
     #define MALLOC         __attribute__((malloc)) // used for dynamic memory functions
     #define HOT            __attribute__((hot)) // for critical operations (Need most optimization)
     #define COLD           __attribute__((cold)) // not much much. Use less memory but slower execution of function. Used like in initializing

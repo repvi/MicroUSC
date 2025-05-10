@@ -3,13 +3,16 @@
 
 #include "USC_driver_config.h"
 #include "generic.h"
-#include "status.h" // make available for the developer
+#include "status_var.h" // make available for the developer
+#include "esp_system.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void RUN_FIRST set_system_drivers(void);
+#define TAG "[TINY KERNEL]"
+
+void init_tiny_kernel(void); // RUN_FIRST
 
 #ifdef __cplusplus
 }
