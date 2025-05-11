@@ -13,9 +13,18 @@ extern "C" {
 #define cycle_drivers_init_mode() define_iteration(drivers, usc_driver_t, driver, DRIVER_MAX) // used for the driver loop
 #define cycle_overdrivers_init_mode() define_iteration(overdrivers, usc_driver_t, driver, OVERDRIVER_MAX) // used for the driver loop
 
+extern memory_block_handle_t drivers_alloc; // do not rename
+extern memory_block_handle_t overdrivers_alloc; // do not rename
+
+esp_err_t malloc_drivers_handler(void);
+
+esp_err_t malloc_overdrivers_handler(void);
+
+esp_err_t init_memory_handlers(void);
+
 esp_err_t set_driver_default(usc_driver_t *driver);
 
-esp_err_t set_driver_default_task(usc_driver_t *driver);
+esp_err_t set_driver_default_task(usc_driver_t *driver, memory_block_handle_t mem_pool_handler);
 
 esp_err_t set_driver_inactive(usc_driver_t *driver);
 
@@ -34,12 +43,15 @@ esp_err_t set_driver_inactive(usc_driver_t *driver);
         return ESP_OK; \
     } \
     \
+    static inline esp_err_t set_##driver_type##_default_task(usc_driver_t *driver) { \
+        return set_driver_default_task(driver, driver_type##_alloc); \
+    } \
     static esp_err_t init_usc_##driver_type##_task_manager(void) { \
         esp_err_t ret; \
         size_t index = 0; \
         cycle_##driver_type() { \
             if (hasSemaphore == pdTRUE) { \
-                ret = set_driver_default_task(driver); \
+                ret = set_##driver_type##_default_task(driver); \
                 if (ret != ESP_OK) { \
                     xSemaphoreGive(driver->sync_signal); /* Unlock the queue */ \
                     ESP_LOGE(TAG, "Could not initialize index %d task manager", index);\

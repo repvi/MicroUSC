@@ -90,12 +90,12 @@ void app_main(void) {
     };
     
     usc_data_process_t driver_action = &system_task; // point to the function you created
-    
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
 
+    //printf("Starting driver initialization...\n");
     // uncomment the line below to test the speed of the function
-    //CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
     printf("End of program\n");
 }

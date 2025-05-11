@@ -26,7 +26,8 @@ extern "C" {
     #define MALLOC         __attribute__((malloc)) // used for dynamic memory functions
     #define HOT            __attribute__((hot)) // for critical operations (Need most optimization)
     #define COLD           __attribute__((cold)) // not much much. Use less memory but slower execution of function. Used like in initializing
-    
+    #define ALWAYS_INLINE  __atrribute__((always_inline)) // Make sure the function inlines
+
     #define UNUSED         __attribute__((unused))
     #define DEPRECATED     __attribute__((deprecated))
     #define USED           __attribute__((used))
@@ -42,6 +43,7 @@ extern "C" {
     #define MALLOC 
     #define HOT   
     #define COLD
+    #define ALWAYS_INLINE
 
     #define UNUSED
     #define DEPRECATED

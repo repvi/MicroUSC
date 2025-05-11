@@ -18,6 +18,7 @@ extern "C" {
 #define INCLUDE_DELAY             (0)
 
 #define BUFFER_SIZE               (256)
+#define TX_BUF_SIZE               (1 << 256)
 
 #define UART_QUEUE_SIZE           (10)
 

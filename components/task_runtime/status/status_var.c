@@ -6,7 +6,7 @@ void usc_print_driver_configurations(void) {
     int i = 0;
     cycle_drivers() {
         if (hasSemaphore == pdTRUE) {
-            if (driver->driver_tasks.active == false) {
+            if (getTask_status(driver->driver_tasks) == false) {
                 ESP_LOGI("DRIVER", "NOT INITIALIZED on index %d", i);
                 ESP_LOGI("      ", "----------------------------");
             }
@@ -30,7 +30,7 @@ void usc_print_overdriver_configurations(void) {
     int i = 0;
     cycle_overdrivers() {
         if (hasSemaphore == pdTRUE) {
-            if (overdriver->driver_tasks.active == false) {
+            if (getTask_status(overdriver->driver_tasks) == false) {
                 ESP_LOGI("OVERDRIVER", " NOT INITIALIZED on index %d", i);
                 ESP_LOGI("          ", "----------------------------");
             }
