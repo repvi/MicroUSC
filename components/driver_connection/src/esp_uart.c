@@ -10,7 +10,7 @@ esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config, Q
     if (res == ESP_OK) {
         res = uart_set_pin(port_config.port, port_config.tx, port_config.rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
         if (res == ESP_OK) {
-            res = uart_driver_install(port_config.port, BUFFER_SIZE * 2, 0, 0, &uart_queue, 0);
+            res = uart_driver_install(port_config.port, BUFFER_SIZE * 2, 0, UART_QUEUE_SIZE, &uart_queue, 0);
         }
     }
     return res;

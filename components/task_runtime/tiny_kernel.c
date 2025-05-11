@@ -5,6 +5,8 @@
 #include "esp_private/startup_internal.h"
 #include "esp_system.h"
 
+#include "memory_pool.h"
+
 #define CORE           (0)
 #define SECONDARY      (1)
 
@@ -56,9 +58,11 @@ REGISTER_DRIVER(drivers) // initialize the drivers
 REGISTER_OVERDRIVER(overdrivers) // Initialize the overdrivers
 
 void init_tiny_kernel(void) {
+    ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_usc_drivers_status());
     ESP_ERROR_CHECK(init_usc_overdrivers_status());
     ESP_LOGI(TAG, "System drivers initialized successfully\n");
     usc_print_driver_configurations(); // Print the driver configurations
     usc_print_overdriver_configurations();
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
 }

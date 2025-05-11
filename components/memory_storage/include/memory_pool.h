@@ -32,6 +32,8 @@ typedef struct {
     size_t free_blocks;    // This isn't being used in anything so far>>>>>>>
 } memory_pool_t;
 
+typedef memory_pool_t *memory_block_handle_t;
+
 /**
  * Initializes a memory pool.
  * 
@@ -65,6 +67,12 @@ void memory_pool_free(memory_pool_t *pool, void *block);
  * @param pool Pointer to the memory_pool_t structure.
  */
 void memory_pool_destroy(memory_pool_t* pool);
+
+
+#define memory_handler_malloc(block_size, num_blocks) memory_pool_malloc(block_size, num_blocks);
+
+
+
 
 #ifdef __cplusplus
 }

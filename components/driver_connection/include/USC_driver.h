@@ -54,6 +54,7 @@ typedef char serial_key_t[10];
 
 #define DRIVER_NAME_SIZE              ( sizeof( driver_name_t ) )
 
+#define SEMAPHORE_WAIT_TIME         ( pdMS_TO_TICKS(5000) ) // 5 seconds
 /**
  * @brief Status of driver connection
  */
@@ -85,28 +86,36 @@ typedef struct {
     bool has_access; ///< Flag indicating if access is granted.
 } usc_config_t;
 
-typedef struct {
-    TaskHandle_t task_handle; // Task handle for the driver task (uart controller)
-    TaskHandle_t action_handle; // Task handle for the action task (reader and writer)
-    bool active;
-} usc_task_manager_t;
+typedef struct usc_task_manager_t usc_task_manager_t;
+typedef usc_task_manager_t *usc_tasks_t;
 
 typedef struct {
     usc_config_t driver_setting;                    ///< Array of USB configurations
-    usc_task_manager_t driver_tasks;  ///< Task manager for the drivers
+    usc_tasks_t driver_tasks;  ///< Task manager for the drivers
     SemaphoreHandle_t sync_signal;
 } usc_driver_t;
+
+extern const size_t USC_TASK_MANAGER_SIZE;
 
 extern usc_driver_t drivers[DRIVER_MAX]; // System drivers for the USC driver
 extern QueueHandle_t uart_queue[DRIVER_MAX]; // Queue for UART data
 
 // __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
-extern atomic_uint_least32_t serial_data[DRIVER_MAX] ESP32_ALIGNMENT;
+// atomic_uint_least32_t
+extern Queue serial_data[DRIVER_MAX];
 
 extern usc_driver_t overdrivers[OVERDRIVER_MAX];
 extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the actions of the overdrivers
 
-uint32_t usc_driver_get_data(const int i);
+// uint32_t usc_driver_get_data(const int i);
+
+bool getTask_status(const usc_tasks_t task);
+
+void setTask_status(usc_tasks_t task, bool active);
+
+void setTaskHandlersNULL(usc_tasks_t task);
+
+void setTaskDefault(usc_tasks_t task);
 
 void queue_add(Queue *queue, const uint32_t data);
 

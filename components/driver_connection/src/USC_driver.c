@@ -10,11 +10,35 @@
 
 #include <stdatomic.h>
 
+#ifdef TAG
+#undef TAG
+#endif
+
+#define TAG "[USC DRIVER]"
+#define TASK_TAG  "[DRIVER READER]"
+
+struct usc_task_manager_t { // make the struct defined inside the c file instead in the future
+    TaskHandle_t task_handle; // Task handle for the driver task (uart controller)
+    TaskHandle_t action_handle; // Task handle for the action task (reader and writer)
+    bool active;
+};
+
+const size_t USC_TASK_MANAGER_SIZE = sizeof(struct usc_task_manager_t);
+
+
+/*
+struct usc_task_manager_t {
+    TaskHandle_t task_handle; // Task handle for the driver task (uart controller)
+    TaskHandle_t action_handle; // Task handle for the action task (reader and writer)
+    bool active;
+};
+*/
+
 //static memory_pool_t memory_serial_node = {}; // mandatory
 usc_driver_t drivers[DRIVER_MAX] = {0}; // System drivers for the USC driver
 
 // __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
-atomic_uint_least32_t serial_data[DRIVER_MAX] ESP32_ALIGNMENT = {0};  // Indexed access [1][3]
+Queue serial_data[DRIVER_MAX]  = {0};  // Indexed access [1][3]
 
 usc_driver_t overdrivers[OVERDRIVER_MAX] = {0};
 
@@ -26,6 +50,25 @@ uint32_t usc_driver_get_data(const int i) {
 
 // delete in the future
 //static portMUX_TYPE queueLock = portMUX_INITIALIZER_UNLOCKED; // example of a mutex lock
+
+
+bool getTask_status(const usc_tasks_t task) {
+    return task->active;
+}
+
+void setTask_status(usc_tasks_t task, bool active) {
+    task->active = active;
+}
+
+void setTaskHandlersNULL(usc_tasks_t task) {
+    task->action_handle = NULL;  /* Reset the task handle */ 
+    task->task_handle = NULL;  /* Reset the action task handle */ 
+}
+
+void setTaskDefault(usc_tasks_t task) {
+    setTask_status(task, false);
+    setTaskHandlersNULL(task);
+}
 
 // needs to be finsihed
 void usc_driver_clean_data(const int i) {
@@ -47,7 +90,7 @@ static void create_usc_driver_task( usc_driver_t *driver,
         TASK_STACK_SIZE,                      // Stack size
         (void *)driver,                       // Task parameters
         DRIVER_TASK_Priority_START,           // Increment priority for next task
-        &driver->driver_tasks.task_handle,    // Task handle
+        &driver->driver_tasks->task_handle,    // Task handle
         TASK_CORE_READER                      // Core to pin the task
     );
 }
@@ -65,7 +108,7 @@ static void create_usc_driver_action_task( usc_data_process_t driver_process,
         TASK_STACK_SIZE,                        // Stack size
         (void *)i,                              // Task parameters
         (OFFSET),                               // Based on index
-        &drivers[i].driver_tasks.action_handle, // Task handle
+        &drivers[i].driver_tasks->action_handle, // Task handle
         TASK_CORE_ACTION                        // Core to pin the task
     );
 }
@@ -75,12 +118,12 @@ static esp_err_t check_valid_uart_config( const uart_config_t uart_config,
                                           const uart_port_config_t port_config,
                                           const UBaseType_t i) {
     if (i >= DRIVER_MAX) {
-        ESP_LOGE("USB_DRIVER", "Invalid driver index");
+        ESP_LOGE(TAG, "Invalid driver index");
         return ESP_ERR_INVALID_ARG;
     }
 
     if (OUTSIDE_SCOPE(port_config.port, UART_NUM_MAX - 1)) {
-        ESP_LOGE("USB_DRIVER", "Invalid UART port");
+        ESP_LOGE(TAG, "Invalid UART port");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -88,7 +131,7 @@ static esp_err_t check_valid_uart_config( const uart_config_t uart_config,
     QueueHandle_t queueH = uart_queue[i]; // Queue for UART data (it is a pointer)
     queueH = xQueueCreate(UART_QUEUE_SIZE, sizeof(char)); // Create the queue for UART data
     if (developer_input(uart_init(port_config, uart_config, queueH) != ESP_OK)) {
-        ESP_LOGE("USB_DRIVER", "Initialization failed");
+        ESP_LOGE(TAG, "Initialization failed");
         vQueueDelete(queueH); // Delete the queue if initialization fails
         return ESP_ERR_INVALID_ARG;
     }
@@ -119,7 +162,7 @@ static void configure_full_driver_setting(  usc_config_t *driver_setting,
                                      const UBaseType_t i) {
     usc_driver_t *driver = &drivers[i]; // Get the driver configuration
     driver->driver_setting = *driver_setting; // Get the driver configuration
-    driver->driver_tasks.active = true; // Set the task as active
+    driver->driver_tasks->active = true; // Set the task as active
 }
 
 esp_err_t usc_driver_init( usc_config_t *config,
@@ -130,18 +173,18 @@ esp_err_t usc_driver_init( usc_config_t *config,
 
     esp_err_t ret = check_valid_uart_config(uart_config, port_config, i);
     if (ret != ESP_OK) {
-        ESP_LOGE("USB_DRIVER", "Invalid UART configuration");
+        ESP_LOGE(TAG, "Invalid UART configuration");
         return ret;
     }
 
     usc_driver_t *driver = &drivers[i]; // Get the driver configuration
-    if (driver->sync_signal != NULL) { // make sure to initzialize in the kernel
-        ESP_LOGE("USB_DRIVER", "Driver already initialized");
-        return ESP_ERR_INVALID_STATE; // Driver already initialized
-    }
 
     configure_driver_setting(config, uart_config, port_config);
-    while (!xSemaphoreTake(driver->sync_signal, SEMAPHORE_DELAY)); // Wait for the mutex lock
+
+    if (!xSemaphoreTake(driver->sync_signal, SEMAPHORE_WAIT_TIME)) { // Wait for the mutex lock
+        ESP_LOGE(TAG, "Failed to take semaphore");
+        return ESP_ERR_INVALID_STATE; // Failed to take semaphore
+    }
     configure_full_driver_setting(config, i); // Set the driver settings
     create_usc_driver_task(&drivers[i], i); // create the task for the serial driver implemented
     create_usc_driver_action_task(driver_process, i); // create task for the custom function (driver)
@@ -175,14 +218,15 @@ esp_err_t usc_driver_ping(usc_config_t *config) {
 }
 
 // needs to be changed to use the queue
-static bool handle_serial_key(usc_config_t *config) {
+static bool handle_serial_key(usc_config_t *config, const UBaseType_t i) {
     usc_driver_request_password(config); // Request serial key
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
-    printf("Waiting for serial key...\n"); // Debugging line to check if the task is running
-    char *key = NULL; //uart_read(&config->uart_config.port, sizeof(SERIAL_KEY) + 1);
+    //uint8_t *key = uart_read(&config->uart_config.port, sizeof(SERIAL_KEY) + 1, uart_queue[i]);
+    // const uint8_t HIDDEN_KEY = 0x34; // something
+    /*
     if (key != NULL) {
         printf("Serial key: %s\n", key); // Debugging line to check if the task is running
-        if (strcmp(key, SERIAL_KEY) == 0) {
+        if (key == 0) {
             config->has_access = true;
             config->status = CONNECTED;
             heap_caps_free(key);
@@ -190,6 +234,7 @@ static bool handle_serial_key(usc_config_t *config) {
         }
         heap_caps_free(key);
     }
+    */
     config->status = ERROR;
     return false;
 }
@@ -218,54 +263,55 @@ static void process_data(usc_config_t *config) {
 }
 
 void usc_driver_read_task(void *pvParameters) {
-    usc_config_t *config = (usc_config_t *)pvParameters;
-    const UBaseType_t priority = uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task, more temportary
-    SemaphoreHandle_t *sync_signal = &drivers[priority].sync_signal; // Get the mutex lock for the driver
-    usc_task_manager_t *current_task_config = &drivers[priority].driver_tasks; // get the task configuration
+    const UBaseType_t index = uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task, more temportary
+    usc_driver_t *driver = (usc_driver_t *)pvParameters;
+    usc_config_t *config = &driver->driver_setting;
+    SemaphoreHandle_t sync_signal = driver->sync_signal; // Get the mutex lock for the driver
+    usc_tasks_t current_task_config = driver->driver_tasks; // get the task configuration
     bool *active = &current_task_config->active; // Check if the driver has access
     // prioirty should give the id number minus the offset of the task
-    ESP_LOGI("TASK", "%s with priority %u\n", config->driver_name, priority); // Debugging line to check task name and priority`
-    ESP_LOGI("TASK", "Task status: %d\n", current_task_config->active);
+    ESP_LOGI(TASK_TAG, "%s with priority %u\n", config->driver_name, (index + TASK_PRIORITY_START)); // Debugging line to check task name and priority`
+    ESP_LOGI(TASK_TAG, "Task status: %d\n", current_task_config->active);
 
     #if (NEEDS_SERIAL_KEY == 1)
     while (1) {
-        if (xSemaphoreTake(*sync_signal, SEMAPHORE_DELAY) == pdTRUE) {
-            if ((*active) && !config->has_access) {
-                if (!handle_serial_key(config)) {
-                    printf("Serial key check failed, retrying...\n"); // Debugging line to check if the serial key check failed
+        if (xSemaphoreTake(sync_signal, SEMAPHORE_DELAY) == pdTRUE) {
+            if (*active && !config->has_access) {
+                if (!handle_serial_key(config, index)) {
+                    ESP_LOGW(TASK_TAG, "Serial key check failed, retrying...");  // Debugging line to check if the serial key check failed
                 }
                 // Wait for the task to be activated
                 vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
+                xSemaphoreGive(sync_signal); // finish this part
             }
             else {
+                xSemaphoreGive(sync_signal); // finish this part
                 break;
             }
-
-            xSemaphoreGive(*sync_signal); // finish this part
         }
     }
     #endif
 
     while (1) {
-        if (xSemaphoreTake(*sync_signal, SEMAPHORE_DELAY) == pdTRUE) {
+        if (xSemaphoreTake(sync_signal, portMAX_DELAY) == pdTRUE) {
             if (*active == false) {
-                xSemaphoreGive(*sync_signal); // Release the mutex lock
+                xSemaphoreGive(sync_signal); // Release the mutex lock
                 break;
             }
 
-             //maintain_connection(config);     // Ping the driver to check connection
-            process_data(config);              // Read and process incoming data
+             //maintain_connection(config); // Ping the driver to check connection
+            process_data(config); // Read and process incoming data
 
-            ESP_LOGI("TASK", "Task %s is running with priority %u\n", config->driver_name, priority); // Debugging line to check task name and priority
-            ESP_LOGI("TASK", "Task %s is running\n", config->driver_name); // Debugging line to check task name and priority
+            ESP_LOGI(TASK_TAG, "Task %s is running\n", config->driver_name); // Debugging line to check task name and priority
             vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
-            xSemaphoreGive(*sync_signal); // Release the mutex lock
+            xSemaphoreGive(sync_signal); // Release the mutex lock
         }
     }
 
-    ESP_LOGI("TASK", "Task %s is terminating...\n", config->driver_name); // Debugging line to check task name and priority
+    ESP_LOGI(TASK_TAG, "Task %s is terminating...\n", config->driver_name); // Debugging line to check task name and priority
     //ESP_LOGI("TASK", "Task %s terminated", config->driver_name);
     //vTaskDelete(current_task_config->action_handle); // Delete the action task
+    vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
     vTaskDelete(NULL); // Delete the task
 }
 
@@ -292,7 +338,7 @@ esp_err_t overdrive_usc_driver( usc_driver_t *driver,
 
     usc_driver_t *overdriver = &overdrivers[i]; // Get the overdriver configuration
     while (xSemaphoreTake(overdriver->sync_signal, SEMAPHORE_DELAY) != pdTRUE); // Wait for the mutex lock
-    if (overdriver->driver_tasks.action_handle == NULL) {
+    if (overdriver->driver_tasks->action_handle == NULL) {
         xSemaphoreGive(overdriver->sync_signal); // Release the mutex lock
         return ESP_ERR_INVALID_STATE; // overdriver not initialized
     }
