@@ -9,6 +9,7 @@ extern "C" {
 #include "freertos/task.h"
 #include <freertos/semphr.h>
 #include "freertos/event_groups.h"
+#include "stdbool.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -63,8 +64,6 @@ extern "C" {
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
     
-#define DRIVER_MAX              (2)
-
 #define SERIAL_KEY      "123456789" // Password for the program
 #define REQUEST_KEY     "GSKx" // Used for requesting the passcode for the driver
 #define PING            "ping" // Used for making sure there is a connection
@@ -111,7 +110,9 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 #define SERIAL_KEY_RETRY_DELAY_MS      (50)
 #define LOOP_DELAY_MS                  (10)
 
-#define OVERDRIVER_MAX                  (3)
+#define DRIVER_MAX                      (3)
+
+#define OVERDRIVER_MAX                  (2)
 
 #define MEMORY_BLOCK_MAX               (20)
 
@@ -119,6 +120,8 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 
 
 #define SEMAPHORE_DELAY pdMS_TO_TICKS(3) // 3ms delay for the semaphore
+
+#define SEMAPHORE_WAIT_TIME         ( pdMS_TO_TICKS(5000) ) // 5 seconds
 
 #ifdef __cplusplus
 }
