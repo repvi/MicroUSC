@@ -1,10 +1,9 @@
-#include "testing_driver.h"
 #include "speed_test.h"
-#include "USC_driver.h"
+
+#include "USCdriver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
 #include "testing_driver.h"
-#include "tiny_kernel.h"
-
+#include "MicroUSC-kernel.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -28,6 +27,8 @@
 void IRAM_ATTR critical_timing_function(void) {
     // Time-critical code here
 }
+
+// shell:RecycleBinFolder
 
 // Data that persists across deep sleep
 RTC_DATA_ATTR uint32_t boot_count = 0;
@@ -66,6 +67,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
     init_tiny_kernel();
+    init_priority_storage();
 
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
@@ -96,6 +98,6 @@ void app_main(void) {
 
     //printf("Starting driver initialization...\n");
     // uncomment the line below to test the speed of the function
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
+    //CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
     printf("End of program\n");
 }

@@ -1,11 +1,18 @@
+set(src
+    atomic_sys_op.c
+    esp_uart.c
+    USCdriver.c
+)
+
 idf_component_register(
-    SRC_DIRS "." "status"
+    SRCS ${src}
     INCLUDE_DIRS "include"
     REQUIRES
         driver
-        memory_storage
         freertos
         esp_system
         debug
-        driver_connection
+    
+    PRIV_REQUIRES
+        internal
 )
