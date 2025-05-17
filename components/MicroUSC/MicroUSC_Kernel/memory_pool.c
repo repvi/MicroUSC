@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#define TAG "[MEMORY POOL]"
+
 static bool set_memory_pool_vals(memory_pool_t *pool, const size_t block_size, const size_t num_blocks) {
     if (!pool || block_size == 0 || num_blocks == 0 || !pool->memory) {
         ESP_LOGE("MEMORY_POOL", "Invalid memory pool or parameters");
@@ -31,9 +33,9 @@ static bool set_memory_pool_vals(memory_pool_t *pool, const size_t block_size, c
 static bool memory_pool_configure(memory_pool_t *pool, const size_t block_size, const size_t num_blocks) {
     const size_t total_size = block_size * num_blocks;
 
-    pool->memory = heap_caps_malloc_prefer(total_size, 2,  MALLOC_CAP_32BIT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    pool->memory = heap_caps_malloc(total_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA); // could use heap_caps_malloc_prefer
     if (pool->memory == NULL) {
-        ESP_LOGE("MEMORY_POOL", "Unable to allocate memory for the pool");
+        ESP_LOGE(TAG, "Unable to allocate memory for the pool");
         return false;
     }
 
@@ -42,7 +44,7 @@ static bool memory_pool_configure(memory_pool_t *pool, const size_t block_size, 
 
 bool memory_pool_init(memory_pool_t *pool, const size_t block_size, const size_t num_blocks) {
     if (!pool || block_size == 0 || num_blocks == 0) {
-        ESP_LOGE("MEMORY_POOL", "Invalid memory pool or parameters");
+        ESP_LOGE(TAG, "Invalid memory pool or parameters");
         return false;
     }
 
@@ -51,15 +53,18 @@ bool memory_pool_init(memory_pool_t *pool, const size_t block_size, const size_t
 
 memory_pool_t *memory_pool_malloc(const size_t block_size, const size_t num_blocks) {
     if (block_size == 0 || num_blocks == 0) {
+        ESP_LOGE(TAG, "input is 0");
         return NULL;
     }
 
-    memory_pool_t *pool = heap_caps_malloc_prefer(sizeof(memory_pool_t), 2,  MALLOC_CAP_32BIT, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    memory_pool_t *pool = heap_caps_malloc(sizeof(memory_pool_t), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
     if (!pool) {
+        ESP_LOGE(TAG, "COuld not initialize the memory pool base");
         return NULL;
     }
 
     if (!memory_pool_configure(pool, block_size, num_blocks)) {
+        ESP_LOGE(TAG, "Could not configure the memory pool");
         heap_caps_free(pool); // unable to create the memory for it
         pool = NULL;
         return pool;

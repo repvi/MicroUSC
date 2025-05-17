@@ -1,5 +1,4 @@
-#ifndef __INITSTART_MICRO_USC_H
-#define __INITSTART_MICRO_USC_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,14 +49,13 @@ struct usc_driver_t *getDriverfromNode(struct usc_driverNode *node);
 extern struct usc_driverList driver_list;
 extern struct usc_driverList overdriver_list;
 
-
 #define cycle_drivers() DEFINE_DRIVERLIST_CYCLE(driver_list.head, driver)
 
 #define cycle_overdrivers() DEFINE_DRIVERLIST_CYCLE(overdriver_list.head, overdriver)
 
-esp_err_t init_driver_list(void);
+esp_err_t init_driver_list_memory_pool(void);
 
-esp_err_t init_overdriver_list(void);
+esp_err_t init_overdriver_list_memory_pool(void);
 
 esp_err_t init_hidden_driver_lists(void);
 
@@ -89,6 +87,4 @@ esp_err_t set_driver_inactive(struct usc_driver_t *driver);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
