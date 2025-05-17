@@ -1,5 +1,4 @@
 #include "speed_test.h"
-
 #include "USCdriver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
 #include "testing_driver.h"
@@ -58,6 +57,9 @@ uart_config_t uart_config = {
 };
 */
 
+// xtensa-esp-elf-addr2line -e build/ESP32_USC_DRIVERS.elf 0x400d679c
+
+
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -98,6 +100,6 @@ void app_main(void) {
 
     //printf("Starting driver initialization...\n");
     // uncomment the line below to test the speed of the function
-    //CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action));
     printf("End of program\n");
 }

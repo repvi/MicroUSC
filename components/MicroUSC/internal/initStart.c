@@ -3,11 +3,13 @@
 
 #define TAG             "[DRIVER INIT]"
 
+#define INITIALIZE_DRIVERLIST(x) {.head = NULL, .tail = NULL, .size = 0, .max = (x)}
+
 memory_block_handle_t mem_block_driver_nodes = NULL;
 memory_block_handle_t mem_block_overdriver_nodes = NULL;
 
-struct usc_driverList driver_list = {0};
-struct usc_driverList overdriver_list = {0};
+struct usc_driverList driver_list = INITIALIZE_DRIVERLIST(DRIVER_MAX);
+struct usc_driverList overdriver_list = INITIALIZE_DRIVERLIST(OVERDRIVER_MAX);
 
 // used in the kernel
 struct usc_driverNode {
@@ -56,29 +58,31 @@ struct usc_driver_t *getDriverfromNode(struct usc_driverNode *node) {
     return &node->driver_storage;
 }
 
-esp_err_t init_driver_list(void) {
-    mem_block_overdriver_nodes = (memory_block_handle_t)memory_handler_malloc(SIZEOF_DRIVERNODE, DRIVER_MAX);
+esp_err_t init_driver_list_memory_pool(void) {
+    mem_block_driver_nodes = (memory_block_handle_t)memory_handler_malloc(SIZEOF_DRIVERNODE, DRIVER_MAX);
     if (mem_block_driver_nodes == NULL) {
+        ESP_LOGE(TAG, "Could not initialize driver list memory pool");
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
 }
 
-esp_err_t init_overdriver_list(void) {
+esp_err_t init_overdriver_list_memory_pool(void) {
     mem_block_overdriver_nodes = (memory_block_handle_t)memory_handler_malloc(SIZEOF_DRIVERNODE, OVERDRIVER_MAX);
     if (mem_block_overdriver_nodes == NULL) {
+        ESP_LOGE(TAG, "Could not initialize overdriver list memory pool");
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
 }
 
 esp_err_t init_hidden_driver_lists(void) {
-    esp_err_t status = init_driver_list();
+    esp_err_t status = init_driver_list_memory_pool();
     if (status != ESP_OK) {
         // add ESP_LOGW here maybe
         return status;
     }
-    return init_overdriver_list();
+    return init_overdriver_list_memory_pool();
 }
 
 // list param should never be NULL
@@ -107,6 +111,7 @@ static esp_err_t addDriverNodeM( struct usc_driverList *list,
 esp_err_t addDriverNode(const struct usc_driver_t *driver) {
     struct usc_driverNode *new_node = (struct usc_driverNode *)memory_pool_alloc(mem_block_driver_nodes);
     if (new_node == NULL) {
+        ESP_LOGE(TAG, "Could not allocate memory from the driver list");
         return ESP_ERR_INVALID_SIZE; // ran out of space for allocating
     }
 
@@ -119,6 +124,7 @@ esp_err_t addDriverNode(const struct usc_driver_t *driver) {
 esp_err_t addOverdriverNode(const struct usc_driver_t *overdriver) {
     struct usc_driverNode *new_node = (struct usc_driverNode *)memory_pool_alloc(mem_block_overdriver_nodes);
     if (new_node == NULL) {
+        ESP_LOGE(TAG, "Could not allocate memory from the overdriver list");
         return ESP_ERR_INVALID_SIZE; // ran out of space for allocating
     }
     

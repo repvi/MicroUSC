@@ -132,13 +132,16 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
     xSemaphoreGive(driver.sync_signal);
     driver.driver_tasks.active = true; // Set the task as active
 
-    if (strncmp(driver_setting->driver_name, "", DRIVER_NAME_SIZE) == 0) {
+    if (strncmp(driver_setting->driver_name, "", DRIVER_NAME_SIZE) != 0) {
+        strncpy(driver_setting->driver_name, driver_name, sizeof(driver_name_t));
+    }
+    else {
         static int no_name = 1;
         snprintf(driver_setting->driver_name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name);
-        driver_setting->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
         no_name++;
     }
-
+    driver_setting->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
+    
     driver_setting->has_access = false; // default to not have access
     // Set status and create the task
     driver_setting->status = NOT_CONNECTED; // As default
@@ -160,7 +163,7 @@ esp_err_t usc_driver_init( const char *driver_name,
     usc_driver_t temp_driver = configure_driver_setting(driver_name, uart_config, port_config);
     ret = addDriverNode(&temp_driver); // add to the tail of the list
     if (ret != ESP_OK) {
-        // send message here maybe
+        ESP_LOGE(TAG, "Could not add driver to the driver list");
         return ret;
     }
 
@@ -259,7 +262,7 @@ void usc_driver_read_task(void *pvParameters) {
     struct usc_task_manager_t *current_task_config = &driver->driver_tasks; // get the task configuration
     bool *active = &current_task_config->active; // Check if the driver has access
     // prioirty should give the id number minus the offset of the task
-    ESP_LOGI(TASK_TAG, "%s with priority %u\n", config->driver_name, (index + TASK_PRIORITY_START)); // Debugging line to check task name and priority`
+    ESP_LOGI(TASK_TAG, "Priority %u\n", config->driver_name, (index + TASK_PRIORITY_START)); // Debugging line to check task name and priority`
     ESP_LOGI(TASK_TAG, "Task status: %d\n", *active);
     
     //#if (NEEDS_SERIAL_KEY == 1)
@@ -291,7 +294,7 @@ void usc_driver_read_task(void *pvParameters) {
              //maintain_connection(config); // Ping the driver to check connection
             process_data(config); // Read and process incoming data
 
-            ESP_LOGI(TASK_TAG, "Task %s is running\n", config->driver_name); // Debugging line to check task name and priority
+            ESP_LOGI(TASK_TAG, "Task %d is running\n", config->driver_name); // Debugging line to check task name and priority
             vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
             xSemaphoreGive(sync_signal); // Release the mutex lock
         }

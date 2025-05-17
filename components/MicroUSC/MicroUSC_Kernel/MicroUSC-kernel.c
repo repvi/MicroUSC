@@ -29,14 +29,11 @@ ESP_SYSTEM_INIT_FN(tiny_kernel, SECONDARY, BIT(0), 120) {
 esp_err_t init_memory_handlers(void) {
     driver_list.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)
     if (driver_list.lock == NULL) {
-        return ESP_ERR_NO_MEM;
+        ESP_LOGE(TAG, "Could not initialize main lock");
+        return ESP_FAIL;
     }
     xSemaphoreGive(driver_list.lock);
-
-    if (init_driver_list() != ESP_OK || init_overdriver_list() != ESP_OK) {
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
+    return init_hidden_driver_lists(); // initializes both driver and overdriver lists
 }
 
 void init_tiny_kernel(void) {
