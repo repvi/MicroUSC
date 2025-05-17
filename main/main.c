@@ -1,8 +1,8 @@
-#include "testing_driver.h"
 #include "speed_test.h"
-#include "USC_driver.h"
+#include "USCdriver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
 #include "testing_driver.h"
+#include "MicroUSC-kernel.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -17,11 +17,17 @@
 
 // xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
 // xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
+
+// idf.py -D CMAKE_VERBOSE_MAKEFILE=ON build
+// xtensa-esp32-elf-gcc -S -o output.S example.c     
+// xtensa-esp32-elf-objdump -t build/ESP32_USC_DRIVERS.elf | findstr "example_function"
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {
     // Time-critical code here
 }
+
+// shell:RecycleBinFolder
 
 // Data that persists across deep sleep
 RTC_DATA_ATTR uint32_t boot_count = 0;
@@ -51,6 +57,9 @@ uart_config_t uart_config = {
 };
 */
 
+// xtensa-esp-elf-addr2line -e build/ESP32_USC_DRIVERS.elf 0x400d679c
+
+
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -59,12 +68,15 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
+    init_tiny_kernel();
+    init_priority_storage();
+
     uart_config_t setting = {
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     };
 
     uart_port_config_t pins = {
@@ -82,14 +94,12 @@ void app_main(void) {
     };
     
     usc_data_process_t driver_action = &system_task; // point to the function you created
-    
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init(&driver_example, setting, pins, driver_action, 0), ret);
 
-    while (1) {
-        // continue forever
-        vTaskDelay(portTICK_PERIOD_MS); // Minimum 1ms delay
-    };
+    //printf("Starting driver initialization...\n");
+    // uncomment the line below to test the speed of the function
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action));
+    printf("End of program\n");
 }
