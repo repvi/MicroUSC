@@ -69,15 +69,8 @@ void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
     init_tiny_kernel();
-    init_priority_storage();
 
-    uart_config_t setting = {
-        .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, // should be defined by sdkconfig
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-    };
+    uart_config_t setting = STANDARD_UART_CONFIG;
 
     uart_port_config_t pins = {
         .tx = GPIO_NUM_1,
@@ -88,18 +81,28 @@ void app_main(void) {
     // code should go after here
 
     // functions like init_[something([varaible type] &configuration);
-
-    usc_config_t driver_example = {
-        .driver_name = "Driver example"
-    };
     
     usc_data_process_t driver_action = &system_task; // point to the function you created
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
 
-    //printf("Starting driver initialization...\n");
     // uncomment the line below to test the speed of the function
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action));
+
+
+    usc_print_driver_configurations();
+    //usc_print_overdriver_configurations(); 
+    
+    uart_port_config_t pinss = {
+        .tx = GPIO_NUM_4,
+        .rx = GPIO_NUM_5,
+        .port = UART_NUM_1
+    };
+
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
+
+
+
     printf("End of program\n");
 }

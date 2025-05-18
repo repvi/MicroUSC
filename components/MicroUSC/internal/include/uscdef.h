@@ -1,5 +1,4 @@
-#ifndef USC_DEFINE_H
-#define USC_DEFINE_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,16 +34,12 @@ struct usc_task_manager_t;
     ) /* used for the byte loop */ \
     if (xSemaphoreTake((name)->sync_signal, portMAX_DELAY) == pdTRUE) \
         for (bool hasSemaphore = true; hasSemaphore; hasSemaphore = false)
-
-
-#define container_of(ptr, type, member) \
-    ((type *)((char *)(ptr) - offsetof(type, member))
     
 typedef char driver_name_t[20];
 typedef char serial_key_t[10];
 typedef bool init_safety;
 
-#define STATIC_INIT_SAFETY static init_safety
+#define STATIC_INIT_SAFETY  static init_safety
 #define initZERO            false
 #define initONE             true
 
@@ -93,9 +88,15 @@ struct usc_driver_t {
     SemaphoreHandle_t sync_signal;
 };
 
+#define INIT_USC_CONFIG_DEFAULT { \
+        .baud_rate = 0, \
+        .data = {0}, \
+        .driver_name = "", \
+        .has_access = false, \
+        .status = NOT_CONNECTED, \
+        .uart_config = {0} \
+    }
+
 #ifdef __cplusplus
 }
-#endif
-
-
 #endif

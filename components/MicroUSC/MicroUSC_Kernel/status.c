@@ -4,10 +4,15 @@
 #include "esp_system.h"
 #include "USCdriver.h"
 
+#define TAG "[STATUS]"
+
 void usc_print_driver_configurations(void) {
     int i = 0;
-    cycle_drivers() {
-        if (hasSemaphore == pdTRUE) {
+    struct usc_driverList *current, *tmp;
+    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) {
+        struct usc_driver_t *driver = &current->driver_storage;
+        SemaphoreHandle_t lock = driver->sync_signal;
+        if (xSemaphoreTake(lock, SEMAPHORE_WAIT_TIME) == pdTRUE) {
             if (driver->driver_tasks.active == false) {
                 ESP_LOGI("DRIVER", "NOT INITIALIZED on index %d", i);
                 ESP_LOGI("      ", "----------------------------");
@@ -23,26 +28,12 @@ void usc_print_driver_configurations(void) {
                 ESP_LOGI("UART RX Pin", " %d", config->uart_config.rx);
                 ESP_LOGI("      ", "----------------------------");
             }
+            xSemaphoreGive(lock);
             i++;
         }
-    }
-}
-
-void usc_print_overdriver_configurations(void) {
-    int i = 0;
-    cycle_overdrivers() {
-        if (hasSemaphore == pdTRUE) {
-            if (overdriver->driver_tasks.active == false) {
-                ESP_LOGI("OVERDRIVER", " NOT INITIALIZED on index %d", i);
-                ESP_LOGI("          ", "----------------------------");
-            }
-            else {
-                const struct usc_config_t *config = &overdriver->driver_setting;
-                ESP_LOGI("OVERDRIVER", " %s", config->driver_name);
-                ESP_LOGI("Baud Rate", " %lu", config->baud_rate);
-                ESP_LOGI("          ", "----------------------------");
-            }
-            i++;
+        else {
+            ESP_LOGW(TAG, "Could not get lock for driver");
         }
     }
+    ESP_LOGI(TAG, "Finished literating drivers");
 }

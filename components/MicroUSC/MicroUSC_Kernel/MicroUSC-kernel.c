@@ -27,19 +27,20 @@ ESP_SYSTEM_INIT_FN(tiny_kernel, SECONDARY, BIT(0), 120) {
 
 
 esp_err_t init_memory_handlers(void) {
-    driver_list.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)
-    if (driver_list.lock == NULL) {
-        ESP_LOGE(TAG, "Could not initialize main lock");
+    driver_system.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)
+    if (driver_system.lock == NULL) {
+        ESP_LOGE(TAG, "Could not initialize main driver lock");
         return ESP_FAIL;
     }
-    xSemaphoreGive(driver_list.lock);
-    return init_hidden_driver_lists(); // initializes both driver and overdriver lists
+    xSemaphoreGive(driver_system.lock);
+
+    return init_hidden_driver_lists();
 }
 
 void init_tiny_kernel(void) {
     ESP_ERROR_CHECK(init_memory_handlers());
+    ESP_ERROR_CHECK(init_priority_storage());
     ESP_LOGI(TAG, "System drivers initialized successfully\n");
-    usc_print_driver_configurations(); // Print the driver configurations
-    usc_print_overdriver_configurations();
+    //usc_print_driver_configurations(); // Print the driver configurations
     vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
 }
