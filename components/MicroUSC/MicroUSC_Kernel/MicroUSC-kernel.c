@@ -33,6 +33,7 @@ esp_err_t init_memory_handlers(void) {
         return ESP_FAIL;
     }
     xSemaphoreGive(driver_system.lock);
+    INIT_LIST_HEAD(&driver_system.driver_list.list);
 
     return init_hidden_driver_lists();
 }

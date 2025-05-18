@@ -32,7 +32,7 @@
     ESP_LOGI(TAG, "Check point #%d", check_point_var); \
     check_point_var++;
 
-#define CHECKPOINT_END() \
+#define CHECKPOINT_END \
     ESP_LOGI(TAG, "Add tests have been completed");
 
 #undef TAG

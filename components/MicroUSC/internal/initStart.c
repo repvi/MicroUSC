@@ -1,4 +1,5 @@
 #include "initStart.h"
+#include "debugging/speed_test.h"
 #include "esp_system.h"
 
 #define TAG "[DRIVER INIT]"
@@ -10,13 +11,13 @@ memory_block_handle_t mem_block_driver_nodes = NULL;
 // make sure to take the lock and have access and release it manually
 void addSingleDriver(const struct usc_driver_t *driver, const UBaseType_t priority)
 {
-    struct usc_driverList *new = memory_pool_alloc(mem_block_driver_nodes);
+    struct usc_driverList *new = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
     if (new == NULL) {
         ESP_LOGE(TAG, "Could not allocate memory from the driver list");
         return;
     }
-    new->driver_storage = *driver; // make sure the lock is already inialized
-    new->priority = priority;
+    new->driver = *driver; // make sure the lock is already inialized
+    new->driver.priority = priority;
     INIT_LIST_HEAD(&new->list);
     list_add_tail(&new->list, &driver_system.driver_list.list);
 }
@@ -86,14 +87,14 @@ esp_err_t set_driver_default(struct usc_driver_t *driver)
 
 esp_err_t set_driver_default_task(struct usc_driver_t *driver)
 {
-    setTaskDefault(&driver->driver_tasks);
+    setTaskDefault(&driver->driver_storage.driver_tasks);
     return ESP_OK; /* Task is already inactive */
 }
 
 void set_driver_inactive(struct usc_driver_t *driver)
 {
-    struct usc_task_manager_t *task = &driver->driver_tasks;
-    struct usc_config_t *driver_setting = &driver->driver_setting;
+    struct usc_config_t *driver_setting = &driver->driver_storage.driver_setting;
+    struct usc_task_manager_t *task = &driver->driver_storage.driver_tasks;
     xSemaphoreGive(driver->sync_signal);            /* Unlock the queue */
     setTask_status(task, false);                    /* Reset the active flag */
     vTaskDelay(pdMS_TO_TICKS(DELAY_MILISECOND_50)); /* Delay for 1 second */

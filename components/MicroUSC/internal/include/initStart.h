@@ -17,7 +17,14 @@ extern "C" {
 
 struct usc_driverList {
     struct usc_driver_t driver;
-    struct list_head driver_list;
+    struct list_head list;
+};
+ 
+ struct usc_driversHandler {
+     struct usc_driverList driver_list;
+     size_t size;
+     size_t max; // need to initial with size already, do not change size
+     SemaphoreHandle_t lock;
 };
 
 extern struct usc_driversHandler driver_system;
