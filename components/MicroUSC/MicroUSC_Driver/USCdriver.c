@@ -52,36 +52,46 @@ void usc_driver_clean_data(usc_driver_t *driver) {
 //returns the first bit that is 0
 uint32_t getCurrentEmptyDriverIndex(void) {
     // make sure the max is less than 32 bits regardless
-    uint32_t *driver_bits = &priority_storage.active_driver_bits;
     SemaphoreHandle_t lock = priority_storage.lock;
+    xSemaphoreTake(priority_storage.lock, portMAX_DELAY);
+    const uint32_t driver_bits = priority_storage.active_driver_bits;
+    xSemaphoreGive(priority_storage.lock);
     uint32_t v;
     for (uint32_t i = 0; i < DRIVER_MAX; i++) { // there can be alternate code for this function, could have performance difference between the two possibly
-        xSemaphoreTake(lock, portMAX_DELAY);
         v = BIT(i);
-        if ((v & *driver_bits) == 0) {
-            *driver_bits |= v; // bit is now occupied
-            xSemaphoreGive(lock);
+        if ((v & driver_bits) == 0) {
             return i; // returns empty bit
         }
-        xSemaphoreGive(lock);
     }
     return NOT_FOUND;
 }
 
+uint32_t getCurrentEmptyDriverIndexAndOccupy() {
+    uint32_t v = getCurrentEmptyDriverIndex();
+    if (v != NOT_FOUND) {
+        xSemaphoreTake(priority_storage.lock, portMAX_DELAY);
+        priority_storage.active_driver_bits |= BIT(v); // bit is now occupied
+        ESP_LOGI(TAG, "Bit is now: %lu", priority_storage.active_driver_bits);
+        xSemaphoreGive(priority_storage.lock);
+    }
+    return v;
+}
+
 void usc_driver_read_task(void *pvParameters); // header
 
-void create_usc_driver_task( struct usc_driver_base_t *driver,
-                                    const UBaseType_t i) { // might neeed adjustment
+void create_usc_driver_task( struct usc_driver_t *driver,
+                             const UBaseType_t i) 
+{ // might neeed adjustment
     const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
 
     xTaskCreatePinnedToCore(
-        usc_driver_read_task,                      // Task function
-        driver->driver_setting.driver_name,   // Task name
-        TASK_STACK_SIZE,                           // Stack size
-        (void *)driver,                       // Task parameters
-        DRIVER_TASK_Priority_START,                // Increment priority for next task
-        &driver->driver_tasks.task_handle,    // Task handle
-        TASK_CORE_READER                           // Core to pin the task
+        usc_driver_read_task,                                // Task function
+        driver->driver_storage.driver_setting.driver_name,   // Task name
+        TASK_STACK_SIZE,                                     // Stack size
+        (void *)driver,                                      // Task parameters
+        DRIVER_TASK_Priority_START,                          // Increment priority for next task
+        &driver->driver_storage.driver_tasks.task_handle,    // Task handle
+        TASK_CORE_READER                                     // Core to pin the task
     );
 }
 
@@ -94,13 +104,13 @@ void create_usc_driver_action_task( struct usc_driver_t *driver,
     snprintf(task_name, sizeof(task_name), "Action #%d", i);
 
     xTaskCreatePinnedToCore(
-        driver_process,                              // Task function
-        task_name,                                   // Task name
-        TASK_STACK_SIZE,                             // Stack size
-        (void *)i,                                   // Task parameters
-        (OFFSET),                                    // Based on index
-        &driver->driver_tasks.action_handle,    // Task handle
-        TASK_CORE_ACTION                             // Core to pin the task
+        driver_process,                                        // Task function
+        task_name,                                             // Task name
+        TASK_STACK_SIZE,                                       // Stack size
+        (void *)i,                                             // Task parameters
+        (OFFSET),                                              // Based on index
+        &driver->driver_storage.driver_tasks.action_handle,    // Task handle
+        TASK_CORE_ACTION                                       // Core to pin the task
     );
 }
 
@@ -118,7 +128,7 @@ esp_err_t check_valid_uart_config( const uart_config_t *uart_config,
         return ESP_ERR_INVALID_ARG;
     }
 
-    UBaseType_t i = getCurrentEmptyDriverIndex();
+    UBaseType_t i = getCurrentEmptyDriverIndexAndOccupy();
 
     ESP_LOGI(TAG, "Got index: %u", i); // show what index it is starting at
     vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
@@ -140,13 +150,13 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
                                               const uart_port_config_t port_config) 
 {
     struct usc_driver_t driver;
-    struct usc_config_t *driver_setting = &driver.driver_setting;
+    struct usc_config_t *driver_setting = &driver.driver_storage.driver_setting;
     driver.sync_signal = xSemaphoreCreateBinary(); // probably add if it is NULL or not
     if (driver.sync_signal == NULL) {
         return (struct usc_driver_t){};
     }
     xSemaphoreGive(driver.sync_signal); // create the section
-    driver.driver_tasks.active = true; // Set the task as active
+    driver.driver_storage.driver_tasks.active = true; // Set the task as active
 
     if (strncmp(driver_setting->driver_name, "", DRIVER_NAME_SIZE - 1) != 0) {
         strncpy(driver_setting->driver_name, driver_name, sizeof(driver_name_t) - 1); // maybe needs the -1
@@ -168,7 +178,7 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
 
 struct usc_driver_t *getLastDriver(void) {
     struct usc_driverList *node = list_last_entry(&driver_system.driver_list.list, struct usc_driverList, list); // use the tail of the list (the one that has been recently added)
-    return (node != NULL) ? &node->driver_storage : NULL;
+    return (node != NULL) ? &node->driver : NULL;
 }
 
 esp_err_t usc_driver_init( const char *driver_name,
@@ -185,11 +195,11 @@ esp_err_t usc_driver_init( const char *driver_name,
     CHECKPOINT_START;
     // crashes around here
     CHECKPOINT_MESSAGE;
-    struct usc_driverList *node = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
+    uint32_t open_spot = getCurrentEmptyDriverIndex(); // retrieve the first empty bit
     CHECKPOINT_MESSAGE;
-    const uint32_t open_spot = getCurrentEmptyDriverIndex(); // retrieve the first empty bit
+    struct usc_driver_t driver = configure_driver_setting(driver_name, uart_config, port_config);
     CHECKPOINT_MESSAGE;
-    node->driver_storage = configure_driver_setting(driver_name, uart_config, port_config);
+    addSingleDriver(&driver, open_spot);
     CHECKPOINT_MESSAGE;
     SemaphoreHandle_t system_lock = driver_system.lock;
     CHECKPOINT_MESSAGE;
@@ -219,6 +229,7 @@ esp_err_t usc_driver_init( const char *driver_name,
     CHECKPOINT_MESSAGE;
     printf("Configuration has been set on: %lu\n", open_spot); // Debugging line to check task name and priority
     // to here where it does not currently run
+    CHECKPOINT_END;
     return ESP_OK;
 }
 
@@ -301,9 +312,10 @@ void usc_driver_read_task(void *pvParameters)
 {
     const UBaseType_t index = uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task, more temportary
     struct usc_driver_t *driver = (struct usc_driver_t *)pvParameters;
-    struct usc_config_t *config = &driver->driver_setting;
+    struct usc_driver_base_t *driver_base = &driver->driver_storage;
+    struct usc_config_t *config = &driver_base->driver_setting;
     SemaphoreHandle_t sync_signal = driver->sync_signal; // Get the mutex lock for the driver
-    struct usc_task_manager_t *current_task_config = &driver->driver_tasks; // get the task configuration
+    struct usc_task_manager_t *current_task_config = &driver_base->driver_tasks; // get the task configuration
     bool *active = &current_task_config->active; // Check if the driver has access
     // prioirty should give the id number minus the offset of the task
     ESP_LOGI(TASK_TAG, "Priority %u\n", (index + TASK_PRIORITY_START)); // Debugging line to check task name and priority`
