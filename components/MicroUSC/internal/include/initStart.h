@@ -15,18 +15,9 @@ extern "C" {
 
 #include "genList.h" 
 
-// used in the kernel
 struct usc_driverList {
-    struct usc_driver_t driver_storage;
-    UBaseType_t priority; // the priority of the task of the driver
-    struct list_head list; // usc_individualDriver type
-};
-
-struct usc_driversHandler {
-    struct usc_driverList driver_list;
-    size_t size;
-    size_t max; // need to initial with size already, do not change size
-    SemaphoreHandle_t lock;
+    struct usc_driver_t driver;
+    struct list_head driver_list;
 };
 
 extern struct usc_driversHandler driver_system;
