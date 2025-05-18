@@ -1,5 +1,6 @@
 set(src
     initStart.c
+    genList.c
 )
     
 idf_component_register(

@@ -11,12 +11,6 @@ extern "C" {
  */
 void usc_print_driver_configurations(void);
 
-/**
- * @brief Prints the configurations of all overdrivers.
- * Iterates through each overdriver and logs its configuration details if it is initialized.
- */
-void usc_print_overdriver_configurations(void);
-
 #ifdef __cplusplus
 }
 #endif

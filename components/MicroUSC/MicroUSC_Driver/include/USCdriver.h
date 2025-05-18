@@ -10,6 +10,14 @@
 extern "C" {
 #endif
 
+#define STANDARD_UART_CONFIG { \
+        .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, /* should be defined by sdkconfig */ \
+        .data_bits = UART_DATA_8_BITS, \
+        .parity = UART_PARITY_DISABLE, \
+        .stop_bits = UART_STOP_BITS_1, \
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, \
+    };
+
 typedef void (*usc_event_cb_t)(void *);
 typedef void (*usc_data_process_t)(void *);
 
@@ -83,28 +91,6 @@ esp_err_t usc_driver_request_password(usc_config_t *driver_setting);
 esp_err_t usc_driver_ping(usc_config_t *driver_setting);
 
 //void uart_port_config_deinit(uart_port_config_t *uart_config);
-
-/**
- * @brief Deinitialize all USB drivers.
- * @param config Pointer to the USB configuration structure.
- * @param action Pointer to the event callback function.
- * @param i Index of the overdriver to be set.
- * @note The index should be between 0 and OVERDRIVER_MAX - 1.
- * @return ESP_OK if all arguments are valid
- */
-esp_err_t usc_set_overdrive( usc_driver_t *overdriver, 
-                             usc_event_cb_t action, 
-                             const int i);
-
-/**
- * @brief Set the overdrive driver.
- * @param driver Pointer to the serial input driver structure.
- * @param i Index of the overdriver to be set.
- * @note The index should be between 0 and OVERDRIVER_MAX - 1.
- * @return ESP_OK if the index is valid and the driver is set successfully.
- */
-esp_err_t overdrive_usc_driver( usc_driver_t *driver,
-                                const int i);
 
 #ifdef __cplusplus
 }
