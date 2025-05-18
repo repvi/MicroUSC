@@ -82,9 +82,16 @@ struct usc_task_manager_t { // make the struct defined inside the c file instead
     bool active;
 };
 
-struct usc_driver_t {
+struct usc_driver_base_t {
     struct usc_config_t driver_setting; ///< Array of USB configurations
     struct usc_task_manager_t driver_tasks; ///< Task manager for the drivers
+    UBaseType_t priority;
+};
+
+// used in the kernel
+struct usc_driver_t {
+    struct usc_driver_base_t driver_storage;
+    UBaseType_t priority; // the priority of the task of the driver
     SemaphoreHandle_t sync_signal;
 };
 

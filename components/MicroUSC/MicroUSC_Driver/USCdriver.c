@@ -1,3 +1,4 @@
+#include "debugging/speed_test.h"
 #include "string.h"
 #include "uscdef.h"
 #include "initStart.h"
@@ -69,18 +70,18 @@ uint32_t getCurrentEmptyDriverIndex(void) {
 
 void usc_driver_read_task(void *pvParameters); // header
 
-void create_usc_driver_task( usc_driver_t *driver,
+void create_usc_driver_task( struct usc_driver_base_t *driver,
                                     const UBaseType_t i) { // might neeed adjustment
     const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
 
     xTaskCreatePinnedToCore(
-        usc_driver_read_task,                 // Task function
+        usc_driver_read_task,                      // Task function
         driver->driver_setting.driver_name,   // Task name
-        TASK_STACK_SIZE,                      // Stack size
+        TASK_STACK_SIZE,                           // Stack size
         (void *)driver,                       // Task parameters
-        DRIVER_TASK_Priority_START,           // Increment priority for next task
+        DRIVER_TASK_Priority_START,                // Increment priority for next task
         &driver->driver_tasks.task_handle,    // Task handle
-        TASK_CORE_READER                      // Core to pin the task
+        TASK_CORE_READER                           // Core to pin the task
     );
 }
 
@@ -93,13 +94,13 @@ void create_usc_driver_action_task( struct usc_driver_t *driver,
     snprintf(task_name, sizeof(task_name), "Action #%d", i);
 
     xTaskCreatePinnedToCore(
-        driver_process,                         // Task function
-        task_name,                              // Task name
-        TASK_STACK_SIZE,                        // Stack size
-        (void *)i,                              // Task parameters
-        (OFFSET),                               // Based on index
+        driver_process,                              // Task function
+        task_name,                                   // Task name
+        TASK_STACK_SIZE,                             // Stack size
+        (void *)i,                                   // Task parameters
+        (OFFSET),                                    // Based on index
         &driver->driver_tasks.action_handle,    // Task handle
-        TASK_CORE_ACTION                        // Core to pin the task
+        TASK_CORE_ACTION                             // Core to pin the task
     );
 }
 
@@ -135,12 +136,15 @@ esp_err_t check_valid_uart_config( const uart_config_t *uart_config,
 }
 
 struct usc_driver_t configure_driver_setting( const char *driver_name,
-                                                     const uart_config_t uart_config,
-                                                     const uart_port_config_t port_config) 
+                                              const uart_config_t uart_config,
+                                              const uart_port_config_t port_config) 
 {
     struct usc_driver_t driver;
     struct usc_config_t *driver_setting = &driver.driver_setting;
     driver.sync_signal = xSemaphoreCreateBinary(); // probably add if it is NULL or not
+    if (driver.sync_signal == NULL) {
+        return (struct usc_driver_t){};
+    }
     xSemaphoreGive(driver.sync_signal); // create the section
     driver.driver_tasks.active = true; // Set the task as active
 
@@ -178,31 +182,43 @@ esp_err_t usc_driver_init( const char *driver_name,
         return ret;
     }
 
+    CHECKPOINT_START;
+    // crashes around here
+    CHECKPOINT_MESSAGE;
     struct usc_driverList *node = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
+    CHECKPOINT_MESSAGE;
     const uint32_t open_spot = getCurrentEmptyDriverIndex(); // retrieve the first empty bit
+    CHECKPOINT_MESSAGE;
     node->driver_storage = configure_driver_setting(driver_name, uart_config, port_config);
+    CHECKPOINT_MESSAGE;
     SemaphoreHandle_t system_lock = driver_system.lock;
+    CHECKPOINT_MESSAGE;
     xSemaphoreTake(system_lock, portMAX_DELAY); // WILL NOT CONTINUE IF IT DOES NOT RECIEVE AUTHERIZATION 1 IN
-
+    CHECKPOINT_MESSAGE;
     struct usc_driver_t *current_driver = getLastDriver();
     if (current_driver == NULL) {
         ESP_LOGE(TAG, "Failed to get the last driver in the system driver manager");
         return ESP_ERR_NO_MEM;
     }
-
+    CHECKPOINT_MESSAGE;
     if (!xSemaphoreTake(current_driver->sync_signal, SEMAPHORE_WAIT_TIME)) { // Wait for the mutex lock 2IN
         ESP_LOGE(TAG, "Failed to take semaphore");
         xSemaphoreGive(system_lock); // 1 OUT
         return ESP_ERR_INVALID_STATE; // Failed to take semaphore
     }
 
+    CHECKPOINT_MESSAGE;
     create_usc_driver_task(current_driver, open_spot); // create the task for the serial driver implemented
+    CHECKPOINT_MESSAGE;
     create_usc_driver_action_task(current_driver, driver_process, open_spot); // create task for the custom function (driver)
+    CHECKPOINT_MESSAGE;
 
     xSemaphoreGive(system_lock); // 1 OUT
+    CHECKPOINT_MESSAGE;
     xSemaphoreGive(current_driver->sync_signal); // Release the mutex lock 2 OUT
-
+    CHECKPOINT_MESSAGE;
     printf("Configuration has been set on: %lu\n", open_spot); // Debugging line to check task name and priority
+    // to here where it does not currently run
     return ESP_OK;
 }
 
