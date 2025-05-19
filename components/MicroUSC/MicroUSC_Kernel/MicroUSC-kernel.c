@@ -40,7 +40,7 @@ esp_err_t init_memory_handlers(void) {
 
 void init_tiny_kernel(void) {
     ESP_ERROR_CHECK(init_memory_handlers());
-    ESP_ERROR_CHECK(init_priority_storage());
+    ESP_ERROR_CHECK(init_configuration_storage());
     ESP_LOGI(TAG, "System drivers initialized successfully\n");
     //usc_print_driver_configurations(); // Print the driver configurations
     vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)

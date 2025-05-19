@@ -71,9 +71,6 @@ void memory_pool_destroy(memory_pool_t* pool);
 
 #define memory_handler_malloc(block_size, num_blocks) memory_pool_malloc(block_size, num_blocks);
 
-
-
-
 #ifdef __cplusplus
 }
 #endif
