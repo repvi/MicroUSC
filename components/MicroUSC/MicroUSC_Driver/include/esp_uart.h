@@ -34,7 +34,9 @@ typedef struct {
 
 esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config, QueueHandle_t uart_queue);
 
-uint8_t *uart_read(const uart_port_t *uart, const size_t len, QueueHandle_t uart_queue);
+uint8_t *uart_read(uart_port_t uart, size_t len, QueueHandle_t uart_queue);
+
+uint8_t *uart_read_with_allocated(uart_port_t uart, uint8_t *buf, size_t len, QueueHandle_t uart_queue);
 
 void uart_port_config_deinit(uart_port_config_t *uart_config);
 

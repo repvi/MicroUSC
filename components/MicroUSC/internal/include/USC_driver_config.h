@@ -1,5 +1,4 @@
-#ifndef __USC_DRIVER_CONFIG_H
-#define __USC_DRIVER_CONFIG_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,6 +17,8 @@ extern "C" {
 #define CURRENT_VERSION_PATCH             (3)
 
 #define to_string(x)        #x
+#define STRINGIFY(x) to_string(x)
+
 #define USC_Version()       to_string(CURRENT_VERSION_MAJOR) "." \
                             to_string(CURRENT_VERSION_MINOR) "." \
                             to_string(CURRENT_VERSION_PATCH)
@@ -64,9 +65,9 @@ extern "C" {
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
     
-#define SERIAL_KEY      "123456789" // Password for the program
-#define REQUEST_KEY     "GSKx" // Used for requesting the passcode for the driver
-#define PING            "ping" // Used for making sure there is a connection
+#define SERIAL_KEY      ( ( uint32_t ) (1234) )     // Password for the program
+#define REQUEST_KEY    0064      // Used for requesting the passcode for the driver, in hexa
+#define PING           0063      // Used for making sure there is a connection, in hexa
 #define SERIAL_REQUEST_SIZE  ( sizeof( uint32_t ) ) 
 
 #define SERIAL_DATA_SIZE      (126)
@@ -126,5 +127,3 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 #ifdef __cplusplus
 }
 #endif
-
-#endif // __USC_DRIVER_CONFIG_H

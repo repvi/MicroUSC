@@ -39,7 +39,7 @@ extern Queue serial_data[DRIVER_MAX]; // DRIVER_MAX
 extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the actions of the overdrivers
 
 
-esp_err_t init_priority_storage(void);
+esp_err_t init_configuration_storage(void);
 
 //void usc_driver_clean_data(usc_driver_t *driver);
 
