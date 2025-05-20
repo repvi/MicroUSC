@@ -17,7 +17,6 @@ extern "C" {
         .stop_bits = UART_STOP_BITS_1, \
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, \
     };
-
 typedef void (*usc_event_cb_t)(void *);
 typedef void (*usc_data_process_t)(void *);
 
