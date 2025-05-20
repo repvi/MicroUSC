@@ -59,7 +59,6 @@ uart_config_t uart_config = {
 
 // xtensa-esp-elf-addr2line -e build/ESP32_USC_DRIVERS.elf 0x400d679c
 
-
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -70,12 +69,21 @@ void app_main(void) {
 
     init_tiny_kernel();
 
-    uart_config_t setting = STANDARD_UART_CONFIG;
+    uart_config_t setting = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        // .rx_flow_ctrl_thresh = 122, // Only if using HW flow control
+    };
+
+    // uart_config_t setting = STANDARD_UART_CONFIG; only for debugging
 
     uart_port_config_t pins = {
-        .tx = GPIO_NUM_1,
-        .rx = GPIO_NUM_3,
-        .port = UART_NUM_0
+        .tx = GPIO_NUM_17,
+        .rx = GPIO_NUM_16,
+        .port = UART_NUM_2
     };
 
     // code should go after here
@@ -94,6 +102,7 @@ void app_main(void) {
     usc_print_driver_configurations();
     //usc_print_overdriver_configurations(); 
     
+    /*
     uart_port_config_t pinss = {
         .tx = GPIO_NUM_4,
         .rx = GPIO_NUM_5,
@@ -101,7 +110,7 @@ void app_main(void) {
     };
 
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
-
+    */
 
 
     printf("End of program\n");

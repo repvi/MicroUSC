@@ -20,13 +20,17 @@ void addSingleDriver(const struct usc_driver_t *driver, const UBaseType_t priori
     new->driver.priority = priority;
     INIT_LIST_HEAD(&new->list);
     list_add_tail(&new->list, &driver_system.driver_list.list);
+    driver_system.size++;
 }
 
 // make sure to take the lock and have access and release it manually
 void removeSingleDriver(struct usc_driverList *item) 
 {
-    list_del(&item->list);
-    item = NULL;
+    if (driver_system.size != 0) {
+         list_del(&item->list);
+        item = NULL;
+        driver_system.size--;
+    }
 }
 
 void freeDriverList(void) 
@@ -37,6 +41,7 @@ void freeDriverList(void)
         list_del(list);
         heap_caps_free(list);
     }
+    driver_system.size = 0;
 }
 
 bool getTask_status(const struct usc_task_manager_t *task)

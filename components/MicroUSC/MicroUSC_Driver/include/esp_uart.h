@@ -7,8 +7,9 @@ extern "C" {
 
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
-#include "driver/gpio.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_err.h"
@@ -18,25 +19,33 @@ extern "C" {
 #define INCLUDE_DELAY             (0)
 
 #define BUFFER_SIZE               (256)
-#define TX_BUF_SIZE               (1 << 256)
 
 #define UART_QUEUE_SIZE           (10)
+
+#define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
 
 /**
  * @struct uart_port_config_t
  * @brief Configuration structure for UART ports.
  */
 typedef struct {
-    gpio_num_t tx;  ///< GPIO pin for UART transmit.
-    gpio_num_t rx;  ///< GPIO pin for UART receive.
-    uart_port_t port; ///< UART port identifier.
+  uart_port_t port; ///< UART port identifier.
+  gpio_num_t tx;  ///< GPIO pin for UART transmit.
+  gpio_num_t rx;  ///< GPIO pin for UART receive.
 } uart_port_config_t;
 
-esp_err_t uart_init(uart_port_config_t port_config, uart_config_t uart_config, QueueHandle_t uart_queue);
+esp_err_t uart_init( uart_port_config_t port_config, 
+                     uart_config_t uart_config, 
+                     QueueHandle_t *uart_queue, 
+                     const size_t queue_size
+                   );
 
-uint8_t *uart_read(uart_port_t uart, size_t len, QueueHandle_t uart_queue);
-
-uint8_t *uart_read_with_allocated(uart_port_t uart, uint8_t *buf, size_t len, QueueHandle_t uart_queue);
+uint8_t *uart_read( uart_port_t uart,
+                    uint8_t *buf,
+                    const size_t len, 
+                    QueueHandle_t uart_queue,
+                    const TickType_t delay
+                  );
 
 void uart_port_config_deinit(uart_port_config_t *uart_config);
 
