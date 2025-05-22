@@ -27,13 +27,12 @@ typedef struct usc_driver_t usc_driver_t;
 typedef struct usc_task_manager_t usc_task_manager_t;
 typedef usc_task_manager_t *usc_tasks_t;
 
-
 // [leave alone]
 extern QueueHandle_t uart_queue[DRIVER_MAX]; // Queue for UART data
 
 // __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
 // atomic_uint_least32_t
-extern Queue serial_data[DRIVER_MAX]; // DRIVER_MAX
+extern Queue serial_data; // DRIVER_MAX
 
 extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the actions of the overdrivers
 
@@ -41,10 +40,6 @@ extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the action
 esp_err_t init_configuration_storage(void);
 
 //void usc_driver_clean_data(usc_driver_t *driver);
-
-// uint32_t usc_driver_get_data(const int i);
-
-void queue_add(Queue *queue, const uint32_t data);
 
 //uint32_t usc_driver_get_data(const int i);
 /**
