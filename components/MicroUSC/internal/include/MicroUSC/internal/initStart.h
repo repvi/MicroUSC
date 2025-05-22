@@ -4,16 +4,15 @@
 extern "C" {
 #endif
 
-#include "USC_driver_config.h" // could be renamed in the future
-#include "uscdef.h"
-#include "memory_pool.h"
+#include "MicroUSC/system/memory_pool.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "MicroUSC/internal/genList.h"
+#include "MicroUSC/internal/uscdef.h"
 #include "esp_err.h"
 
 #ifdef LIST_HEAD
 #undef LIST_HEAD
 #endif
-
-#include "genList.h" 
 
 struct usc_driverList {
     struct usc_driver_t driver;

@@ -1,11 +1,10 @@
 #pragma once
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include "string.h"
 #include <stdatomic.h>
-#include "USC_driver_config.h"
+#include "MicroUSC/internal/USC_driver_config.h"
 
 #ifdef __cplusplus
 extern "C" {

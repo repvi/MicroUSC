@@ -1,7 +1,9 @@
-#include "MicroUSC-internal.h"
-#include "MicroUSC-kernel.h"
-#include "USCdriver.h"
-#include "status.h"
+#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/kernel.h"
+#include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/system/status.h"
+#include "esp_system.h"
+#include "esp_chip_info.h"
 
 /* n = 0  -> default value
    n = 1  -> turn off esp32
@@ -21,9 +23,9 @@
 #define RTC_MEMORY_BUFFER_SIZE (256) // Size of the memory buffer
 #define RTC_MEMORY_STORAGE_KEY_SIZE (32) // Size of the key for the memory storage
 
-#define TASK_STACK_SIZE (2048) // Stack size for the system task
+#define INTERNAL_TASK_STACK_SIZE (2048) // Stack size for the system task, increase the size in the future for development
 
-RTC_NOINIT_ATTR unsigned int __system_reboot_count = 0;
+RTC_NOINIT_ATTR unsigned int __system_reboot_count;
     
 RTC_NOINIT_ATTR struct rtc_memory_t {
     uint8_t buf[RTC_MEMORY_BUFFER_SIZE]; // RTC memory buffer
@@ -35,6 +37,12 @@ RTC_NOINIT_ATTR struct rtc_memory_t {
 microusc_status __microusc_system_code;
 
 microusc_error_handler __microusc_system_error_handler;
+
+RTC_NOINIT_ATTR unsigned int checksum;
+
+unsigned int calculate_checksum(unsigned int value) {
+    return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
+}
 
 void save_system_rtc_var(void *var, const size_t size, const char key) 
 {
@@ -70,13 +78,29 @@ void *get_system_rtc_var(const char key)
     return NULL;
 }
 
+void __set_rtc_cycle(void) 
+{
+    if (checksum != calculate_checksum(__system_reboot_count)) {
+        __system_reboot_count = 0; // Reset only on corruption detection
+    } else {
+        __system_reboot_count++; // Safe increment
+    }
+    
+    checksum = calculate_checksum(__system_reboot_count); // Update valid checksum
+}
+
+void __increment_rtc_cycle(void) 
+{
+    __set_rtc_cycle();
+}
+
 void __microusc_system_error_handler_default(void)
 {
     ESP_LOGE(TAG, "System error handler called");
     ESP_LOGE(TAG, "Rebooting system...");
     // shutdown all drivers function here
     usc_print_driver_configurations(); // Print the driver configurations
-    __system_reboot_count++;
+    __increment_rtc_cycle(); // Increment the RTC cycle variable
     esp_restart();
 }
 
@@ -97,6 +121,18 @@ void set_microusc_system_error_handler_default(void)
 void set_microusc_system_code(microusc_status code)
 {
     __microusc_system_code = code;
+}
+
+void print_system_info(void) {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+
+    printf("ESP32 Chip Info:\n");
+    printf("  Model: %s\n", chip_info.model == CHIP_ESP32 ? "ESP32" : "Other");
+    printf("  Cores: %d\n", chip_info.cores);
+    printf("  Features: WiFi%s%s\n", 
+           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
 }
 
 void __microusc_system_task(void *p)
@@ -127,7 +163,7 @@ void __microusc_system_task(void *p)
 
                 break;
             case USC_SYSTEM_SPECIFICATIONS:
-
+                print_system_info();
                 break;
             case USC_SYSTEM_DRIVER_STATUS:
 
@@ -150,15 +186,18 @@ esp_err_t microusc_system_task(void)
     xTaskCreatePinnedToCore(
         __microusc_system_task,
         "microUSB System",
-        TASK_STACK_SIZE,
+        INTERNAL_TASK_STACK_SIZE,
         NULL,
         MICROUSC_SYSTEM_PRIORITY,
         NULL,
         MICROUSC_CORE
     );
 
+    __set_rtc_cycle(); // Set the RTC cycle variable
+
     if (__system_reboot_count != 0) {
-        ESP_LOGI(TAG, "System fail count: %u", __system_reboot_count);
+        ESP_LOGW(TAG, "System fail count: %u", __system_reboot_count);
+        vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
     }
 
     set_microusc_system_error_handler_default(); // Set the default error handler

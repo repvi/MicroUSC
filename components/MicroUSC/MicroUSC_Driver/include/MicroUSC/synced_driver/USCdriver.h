@@ -1,10 +1,10 @@
 #ifndef __USB_DRIVER_H
 #define __USB_DRIVER_H
 
-#include "esp_uart.h"
-#include "memory_pool.h"
-#include "atomic_sys_op.h"
-#include "uscdef.h"
+#include "MicroUSC/system/memory_pool.h"
+#include "MicroUSC/synced_driver/esp_uart.h"
+#include "MicroUSC/synced_driver/atomic_sys_op.h"
+#include "MicroUSC/internal/uscdef.h"
 
 #ifdef __cplusplus
 extern "C" {

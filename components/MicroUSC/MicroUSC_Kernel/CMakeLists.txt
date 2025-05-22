@@ -1,6 +1,6 @@
 set(src
     memory_pool.c
-    MicroUSC-kernel.c
+    kernel.c
     status.c
 )
 

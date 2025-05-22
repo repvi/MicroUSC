@@ -4,9 +4,9 @@
 extern "C" {
 #endif
 
-#include "esp_uart.h"
-#include "atomic_sys_op.h"
-#include "USC_driver_config.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "MicroUSC/synced_driver/esp_uart.h"
+#include "MicroUSC/synced_driver/atomic_sys_op.h"
 
 struct usc_stored_config_t;
 struct usc_task_manager_t;
