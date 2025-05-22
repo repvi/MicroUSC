@@ -1,6 +1,6 @@
 #pragma once
 
-#include "USC_driver_config.h" // should rename
+#include "MicroUSC/internal/USC_driver_config.h"
 
 #ifdef __cplusplus
 extern "C" {

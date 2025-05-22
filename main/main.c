@@ -1,8 +1,8 @@
-#include "speed_test.h"
-#include "USCdriver.h"
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
+#include "speed_test.h"
+#include "MicroUSC/system/kernel.h"
+#include "MicroUSC/synced_driver/USCdriver.h"
 #include "testing_driver.h"
-#include "MicroUSC-kernel.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -79,11 +79,18 @@ void app_main(void) {
     };
 
     // uart_config_t setting = STANDARD_UART_CONFIG; only for debugging
-
+    /*
     uart_port_config_t pins = {
         .tx = GPIO_NUM_17,
         .rx = GPIO_NUM_16,
         .port = UART_NUM_2
+    };
+    */
+
+    uart_port_config_t pins = {
+        .tx = GPIO_NUM_17,
+        .rx = GPIO_NUM_18,
+        .port = UART_NUM_1
     };
 
     // code should go after here

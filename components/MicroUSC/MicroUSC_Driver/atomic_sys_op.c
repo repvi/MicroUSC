@@ -1,7 +1,7 @@
+#include "MicroUSC/synced_driver/atomic_sys_op.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include <atomic_sys_op.h>
 #include <stdbool.h>
 
 void queue_add(Queue *queue, const uint32_t data) {

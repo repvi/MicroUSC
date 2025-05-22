@@ -103,7 +103,7 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 #endif
 
 #define TASK_PRIORITY_START             ( ( UBaseType_t ) ( 10 ) ) // Used for the serial communication task
-#define TASK_STACK_SIZE               (2048) // Used for saving in the heap for FREERTOS
+#define TASK_STACK_SIZE               (4096) // Used for saving in the heap for FREERTOS
 #define TASK_CORE_READER                 (1) // Core 0 is used for all other operations other than wifi or any wireless protocols
 #define TASK_CORE_ACTION                 (0)
 

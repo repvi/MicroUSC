@@ -1,9 +1,8 @@
-#ifndef __TINY_KERNEL_H
-#define __TINY_KERNEL_H
+#pragma once
 
-#include "USC_driver_config.h"
-#include "initStart.h"
-#include "status.h" // make available for the developer
+#include "MicroUSC/system/status.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "MicroUSC/internal/initStart.h"
 #include "esp_system.h"
 
 #ifdef __cplusplus
@@ -22,5 +21,3 @@ void init_tiny_kernel(void); // RUN_FIRST
 #ifdef __cplusplus
 }
 #endif
-
-#endif // __TINY_KERNEL_H

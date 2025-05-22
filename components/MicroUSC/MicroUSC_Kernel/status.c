@@ -1,8 +1,8 @@
-#include "status.h"
-#include "uscdef.h"
-#include "initStart.h"
+#include "MicroUSC/system/status.h"
+#include "MicroUSC/internal/uscdef.h"
+#include "MicroUSC/internal/initStart.h"
+#include "MicroUSC/synced_driver/USCdriver.h"
 #include "esp_system.h"
-#include "USCdriver.h"
 
 #define TAG "[STATUS]"
 

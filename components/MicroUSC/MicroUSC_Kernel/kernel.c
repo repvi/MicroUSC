@@ -1,12 +1,11 @@
-#include "MicroUSC-kernel.h"
-#include "MicroUSC-internal.h"
-#include "USCdriver.h"
-#include "speed_test.h"
-#include "sdkconfig.h"
+#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/memory_pool.h"
+#include "MicroUSC/system/kernel.h"
+#include "MicroUSC/synced_driver/USCdriver.h"
 #include "esp_private/startup_internal.h"
+#include "debugging/speed_test.h"
+#include "sdkconfig.h"
 #include "esp_system.h"
-
-#include "memory_pool.h"
 
 #define TAG            "[MICROUSC KERNEL]"
 
@@ -23,8 +22,6 @@ ESP_SYSTEM_INIT_FN(tiny_kernel, SECONDARY, BIT(0), 120) {
     return ESP_OK;
 }
 */
-
-
 
 esp_err_t init_memory_handlers(void) {
     driver_system.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)

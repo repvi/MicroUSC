@@ -1,4 +1,4 @@
-#include "esp_uart.h"
+#include "MicroUSC/synced_driver/esp_uart.h"
 #include "esp_heap_caps.h"
 #include <string.h>
 
