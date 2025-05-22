@@ -120,7 +120,7 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 #define DELAY_MILISECOND_50            (50) // 1 second delay
 
 
-#define SEMAPHORE_DELAY pdMS_TO_TICKS(3) // 3ms delay for the semaphore
+#define SEMAPHORE_DELAY                pdMS_TO_TICKS(3) // 3ms delay for the semaphore
 
 #define SEMAPHORE_WAIT_TIME         ( pdMS_TO_TICKS(5000) ) // 5 seconds
 

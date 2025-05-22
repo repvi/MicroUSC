@@ -1,5 +1,8 @@
 .devcontainer
 .vscode/
 
+dependencies.lock
+sdkconfig
+sdkconfig.old
 build/
 disassembly.txt

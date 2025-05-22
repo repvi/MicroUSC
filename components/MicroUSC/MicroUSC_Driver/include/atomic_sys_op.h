@@ -15,7 +15,7 @@ extern "C" {
 
 typedef struct {
     uint32_t serial_data[QUEUE_MAX_SIZE];
-    portMUX_TYPE queueLock;
+    portMUX_TYPE critical_lock;
     uint_fast32_t head;
     uint_fast32_t tail;
 } Queue;

@@ -29,9 +29,9 @@ struct usc_bit_manip priority_storage = INITIALIZE_USC_BIT_MANIP;
 
 QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
 
-Queue serial_data[DRIVER_MAX] = {0};  // Indexed access [1][3]
+Queue serial_data = {0};  // Indexed access [1][3]
 
-uint8_t *buf= NULL;
+uint8_t *buf = NULL;
 
 #define buf_SIZE ( sizeof( uint32_t ) )
 
@@ -51,9 +51,7 @@ esp_err_t init_configuration_storage(void) {
         return ESP_ERR_NO_MEM;
     }
 
-    literate_bytes(serial_data, Queue, sizeof(serial_data) / sizeof(serial_data[0])) {
-        portMUX_INITIALIZE(&begin->queueLock);
-    }
+    portMUX_INITIALIZE(&serial_data.critical_lock);
     
     init = initONE;
     return ESP_OK;
@@ -236,8 +234,8 @@ esp_err_t usc_driver_init( const char *driver_name,
 
 esp_err_t usc_driver_write( const usc_config_t *config,
                             const char *data,
-                            const size_t len) 
-{
+                            const size_t len
+) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
         TickType_t delay = ( config->baud_rate / CONFIGURED_BAUDRATE ) / portTICK_PERIOD_MS;
         literate_bytes(data, const char, len) {
@@ -269,9 +267,12 @@ inline uint32_t parse_data(const uint8_t *data)
 // needs to be changed to use the queue
 bool handle_serial_key(usc_config_t *config, const UBaseType_t i)
 {
-    usc_driver_request_password(config); // Request serial key
+    if (usc_driver_request_password(config) != ESP_OK) { // Request serial key
+        ESP_LOGE(TAG, "Failed to send serial");
+        return false;
+    }
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
-    uint8_t *key = uart_read(config->uart_config.port, buf,  sizeof(SERIAL_KEY), uart_queue[i], PASSWORD_PING_DELAY);
+    uint8_t *key = uart_read(config->uart_config.port, buf,  sizeof(SERIAL_KEY) - 1, uart_queue[i], PASSWORD_PING_DELAY);
     if (key != NULL) {
         ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[0], key[1], key[2], key[3]);
 
@@ -294,7 +295,7 @@ void maintain_connection(usc_config_t *config)
 // needs to be finished
 void process_data(usc_config_t *config, const UBaseType_t i)
 {
-    uint8_t *temp_data = uart_read(config->uart_config.port, buf, SERIAL_REQUEST_SIZE, uart_queue[i], SERIAL_INPUT_DLEAY);
+    uint8_t *temp_data = uart_read(config->uart_config.port, buf, SERIAL_REQUEST_SIZE - 1, uart_queue[i], SERIAL_INPUT_DLEAY);
     if (temp_data != NULL) {
         config->status = DATA_RECEIVED;
         uint32_t data = parse_data(temp_data);
@@ -308,10 +309,11 @@ void process_data(usc_config_t *config, const UBaseType_t i)
 void usc_driver_read_task(void *pvParameters)
 {
     const UBaseType_t index = uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task, more temportary
-    struct usc_driver_t *driver = (struct usc_driver_t *)pvParameters;
+    struct usc_driver_t *driver = (struct usc_driver_t *)pvParameters; // make a copy inside the function
+    SemaphoreHandle_t sync_signal = driver->sync_signal; // Get the mutex lock for the driver
+
     struct usc_driver_base_t *driver_base = &driver->driver_storage;
     struct usc_config_t *config = &driver_base->driver_setting;
-    SemaphoreHandle_t sync_signal = driver->sync_signal; // Get the mutex lock for the driver
     struct usc_task_manager_t *current_task_config = &driver_base->driver_tasks; // get the task configuration
     bool *active = &current_task_config->active; // Check if the driver has access
     // prioirty should give the id number minus the offset of the task
@@ -360,7 +362,6 @@ void usc_driver_read_task(void *pvParameters)
 
     ESP_LOGI(TASK_TAG, "Task %s is terminating...\n", config->driver_name); // Debugging line to check task name and priority
     //ESP_LOGI("TASK", "Task %s terminated", config->driver_name);
-    //vTaskDelete(current_task_config->action_handle); // Delete the action task
     vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
     vTaskDelete(NULL); // Delete the task
 }
