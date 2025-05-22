@@ -14,7 +14,7 @@
 #define TASK_TAG           "[DRIVER READER]"
 
 #define PASSWORD_PING_DELAY ( ( TickType_t ) ( 2000 / portTICK_PERIOD_MS ) ) // 2 seconds delay
-#define SERIAL_INPUT_DLEAY ( ( TickType_t ) ( 3000 / portTICK_PERIOD_MS ) ) // 3 second delay
+#define SERIAL_INPUT_DELAY ( ( TickType_t ) ( 3000 / portTICK_PERIOD_MS ) ) // 3 second delay
 
 #define INITIALIZE_USC_BIT_MANIP { .active_driver_bits = 0x0 };
 
@@ -28,8 +28,6 @@ struct usc_bit_manip {
 struct usc_bit_manip priority_storage = INITIALIZE_USC_BIT_MANIP;
 
 QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
-
-Queue serial_data = {0};  // Indexed access [1][3]
 
 uint8_t *buf = NULL;
 
@@ -51,8 +49,6 @@ esp_err_t init_configuration_storage(void) {
         return ESP_ERR_NO_MEM;
     }
 
-    portMUX_INITIALIZE(&serial_data.critical_lock);
-    
     init = initONE;
     return ESP_OK;
 }
@@ -265,11 +261,11 @@ inline uint32_t parse_data(const uint8_t *data)
 }
 
 // needs to be changed to use the queue
-bool handle_serial_key(usc_config_t *config, const UBaseType_t i)
+usc_status_t handle_serial_key(usc_config_t *config, const UBaseType_t i)
 {
     if (usc_driver_request_password(config) != ESP_OK) { // Request serial key
         ESP_LOGE(TAG, "Failed to send serial");
-        return false;
+        return DATA_SEND_ERROR;
     }
     vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS); // Wait for response
     uint8_t *key = uart_read(config->uart_config.port, buf,  sizeof(SERIAL_KEY) - 1, uart_queue[i], PASSWORD_PING_DELAY);
@@ -277,13 +273,10 @@ bool handle_serial_key(usc_config_t *config, const UBaseType_t i)
         ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[0], key[1], key[2], key[3]);
 
         if (SERIAL_KEY == parse_data(key)) {
-            config->has_access = true;
-            config->status = CONNECTED;
-            return true;
+            return CONNECTED;
         }
     }
-    config->status = TIME_OUT;
-    return false;
+    return TIME_OUT;
 }
 
 void maintain_connection(usc_config_t *config) 
@@ -293,17 +286,15 @@ void maintain_connection(usc_config_t *config)
 }
 
 // needs to be finished
-void process_data(usc_config_t *config, const UBaseType_t i)
+usc_status_t process_data(const uart_port_t port, Queue *data_queue, const UBaseType_t i)
 {
-    uint8_t *temp_data = uart_read(config->uart_config.port, buf, SERIAL_REQUEST_SIZE - 1, uart_queue[i], SERIAL_INPUT_DLEAY);
+    uint8_t *temp_data = uart_read(port, buf, SERIAL_REQUEST_SIZE - 1, uart_queue[i], SERIAL_INPUT_DELAY);
     if (temp_data != NULL) {
-        config->status = DATA_RECEIVED;
         uint32_t data = parse_data(temp_data);
-        queue_add(&config->data, data); // Add the data to the queue
+        queue_add(data_queue, data); // Add the data to the queue
+        return DATA_RECEIVED;
     }
-    else {
-        config->status = DATA_RECEIVE_ERROR;
-    }
+    return DATA_RECEIVE_ERROR;
 }
 
 void usc_driver_read_task(void *pvParameters)
@@ -327,10 +318,14 @@ void usc_driver_read_task(void *pvParameters)
     
     //#if (NEEDS_SERIAL_KEY == 1)
     while (1) {
-        if (xSemaphoreTake(sync_signal, SEMAPHORE_DELAY) == pdTRUE) {
+        if (xSemaphoreTake(sync_signal, portMAX_DELAY) == pdTRUE) {
             if (*active && !config->has_access) {
-                if (!handle_serial_key(config, index)) {
+                config->status = handle_serial_key(config, index); // Check if the serial key is valid
+                if (config->status != CONNECTED) {
                     ESP_LOGW(TASK_TAG, "Serial key check failed, retrying...");  // Debugging line to check if the serial key check failed
+                }
+                else {
+                    config->has_access = true;
                 }
                 // Wait for the task to be activated
                 xSemaphoreGive(sync_signal); // finish this part
@@ -351,8 +346,8 @@ void usc_driver_read_task(void *pvParameters)
                 break;
             }
 
-             //maintain_connection(config); // Ping the driver to check connection
-            process_data(config, index); // Read and process incoming data
+            // maintain_connection(config); // Ping the driver to check connection
+            config->status = process_data(config->uart_config.port, &config->data, index); // Read and process incoming data
 
             ESP_LOGI(TASK_TAG, "Task %d is running\n", index); // Debugging line to check task name and priority
             xSemaphoreGive(sync_signal); // Release the mutex lock
