@@ -32,7 +32,6 @@ extern QueueHandle_t uart_queue[DRIVER_MAX]; // Queue for UART data
 
 // __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
 // atomic_uint_least32_t
-extern Queue serial_data; // DRIVER_MAX
 
 extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the actions of the overdrivers
 

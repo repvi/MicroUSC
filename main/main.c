@@ -11,7 +11,7 @@
 // git push origin [name of branch]
 // git pull origin master
 // git status
-// git switch [name of branchgit ]           switches to another branch
+// git switch [name of branch]           switches to another branch
 
 // 115200 baud rate
 
