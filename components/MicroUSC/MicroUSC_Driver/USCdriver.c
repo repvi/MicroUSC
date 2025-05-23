@@ -24,7 +24,7 @@ struct usc_bit_manip {
     SemaphoreHandle_t lock;
 };
 
-struct usc_bit_manip priority_storage = INITIALIZE_USC_BIT_MANIP;
+struct usc_bit_manip priority_storage;
 
 QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
 
@@ -32,16 +32,37 @@ uint8_t *buf = NULL;
 
 #define buf_SIZE ( sizeof( uint32_t ) )
 
-esp_err_t init_configuration_storage(void) {
+__attribute__((deprecated)) usc_bit_manip *create_bit_manp(void)
+{
+    return (usc_bit_manip *)heap_caps_malloc(sizeof(usc_bit_manip), MALLOC_CAP_8BIT);
+}
+
+__attribute__((deprecated)) void free_bit_manip(usc_bit_manip *bit_manip)
+{
+    heap_caps_free(bit_manip);
+}
+
+esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip)
+{
+    bit_manip->active_driver_bits = 0;
+    bit_manip->lock = xSemaphoreCreateBinary();
+    if (bit_manip->lock != NULL) {
+        xSemaphoreGive(bit_manip->lock);
+        return ESP_OK;
+    }
+    return ESP_ERR_NO_MEM;
+}
+
+esp_err_t init_configuration_storage(void) 
+{
     STATIC_INIT_SAFETY init = initZERO;
     if (init == initONE) {
         return ESP_FAIL; // doesn't allow for reinitialization
     }
-    priority_storage.lock = xSemaphoreCreateBinary();
-    if (priority_storage.lock == NULL) {
+
+    if (init_usc_bit_manip(&priority_storage) != ESP_OK) {
         return ESP_ERR_NO_MEM;
     }
-    xSemaphoreGive(priority_storage.lock);
 
     buf = (uint8_t *)heap_caps_malloc(buf_SIZE, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (buf == NULL) {
@@ -62,7 +83,8 @@ void usc_driver_clean_data(usc_driver_t *driver) {
 */
 
 //returns the first bit that is 0
-UBaseType_t getCurrentEmptyDriverIndex(void) {
+UBaseType_t getCurrentEmptyDriverIndex(void) 
+{
     // make sure the max is less than 32 bits regardless
     SemaphoreHandle_t lock = priority_storage.lock;
     xSemaphoreTake(lock, portMAX_DELAY);
@@ -78,7 +100,8 @@ UBaseType_t getCurrentEmptyDriverIndex(void) {
     return NOT_FOUND;
 }
 
-UBaseType_t getCurrentEmptyDriverIndexAndOccupy() {
+UBaseType_t getCurrentEmptyDriverIndexAndOccupy() 
+{
     const UBaseType_t v = getCurrentEmptyDriverIndex();
     if (v != NOT_FOUND) {
         xSemaphoreTake(priority_storage.lock, portMAX_DELAY);
@@ -199,6 +222,11 @@ esp_err_t usc_driver_init( const char *driver_name,
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Invalid UART configuration");
         return ret;
+    }
+
+    if (driver_process == NULL) {
+        ESP_LOGE(TAG, "driver_process cannot be NULL");
+        return ESP_ERR_INVALID_ARG;
     }
     // crashes around here
     UBaseType_t open_spot = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit

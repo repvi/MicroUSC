@@ -1,9 +1,12 @@
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/kernel.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
 #include "MicroUSC/system/status.h"
+#include "MicroUSC/synced_driver/USCdriver.h"
 #include "esp_system.h"
 #include "esp_chip_info.h"
+#include "esp_sleep.h"
+#include "esp_intr_alloc.h"
+#include "esp_attr.h"
 
 /* n = 0  -> default value
    n = 1  -> turn off esp32
@@ -23,7 +26,10 @@
 #define RTC_MEMORY_BUFFER_SIZE (256) // Size of the memory buffer
 #define RTC_MEMORY_STORAGE_KEY_SIZE (32) // Size of the key for the memory storage
 
-#define INTERNAL_TASK_STACK_SIZE (2048) // Stack size for the system task, increase the size in the future for development
+#define CONVERT_TO_SLEEPMODE_TIME(x) ( uint64_t ) ( pdMS_TO_TICKS(x) * portTICK_PERIOD_MS * 1000ULL )
+#define DEFAULT_LIGHTMODE_TIME CONVERT_TO_SLEEPMODE_TIME(5000) // 5 seconds
+
+#define INTERNAL_TASK_STACK_SIZE (4096) // Stack size for the system task, increase the size in the future for development
 
 RTC_NOINIT_ATTR unsigned int __system_reboot_count;
     
@@ -34,13 +40,73 @@ RTC_NOINIT_ATTR struct rtc_memory_t {
     int address_key_index; // Index for the address key
 } __rtc_memory = {.buf = {0}, .remaining_size = RTC_MEMORY_BUFFER_SIZE, .address_key = {0}, .address_key_index = 0};
 
-microusc_status __microusc_system_code;
+struct sleep_config_t {
+    gpio_num_t wakeup_pin;
+    uint64_t sleep_time;
+    bool wakeup_pin_enable;
+    bool sleep_time_enable;
+} __microusc_system_sleep;
 
 microusc_error_handler __microusc_system_error_handler;
 
 RTC_NOINIT_ATTR unsigned int checksum;
 
-unsigned int calculate_checksum(unsigned int value) {
+intr_handle_t micro_usc_isr_handler = NULL;
+
+// SemaphoreHandle_t __microusc_lock = NULL;
+
+// TaskHandle_t __microusc_critical_handle = NULL;
+
+QueueHandle_t __microusc_queue_action = NULL;
+
+__attribute__((deprecated)) void IRAM_ATTR microusc_software_isr_handler(void *arg)
+{
+    /*
+    ESP_LOGI(TAG, "Called the isr");
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(__microusc_lock, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    //esp_intr_disable(micro_usc_isr_handler);
+    */
+}
+
+__attribute__((deprecated)) void __system_isr_trigger(void) 
+{
+    printf("Triggering from core %d\n", xPortGetCoreID());
+    esp_intr_enable(micro_usc_isr_handler);
+}
+
+__attribute__((deprecated)) void __system_task_trigger(void) 
+{
+    /*
+    xTaskNotifyGive(__microusc_critical_handle);
+    */
+}
+
+__attribute__((deprecated)) void microusc_system_isr_pin(gpio_num_t pin) 
+{
+    static gpio_num_t previous_isr_pin = GPIO_NUM_NC;
+    if (previous_isr_pin != GPIO_NUM_NC) { 
+        gpio_isr_handler_remove(pin); // completely gets removed, maybe change in the future
+                
+        if (pin != GPIO_NUM_NC) {
+            gpio_config_t io_conf = {
+                .pin_bit_mask = (1ULL << pin),  // Example: GPIO0
+                .mode = GPIO_MODE_INPUT,
+                .pull_up_en = GPIO_PULLUP_ENABLE,
+                .intr_type = GPIO_INTR_NEGEDGE  // Or your desired edge
+            };
+            
+            gpio_config(&io_conf);
+            gpio_isr_handler_add(pin, microusc_software_isr_handler, NULL);
+        }
+    }
+
+    previous_isr_pin = pin;
+}
+
+inline unsigned int calculate_checksum(unsigned int value)
+{
     return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
 }
 
@@ -78,20 +144,38 @@ void *get_system_rtc_var(const char key)
     return NULL;
 }
 
-void __set_rtc_cycle(void) 
+void __set_rtc_cycle(void)
 {
     if (checksum != calculate_checksum(__system_reboot_count)) {
         __system_reboot_count = 0; // Reset only on corruption detection
-    } else {
+    } 
+    else {
         __system_reboot_count++; // Safe increment
     }
     
     checksum = calculate_checksum(__system_reboot_count); // Update valid checksum
 }
 
-void __increment_rtc_cycle(void) 
+inline void __increment_rtc_cycle(void) 
 {
     __set_rtc_cycle();
+}
+
+void __microusc_sleep_mode(void)
+{
+    bool sleep_time_enabled = __microusc_system_sleep.sleep_time_enable;
+    bool wakeup_pin_enable = __microusc_system_sleep.wakeup_pin_enable;
+    if (!(sleep_time_enabled || wakeup_pin_enable)) {
+        return; // do nothing as timer is completely disabled
+    }
+    if (sleep_time_enabled) {
+        esp_sleep_enable_timer_wakeup(__microusc_system_sleep.sleep_time);
+    }
+    if (wakeup_pin_enable) {
+        esp_sleep_enable_ext0_wakeup(__microusc_system_sleep.wakeup_pin, 1);
+    }
+
+    esp_deep_sleep_start();
 }
 
 void __microusc_system_error_handler_default(void)
@@ -113,14 +197,14 @@ void set_microusc_system_error_handler(microusc_error_handler handler)
     __microusc_system_error_handler = handler;
 }
 
-void set_microusc_system_error_handler_default(void) 
+inline void set_microusc_system_error_handler_default(void) 
 {
     set_microusc_system_error_handler(__microusc_system_error_handler_default);
 }
 
 void set_microusc_system_code(microusc_status code)
 {
-    __microusc_system_code = code;
+    xQueueSend(__microusc_queue_action, &code, portMAX_DELAY);
 }
 
 void print_system_info(void) {
@@ -135,52 +219,71 @@ void print_system_info(void) {
            (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
 }
 
+inline void __call_usc_error_handler(void) 
+{
+    __microusc_system_error_handler();
+}
+
 void __microusc_system_task(void *p)
 {
+    microusc_status system_status;
     while (1) {
-         switch(__microusc_system_code) {
-            case USC_SYSTEM_OFF:
-                esp_restart();
-                break;
-            case USC_SYSTEM_SLEEP:
-                break;
-            case USC_SYSTEM_PAUSE:
+        if (xQueueReceive(__microusc_queue_action, &system_status, portMAX_DELAY) == pdPASS) {
+            ESP_LOGI(TAG, "Internal has been called!");
+            switch(system_status) {
+                case USC_SYSTEM_OFF:
+                    esp_restart();
+                    break;
+                case USC_SYSTEM_SLEEP: 
+                    __microusc_sleep_mode();
+                    break;
+                case USC_SYSTEM_PAUSE:
+                
+                    break;
+                case USC_SYSTEM_WIFI_CONNECT:
 
-                break;
-            case USC_SYSTEM_WIFI_CONNECT:
+                    break;
+                case USC_SYSTEM_BLUETOOTH_CONNECT:
 
-                break;
-            case USC_SYSTEM_BLUETOOTH_CONNECT:
-
-                break;
-            case USC_SYSTEM_LED_ON:
-                gpio_set_level(BLINK_GPIO, 1); // ON
-                break;
-            case USC_SYSTEM_LED_OFF:
-                gpio_set_level(BLINK_GPIO, 0); // OFF
-                break;
-            case USC_SYSTEM_MEMORY_USAGE:
-
-                break;
-            case USC_SYSTEM_SPECIFICATIONS:
-                print_system_info();
-                break;
-            case USC_SYSTEM_DRIVER_STATUS:
-
-                break;
-            case USC_SYSTEM_ERROR:
-                __microusc_system_error_handler();
-                break;
-            default:
-                __microusc_system_code = USC_SYSTEM_DEFAULT;
-                break;
+                    break;
+                case USC_SYSTEM_LED_ON:
+                    gpio_set_level(BLINK_GPIO, 1); // ON
+                    break;
+                case USC_SYSTEM_LED_OFF:
+                    gpio_set_level(BLINK_GPIO, 0); // OFF
+                    break;
+                case USC_SYSTEM_MEMORY_USAGE:
+                    // implement in the future
+                    break;
+                case USC_SYSTEM_SPECIFICATIONS:
+                    print_system_info();
+                    break;
+                case USC_SYSTEM_DRIVER_STATUS:
+                    usc_print_driver_configurations();
+                    break;
+                case USC_SYSTEM_ERROR:
+                    __call_usc_error_handler();
+                    break;
+                default:
+                    break;
+            }
         }
-        vTaskDelay(50 / portTICK_PERIOD_MS); // 1 second delay
     }
 }
 
 esp_err_t microusc_system_task(void)
 {
+
+    __microusc_queue_action = xQueueCreate(3, sizeof(microusc_status));
+    if (__microusc_queue_action == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    /*
+    __microusc_lock = xSemaphoreCreateBinary();
+    if (__microusc_lock == NULL) {
+        return ESP_ERR_NO_MEM;
+    } // no xSemaphoreGive() needed here
+    */
     gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
 
     xTaskCreatePinnedToCore(
@@ -202,5 +305,9 @@ esp_err_t microusc_system_task(void)
 
     set_microusc_system_error_handler_default(); // Set the default error handler
     set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code
+    set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code
+    set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code
+
+    ESP_LOGI(TAG, "Internal has been set");
     return ESP_OK;
 }

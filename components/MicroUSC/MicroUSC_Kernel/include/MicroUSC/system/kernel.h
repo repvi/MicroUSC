@@ -1,10 +1,5 @@
 #pragma once
 
-#include "MicroUSC/system/status.h"
-#include "MicroUSC/internal/USC_driver_config.h"
-#include "MicroUSC/internal/initStart.h"
-#include "esp_system.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

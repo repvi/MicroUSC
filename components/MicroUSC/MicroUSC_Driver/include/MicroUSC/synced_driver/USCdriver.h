@@ -13,10 +13,11 @@ extern "C" {
 #define STANDARD_UART_CONFIG { \
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, /* should be defined by sdkconfig */ \
         .data_bits = UART_DATA_8_BITS, \
-        .parity = UART_PARITY_DISABLE, \
+        .parity    = UART_PARITY_DISABLE, \
         .stop_bits = UART_STOP_BITS_1, \
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, \
-    };
+    }
+
 typedef void (*usc_event_cb_t)(void *);
 typedef void (*usc_data_process_t)(void *);
 
@@ -35,18 +36,62 @@ extern QueueHandle_t uart_queue[DRIVER_MAX]; // Queue for UART data
 
 extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the actions of the overdrivers
 
+typedef struct usc_bit_manip usc_bit_manip;
+
+esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip);
 
 esp_err_t init_configuration_storage(void);
 
 //void usc_driver_clean_data(usc_driver_t *driver);
 
 //uint32_t usc_driver_get_data(const int i);
+
 /**
- * @brief Initialize the USB driver.
- *        Index is from 0 to DRIVER_MAX - 1 (0 to 1)
- * @param driver_setting Pointer to the USB configuration structure.
+ * @brief Initialize a UART-based driver for the ESP32.
  * 
- * @return ESP_OK if port initialization and configuration is valid.
+ * This function configures and installs a UART driver with the specified parameters,
+ * assigns GPIO pins, and registers a data processing callback. It performs validation
+ * of the UART configuration, port configuration, and callback function.
+ * 
+ * @param driver_name     Name of the driver for logging/identification (nullable).
+ * @param uart_config     UART configuration (baud rate, data bits, parity, etc.).
+ *                            Must be a valid `uart_config_t` struct.
+ * @param port_config     UART port configuration (GPIO pins, buffer sizes, etc.).
+ *                            Must include valid GPIO assignments and buffer sizes.
+ * @param driver_process  Callback function to handle received serial data.
+ *                            If NULL, initialization will fail.
+ * 
+ * @return
+ * - ESP_OK: Driver initialized successfully.
+ * - ESP_ERR_INVALID_ARG: Invalid `port_config` (e.g., invalid GPIO pins) or `driver_process` is NULL.
+ * - ESP_FAIL: Invalid `uart_config` (e.g., unsupported baud rate) or UART driver installation failed.
+ * 
+ * @note
+ * - The caller is responsible for ensuring GPIO pins are valid and not used by other peripherals.
+ * - If `driver_name` is NULL, a default name will be used in logs.
+ * - The UART driver must be uninstalled with `usc_driver_deinit()` when no longer needed.
+ * 
+ * @example
+ * ```
+ * uart_config_t uart_conf = {
+ *     .baud_rate = 115200,
+ *     .data_bits = UART_DATA_8_BITS,
+ *     .parity = UART_PARITY_DISABLE,
+ *     .stop_bits = UART_STOP_BITS_1,
+ *     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+ * };
+ * 
+ * uart_port_config_t port_conf = {
+ *     .port = UART_NUM_0,
+ *     .tx_pin = GPIO_NUM_1,
+ *     .rx_pin = GPIO_NUM_3,
+ * };
+ * 
+ * esp_err_t ret = usc_driver_init("my_driver", uart_conf, port_conf, my_data_callback);
+ * if (ret != ESP_OK) {
+ *     // Handle error
+ * }
+ * ```
  */
 esp_err_t usc_driver_init( const char *driver_name,
                            const uart_config_t uart_config, 
