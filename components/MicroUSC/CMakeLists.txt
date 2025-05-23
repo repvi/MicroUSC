@@ -25,5 +25,5 @@ target_compile_definitions(
     ${COMPONENT_LIB}
     PRIVATE 
         MICROUSC_SYSTEM_PRIORITY=1
-        MICROUSC_CORE=1
+        MICROUSC_CORE=0
 )

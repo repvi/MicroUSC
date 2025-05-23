@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MicroUSC/internal/USC_driver_config.h"
+#include "driver/gpio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,6 +98,31 @@ void *get_system_rtc_var(const char key);
 void set_microusc_system_error_handler(microusc_error_handler handler);
 
 /**
+ * @brief Set the current system status code for the microUSC subsystem.
+ *
+ * This function updates the internal status of the microUSC system by assigning
+ * a new status code. It is intended for use in low-level operations within the system
+ * task or related system management code, allowing the system to transition between
+ * defined operational states (such as default, error, or custom states).
+ *
+ * Typical use cases include:
+ *   - Indicating successful initialization or startup
+ *   - Signaling error or fault conditions
+ *   - Transitioning between operational modes (e.g., standby, active, recovery)
+ *
+ * @param code The status code to set, defined by the microusc_status enumeration.
+ *
+ * @note This function should be called only from trusted, low-level system code to
+ *       maintain system integrity. The status code should be a valid value from the
+ *       microusc_status enum or macro set.
+ *
+ * @example
+ *   set_microusc_system_code(USC_SYSTEM_DEFAULT);
+ *   set_microusc_system_code(USC_SYSTEM_ERROR);
+ */
+void set_microusc_system_code(microusc_status code);
+
+/**
  * @brief Set the default system error handler for the microcontroller.
  *
  * This function installs or restores the default error handler for the system.
@@ -120,9 +146,25 @@ void set_microusc_system_error_handler(microusc_error_handler handler);
  */
 void set_microusc_system_error_handler_default(void);
 
-esp_err_t microusc_system_task(void);
-
+/**
+ * @brief Set the MicroUSC system status code and trigger corresponding system behavior.
+ *
+ * This function updates the status of the MicroUSC system by accepting a value of type `microusc_status`.
+ * Based on the value of `code` passed, the ESP32 will execute specific actions or state transitions
+ * defined for your MicroUSC system. This may involve changing system modes, updating indicators,
+ * triggering hardware actions, or altering task behavior.
+ *
+ * @param code  The status code to set for the MicroUSC system. The value should be a member of the
+ *              `microusc_status` enum, representing the desired system state or command.
+ *
+ * @note
+ * - The mapping between `microusc_status` values and system actions must be documented elsewhere (e.g., in the enum definition or system design documentation).
+ * - This function is intended for use in embedded ESP32 applications and should be called whenever a system state change is required[1][4].
+ * - Ensure thread safety if this function is called from multiple tasks or ISRs.
+ */
 void set_microusc_system_code(microusc_status code);
+
+esp_err_t microusc_system_task(void);
 
 #ifdef __cplusplus
 }

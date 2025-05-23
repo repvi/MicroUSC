@@ -1,10 +1,6 @@
 #ifndef __ESP_UART_SETTING_H
 #define __ESP_UART_SETTING_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -14,6 +10,10 @@ extern "C" {
 #include "esp_log.h"
 #include "esp_err.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define TIMEOUT pdMS_TO_TICKS     (100)
 
 #define INCLUDE_DELAY             (0)
@@ -22,8 +22,29 @@ extern "C" {
 
 #define UART_QUEUE_SIZE           (10)
 
-#define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
+#define INIT_DEBUG_PORT_CONFIG { \
+    .port = UART_NUM_0, \
+    .tx   = GPIO_NUM_1, \
+    ,rx   = GPIO_NUM_3  \
+  } \
 
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define INIT_STANDARD_PORT2_CONFIG { \
+    .port = UART_NUM_1,  \
+    .tx   = GPIO_NUM_17, \
+    .rx   = GPIO_NUM_16  \
+  }
+#endif
+
+#if CONFIG_IDF_TARGET_ESP32S3
+#define INIT_STANDARD_PORT1_CONFIG { \
+    .port = UART_NUM_1,  \
+    .tx   = GPIO_NUM_17, \
+    .rx   = GPIO_NUM_18  \
+  }
+#endif
+
+#define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
 /**
  * @struct uart_port_config_t
  * @brief Configuration structure for UART ports.

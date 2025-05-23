@@ -1,8 +1,11 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
-#include "speed_test.h"
 #include "MicroUSC/system/kernel.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/synced_driver/USCdriver.h" // make it MicroUSC/USCdriver.h in the future
+#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/status.h"
 #include "testing_driver.h"
+#include "speed_test.h"
+
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -69,6 +72,7 @@ void app_main(void) {
 
     init_tiny_kernel();
 
+    /*
     uart_config_t setting = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -77,8 +81,9 @@ void app_main(void) {
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         // .rx_flow_ctrl_thresh = 122, // Only if using HW flow control
     };
+    */
 
-    // uart_config_t setting = STANDARD_UART_CONFIG; only for debugging
+    uart_config_t setting = STANDARD_UART_CONFIG; // only for debugging
     /*
     uart_port_config_t pins = {
         .tx = GPIO_NUM_17,
@@ -87,15 +92,9 @@ void app_main(void) {
     };
     */
 
-    uart_port_config_t pins = {
-        .tx = GPIO_NUM_17,
-        .rx = GPIO_NUM_18,
-        .port = UART_NUM_1
-    };
+    uart_port_config_t pins = INIT_STANDARD_PORT1_CONFIG;
 
     // code should go after here
-
-    // functions like init_[something([varaible type] &configuration);
     
     usc_data_process_t driver_action = &system_task; // point to the function you created
     // function will configure driver_example
@@ -106,7 +105,7 @@ void app_main(void) {
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action));
 
 
-    usc_print_driver_configurations();
+    //usc_print_driver_configurations();
     //usc_print_overdriver_configurations(); 
     
     /*
@@ -117,8 +116,10 @@ void app_main(void) {
     };
 
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
-    */
+    */   
 
+    set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
+    set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
 
     printf("End of program\n");
 }
