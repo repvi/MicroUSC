@@ -19,9 +19,10 @@
 
 #define NOT_FOUND (( uint32_t ) ( -1 ) )
 
+#define SERIAL_DATA_STORAGE_CAPACITY  256
 struct usc_bit_manip {
     UBaseType_t active_driver_bits;
-    SemaphoreHandle_t lock;
+    portMUX_TYPE critical_lock;
 };
 
 struct usc_bit_manip priority_storage;
@@ -32,25 +33,23 @@ uint8_t *buf = NULL;
 
 #define buf_SIZE ( sizeof( uint32_t ) )
 
-__attribute__((deprecated)) usc_bit_manip *create_bit_manp(void)
-{
-    return (usc_bit_manip *)heap_caps_malloc(sizeof(usc_bit_manip), MALLOC_CAP_8BIT);
-}
-
-__attribute__((deprecated)) void free_bit_manip(usc_bit_manip *bit_manip)
-{
-    heap_caps_free(bit_manip);
-}
-
 esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip)
 {
     bit_manip->active_driver_bits = 0;
-    bit_manip->lock = xSemaphoreCreateBinary();
-    if (bit_manip->lock != NULL) {
-        xSemaphoreGive(bit_manip->lock);
-        return ESP_OK;
-    }
-    return ESP_ERR_NO_MEM;
+    bit_manip->critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+    return ESP_OK;
+}
+
+__attribute__((unused)) usc_bit_manip *create_bit_manp(void)
+{
+    usc_bit_manip *var = (usc_bit_manip *)heap_caps_malloc(sizeof(usc_bit_manip), MALLOC_CAP_8BIT);
+    init_usc_bit_manip(var);
+    return var;
+}
+
+__attribute__((unused)) void free_bit_manip(usc_bit_manip *bit_manip)
+{
+    heap_caps_free(bit_manip);
 }
 
 esp_err_t init_configuration_storage(void) 
@@ -85,11 +84,9 @@ void usc_driver_clean_data(usc_driver_t *driver) {
 //returns the first bit that is 0
 UBaseType_t getCurrentEmptyDriverIndex(void) 
 {
-    // make sure the max is less than 32 bits regardless
-    SemaphoreHandle_t lock = priority_storage.lock;
-    xSemaphoreTake(lock, portMAX_DELAY);
+    portENTER_CRITICAL(&priority_storage.critical_lock);
     const UBaseType_t driver_bits = priority_storage.active_driver_bits;
-    xSemaphoreGive(lock);
+    portEXIT_CRITICAL(&priority_storage.critical_lock);
     UBaseType_t v;
     for (UBaseType_t i = 0; i < DRIVER_MAX; i++) { // there can be alternate code for this function, could have performance difference between the two possibly
         v = BIT(i);
@@ -100,14 +97,15 @@ UBaseType_t getCurrentEmptyDriverIndex(void)
     return NOT_FOUND;
 }
 
-UBaseType_t getCurrentEmptyDriverIndexAndOccupy() 
+UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void) 
 {
     const UBaseType_t v = getCurrentEmptyDriverIndex();
     if (v != NOT_FOUND) {
-        xSemaphoreTake(priority_storage.lock, portMAX_DELAY);
+        portENTER_CRITICAL(&priority_storage.critical_lock);
         priority_storage.active_driver_bits |= BIT(v); // bit is now occupied
-        ESP_LOGI(TAG, "Bit is now: %u", priority_storage.active_driver_bits);
-        xSemaphoreGive(priority_storage.lock);
+        const UBaseType_t occupied_bits = priority_storage.active_driver_bits;
+        portEXIT_CRITICAL(&priority_storage.critical_lock);
+        ESP_LOGI(TAG, "Bit is now: %u", occupied_bits);
     }
     return v;
 }
@@ -154,7 +152,11 @@ void create_usc_driver_action_task( struct usc_driver_t *driver,
 esp_err_t check_valid_uart_config( const uart_config_t *uart_config,    
                                    const uart_port_config_t *port_config
 ) {
-    if ((driver_system.size + 1) >= DRIVER_MAX) {
+    xSemaphoreTake(driver_system.lock, portMAX_DELAY);
+    bool v = ( ( driver_system.size + 1 ) >= DRIVER_MAX );
+    xSemaphoreGive(driver_system.lock);
+
+    if (v) {
         ESP_LOGE(TAG, "Invalid driver index");
         return ESP_ERR_INVALID_ARG;
     }
@@ -174,6 +176,7 @@ esp_err_t check_valid_uart_config( const uart_config_t *uart_config,
         ESP_LOGE(TAG, "Initialization failed");
         return ESP_FAIL;
     }
+    ESP_LOGI(TAG, "Finiished with configuration function");
     return ESP_OK;
 }
 
@@ -185,7 +188,7 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
     struct usc_config_t *driver_setting = &driver.driver_storage.driver_setting;
     driver.sync_signal = xSemaphoreCreateBinary(); // probably add if it is NULL or not
     if (driver.sync_signal == NULL) {
-        return (struct usc_driver_t){};
+        return driver;
     }
     xSemaphoreGive(driver.sync_signal); // create the section
     driver.driver_storage.driver_tasks.active = true; // Set the task as active
@@ -199,7 +202,14 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
         no_name++;
     }
     driver_setting->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
+
+    SerialDataQueueHandler data = createDataStorageQueue(SERIAL_DATA_STORAGE_CAPACITY);
+    if (data == NULL) {
+        ESP_LOGE(TAG, "Could not inialize SerialDataQueueHandler for driver");
+    }
     
+    driver.driver_storage.driver_setting.data = data;
+
     driver_setting->has_access = false; // default to not have access
     // Set status and create the task
     driver_setting->status = NOT_CONNECTED; // As default
@@ -218,26 +228,28 @@ esp_err_t usc_driver_init( const char *driver_name,
                            const uart_port_config_t port_config,
                            usc_data_process_t driver_process
 ) {
+    if (driver_process == NULL) {
+        ESP_LOGE(TAG, "driver_process cannot be NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     esp_err_t ret = check_valid_uart_config(&uart_config, &port_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Invalid UART configuration");
         return ret;
     }
 
-    if (driver_process == NULL) {
-        ESP_LOGE(TAG, "driver_process cannot be NULL");
-        return ESP_ERR_INVALID_ARG;
-    }
-    // crashes around here
     UBaseType_t open_spot = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit
 
     struct usc_driver_t driver = configure_driver_setting(driver_name, uart_config, port_config);
+
     addSingleDriver(&driver, open_spot);
     SemaphoreHandle_t system_lock = driver_system.lock;
     xSemaphoreTake(system_lock, portMAX_DELAY); // WILL NOT CONTINUE IF IT DOES NOT RECIEVE AUTHERIZATION 1 IN
     struct usc_driver_t *current_driver = getLastDriver();
     if (current_driver == NULL) {
         ESP_LOGE(TAG, "Failed to get the last driver in the system driver manager");
+        xSemaphoreGive(system_lock); // 1 OUT
         return ESP_ERR_NO_MEM;
     }
 
@@ -313,12 +325,12 @@ void maintain_connection(usc_config_t *config)
 }
 
 // needs to be finished
-usc_status_t process_data(const uart_port_t port, Queue *data_queue, const UBaseType_t i)
+usc_status_t process_data(const uart_port_t port, SerialDataQueueHandler data_queue, const UBaseType_t i)
 {
     uint8_t *temp_data = uart_read(port, buf, SERIAL_REQUEST_SIZE - 1, uart_queue[i], SERIAL_INPUT_DELAY);
     if (temp_data != NULL) {
         uint32_t data = parse_data(temp_data);
-        queue_add(data_queue, data); // Add the data to the queue
+        dataStorageQueue_add(data_queue, data); // Add the data to the queue
         return DATA_RECEIVED;
     }
     return DATA_RECEIVE_ERROR;
@@ -374,7 +386,7 @@ void usc_driver_read_task(void *pvParameters)
             }
 
             // maintain_connection(config); // Ping the driver to check connection
-            config->status = process_data(config->uart_config.port, &config->data, index); // Read and process incoming data
+            config->status = process_data(config->uart_config.port, config->data, index); // Read and process incoming data
 
             ESP_LOGI(TASK_TAG, "Task %d is running\n", index); // Debugging line to check task name and priority
             xSemaphoreGive(sync_signal); // Release the mutex lock

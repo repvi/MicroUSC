@@ -111,10 +111,6 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE i
 #define SERIAL_KEY_RETRY_DELAY_MS      (50)
 #define LOOP_DELAY_MS                  (10)
 
-#define DRIVER_MAX                      (3)
-
-#define OVERDRIVER_MAX                  (2)
-
 #define MEMORY_BLOCK_MAX               (20)
 
 #define DELAY_MILISECOND_50            (50) // 1 second delay

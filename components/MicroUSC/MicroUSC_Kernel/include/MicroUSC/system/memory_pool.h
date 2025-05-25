@@ -1,5 +1,4 @@
-#ifndef __MEMORY_POOL_H
-#define __MEMORY_POOL_H
+#pragma once
 
 #include "esp_system.h"
 #include "esp_heap_caps.h"
@@ -74,5 +73,3 @@ void memory_pool_destroy(memory_pool_t* pool);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // MEMORY_POOL_H

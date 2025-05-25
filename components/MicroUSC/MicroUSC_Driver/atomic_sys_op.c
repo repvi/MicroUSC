@@ -1,15 +1,53 @@
 #include "MicroUSC/synced_driver/atomic_sys_op.h"
+#include "MicroUSC/internal/USC_driver_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "esp_heap_caps.h"
 #include <stdbool.h>
 
-void queue_add(Queue *queue, const uint32_t data) {
+struct DataStorageQueue {
+    uint32_t *serial_data;
+    portMUX_TYPE critical_lock;
+    size_t size;
+    size_t head;
+    size_t tail;
+};
+
+typedef struct DataStorageQueue *SerialDataQueueHandler;
+
+SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size) 
+{
+    const size_t alloc_size = serial_data_size * sizeof(uint32_t);
+    SerialDataQueueHandler var = (SerialDataQueueHandler)heap_caps_malloc(1, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+
+    if (var != NULL) {
+        var->serial_data = (uint32_t *)heap_caps_malloc(alloc_size, MALLOC_CAP_32BIT);
+        if (var->serial_data == NULL) {
+            heap_caps_free(var);
+            return NULL;
+        }
+
+        var->critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+        var->head = 0;
+        var->tail = 0;
+        var->size = serial_data_size;
+    }
+    return var;
+}
+
+void destroyDataStorageQueue(SerialDataQueueHandler queue) 
+{
+    heap_caps_free(queue->serial_data);
+    heap_caps_free(queue);
+}
+
+void dataStorageQueue_add(SerialDataQueueHandler queue, const uint32_t data) {
     portENTER_CRITICAL(&queue->critical_lock); // Lock the queue
 
     const size_t tail = queue->tail; // get the current index
     if (queue->serial_data[tail] == 0) {
-        const size_t next = ( ( tail + 1 ) < QUEUE_MAX_SIZE ) * ( queue->tail + 1 ); // get the next index
+        const size_t next = ( ( tail + 1 ) < queue->size ) * ( queue->tail + 1 ); // get the next index
 
         queue->serial_data[next - 1] = data; // store the data in the atomic variable
         queue->tail = next; // increment the current index
@@ -18,22 +56,22 @@ void queue_add(Queue *queue, const uint32_t data) {
     portEXIT_CRITICAL(&queue->critical_lock); // Unlock the queue
 }
 
-uint32_t queue_top(Queue *queue) {
+uint32_t dataStorageQueue_top(SerialDataQueueHandler queue) {
     portENTER_CRITICAL(&queue->critical_lock); // Lock the queue
-    uint_fast32_t head = queue->head; // get the current index
+    size_t head = queue->head; // get the current index
     const uint32_t data = queue->serial_data[head]; // get the data from the queue
     if (data != 0) {
         queue->serial_data[head] = 0; //  // clear the data in the queue
-        head = (head < QUEUE_MAX_SIZE) * (head + 1); // reset the index if out of bounds
+        queue->head = ( head < queue->size ) * ( head + 1 ); // reset the index if out of bounds
     }
 
     portEXIT_CRITICAL(&queue->critical_lock); // Unlock the queue
     return data; // return the data
 }
 
-void queue_clean(Queue *queue) {
+void dataStorageQueue_clean(SerialDataQueueHandler queue) {
     portENTER_CRITICAL(&queue->critical_lock); // Lock the queue
-    memset(queue->serial_data, 0, QUEUE_MAX_SIZE);
+    memset(queue->serial_data, 0, queue->size - 1);
     queue->head = 0;
     queue->tail = 0;
     portEXIT_CRITICAL(&queue->critical_lock); // Unlock the queue
