@@ -5,7 +5,6 @@
 #include "MicroUSC/system/status.h"
 #include "testing_driver.h"
 #include "speed_test.h"
-
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -92,7 +91,11 @@ void app_main(void) {
     };
     */
 
-    uart_port_config_t pins = INIT_STANDARD_PORT1_CONFIG;
+    uart_port_config_t pins = {
+        .port = UART_NUM_0,
+        .rx = GPIO_NUM_17,
+        .tx = GPIO_NUM_18
+    };
 
     // code should go after here
     
@@ -120,6 +123,12 @@ void app_main(void) {
 
     set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
     set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
+
+    //set_microusc_system_code(USC_SYSTEM_LED_ON);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    //set_microusc_system_code(USC_SYSTEM_LED_OFF);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");
 }

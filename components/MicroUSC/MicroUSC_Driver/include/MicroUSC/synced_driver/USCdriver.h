@@ -4,7 +4,7 @@
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
 #include "MicroUSC/synced_driver/atomic_sys_op.h"
-#include "MicroUSC/internal/uscdef.h"
+#include "esp_system.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,8 +33,6 @@ extern QueueHandle_t uart_queue[DRIVER_MAX]; // Queue for UART data
 
 // __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
 // atomic_uint_least32_t
-
-extern usc_event_cb_t overdriver_action[OVERDRIVER_MAX]; // store all the actions of the overdrivers
 
 typedef struct usc_bit_manip usc_bit_manip;
 

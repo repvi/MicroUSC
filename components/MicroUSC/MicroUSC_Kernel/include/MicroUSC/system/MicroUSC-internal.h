@@ -1,6 +1,5 @@
 #pragma once
 
-#include "MicroUSC/internal/USC_driver_config.h"
 #include "driver/gpio.h"
 
 #ifdef __cplusplus
@@ -23,6 +22,16 @@ typedef enum {
     USC_SYSTEM_DRIVER_STATUS,
     USC_SYSTEM_ERROR,
 } microusc_status;
+
+void microusc_set_sleep_mode_timer_wakeup(uint64_t time);
+
+void microusc_set_sleep_mode_timer(bool option);
+
+void microusc_set_wakeup_pin(gpio_num_t pin);
+
+void microusc_set_wakeup_pin_status(bool option);
+
+void microusc_set_sleepmode_wakeup_default(void);
 
 /**
  * @brief Save a system variable to RTC memory.

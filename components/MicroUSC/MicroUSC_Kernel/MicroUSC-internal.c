@@ -2,7 +2,11 @@
 #include "MicroUSC/system/kernel.h"
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "MicroUSC/internal/initStart.h"
+#include "MicroUSC/internal/genList.h"
 #include "esp_system.h"
+#include <esp_task_wdt.h>
 #include "esp_chip_info.h"
 #include "esp_sleep.h"
 #include "esp_intr_alloc.h"
@@ -31,6 +35,8 @@
 
 #define INTERNAL_TASK_STACK_SIZE (4096) // Stack size for the system task, increase the size in the future for development
 
+#define WDT_TIMER_WAIT 3
+#define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 RTC_NOINIT_ATTR unsigned int __system_reboot_count;
     
 RTC_NOINIT_ATTR struct rtc_memory_t {
@@ -53,13 +59,9 @@ RTC_NOINIT_ATTR unsigned int checksum;
 
 intr_handle_t micro_usc_isr_handler = NULL;
 
-// SemaphoreHandle_t __microusc_lock = NULL;
-
-// TaskHandle_t __microusc_critical_handle = NULL;
-
 QueueHandle_t __microusc_queue_action = NULL;
 
-__attribute__((deprecated)) void IRAM_ATTR microusc_software_isr_handler(void *arg)
+void IRAM_ATTR microusc_software_isr_handler(void *arg)
 {
     /*
     ESP_LOGI(TAG, "Called the isr");
@@ -103,6 +105,40 @@ __attribute__((deprecated)) void microusc_system_isr_pin(gpio_num_t pin)
     }
 
     previous_isr_pin = pin;
+}
+
+void microusc_set_sleep_mode_timer_wakeup(uint64_t time) 
+{
+    __microusc_system_sleep.sleep_time = time;
+}
+
+void microusc_set_sleep_mode_timer(bool option) 
+{
+    __microusc_system_sleep.sleep_time_enable = option;
+}
+
+void microusc_set_wakeup_pin(gpio_num_t pin) 
+{
+    __microusc_system_sleep.wakeup_pin = pin;
+}
+
+void microusc_set_wakeup_pin_status(bool option)
+{
+    __microusc_system_sleep.wakeup_pin_enable = option;
+}
+
+void microusc_set_sleepmode_wakeup_default(void) 
+{
+    microusc_set_sleep_mode_timer_wakeup(DEFAULT_LIGHTMODE_TIME);
+    microusc_set_sleep_mode_timer(true);
+    microusc_set_wakeup_pin(GPIO_NUM_NC);
+    microusc_set_wakeup_pin_status(false);
+}
+
+
+void __microusc_system_restart(void)
+{
+    esp_restart();
 }
 
 inline unsigned int calculate_checksum(unsigned int value)
@@ -165,6 +201,7 @@ void __microusc_sleep_mode(void)
 {
     bool sleep_time_enabled = __microusc_system_sleep.sleep_time_enable;
     bool wakeup_pin_enable = __microusc_system_sleep.wakeup_pin_enable;
+
     if (!(sleep_time_enabled || wakeup_pin_enable)) {
         return; // do nothing as timer is completely disabled
     }
@@ -224,6 +261,26 @@ inline void __call_usc_error_handler(void)
     __microusc_system_error_handler();
 }
 
+void IRAM_ATTR microusc_pause_drivers(void)
+{
+    struct usc_driverList *current, *tmp;
+    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
+        struct usc_task_manager_t *task_manager = &current->driver.driver_storage.driver_tasks;
+        vTaskSuspend(task_manager->task_handle);
+        vTaskSuspend(task_manager->action_handle);
+    }
+}
+
+void IRAM_ATTR microusc_resume_drivers(void)
+{
+    struct usc_driverList *current, *tmp;
+    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
+        struct usc_task_manager_t *task_manager = &current->driver.driver_storage.driver_tasks;
+        vTaskResume(task_manager->task_handle);
+        vTaskResume(task_manager->action_handle);
+    }
+}
+
 void __microusc_system_task(void *p)
 {
     microusc_status system_status;
@@ -232,13 +289,13 @@ void __microusc_system_task(void *p)
             ESP_LOGI(TAG, "Internal has been called!");
             switch(system_status) {
                 case USC_SYSTEM_OFF:
-                    esp_restart();
+                    __microusc_system_restart();
                     break;
                 case USC_SYSTEM_SLEEP: 
                     __microusc_sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
-                
+                    microusc_pause_drivers();
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
 
@@ -247,10 +304,12 @@ void __microusc_system_task(void *p)
 
                     break;
                 case USC_SYSTEM_LED_ON:
-                    gpio_set_level(BLINK_GPIO, 1); // ON
+                    ESP_LOGI(TAG, "Turning on led...");
+                    //gpio_set_level(BLINK_GPIO, 1); // ON
                     break;
                 case USC_SYSTEM_LED_OFF:
-                    gpio_set_level(BLINK_GPIO, 0); // OFF
+                    ESP_LOGI(TAG, "Turning off led...");
+                    //gpio_set_level(BLINK_GPIO, 0); // OFF
                     break;
                 case USC_SYSTEM_MEMORY_USAGE:
                     // implement in the future
@@ -271,19 +330,14 @@ void __microusc_system_task(void *p)
     }
 }
 
+// needs to implement gpio isr trigger
 esp_err_t microusc_system_task(void)
 {
-
     __microusc_queue_action = xQueueCreate(3, sizeof(microusc_status));
     if (__microusc_queue_action == NULL) {
         return ESP_ERR_NO_MEM;
     }
-    /*
-    __microusc_lock = xSemaphoreCreateBinary();
-    if (__microusc_lock == NULL) {
-        return ESP_ERR_NO_MEM;
-    } // no xSemaphoreGive() needed here
-    */
+    
     gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
 
     xTaskCreatePinnedToCore(
@@ -302,6 +356,8 @@ esp_err_t microusc_system_task(void)
         ESP_LOGW(TAG, "System fail count: %u", __system_reboot_count);
         vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
     }
+
+    microusc_set_sleepmode_wakeup_default();
 
     set_microusc_system_error_handler_default(); // Set the default error handler
     set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code

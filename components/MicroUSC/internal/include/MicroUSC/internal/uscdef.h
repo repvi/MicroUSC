@@ -69,7 +69,7 @@ typedef enum { // used in the api
  */
 struct usc_config_t {
     uart_port_config_t uart_config; ///< UART configuration structure.
-    Queue data; // UART_NUM_MAX is used as the size of the stored data in the port
+    SerialDataQueueHandler data; // UART_NUM_MAX is used as the size of the stored data in the port
     driver_name_t driver_name; ///< Name of the driver.
     usc_status_t status; ///< Current status of the USB connection.
     uint32_t baud_rate; ///< Baud rate of the UART (not implemented yet).

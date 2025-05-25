@@ -22,28 +22,6 @@ extern "C" {
 
 #define UART_QUEUE_SIZE           (10)
 
-#define INIT_DEBUG_PORT_CONFIG { \
-    .port = UART_NUM_0, \
-    .tx   = GPIO_NUM_1, \
-    ,rx   = GPIO_NUM_3  \
-  } \
-
-#ifdef CONFIG_IDF_TARGET_ESP32
-#define INIT_STANDARD_PORT2_CONFIG { \
-    .port = UART_NUM_1,  \
-    .tx   = GPIO_NUM_17, \
-    .rx   = GPIO_NUM_16  \
-  }
-#endif
-
-#if CONFIG_IDF_TARGET_ESP32S3
-#define INIT_STANDARD_PORT1_CONFIG { \
-    .port = UART_NUM_1,  \
-    .tx   = GPIO_NUM_17, \
-    .rx   = GPIO_NUM_18  \
-  }
-#endif
-
 #define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
 /**
  * @struct uart_port_config_t
