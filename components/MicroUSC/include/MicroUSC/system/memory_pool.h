@@ -10,13 +10,13 @@
  * 
  * Provides fixed-size block memory allocation with ESP32-specific optimizations,
  * including IRAM placement and cache-friendly alignment. Designed for deterministic
- * memory access in FreeRTOS environments and interrupt handlers[1][2][5][6].
+ * memory access in FreeRTOS environments and interrupt handlers.
  *
  * Features:
- * - Preallocated memory pools to prevent fragmentation in constrained environments[4]
- * - Thread-safe operations for FreeRTOS task and ISR contexts[5][8]
- * - Explicit memory placement control (DRAM, PSRAM, IRAM)[1][7]
- * - O(1) allocation/deallocation for real-time performance[6][8]
+ * - Preallocated memory pools to prevent fragmentation in constrained environments
+ * - Thread-safe operations for FreeRTOS task and ISR contexts
+ * - Explicit memory placement control (DRAM, PSRAM, IRAM)
+ * - O(1) allocation/deallocation for real-time performance
  *
  * Usage:
  * 1. Initialize pool with memory_pool_init() or memory_pool_malloc()
@@ -24,7 +24,7 @@
  * 3. Release blocks with memory_pool_free()
  * 4. Destroy pools with memory_pool_destroy() during cleanup
  *
- * @note Part of MicroUSC library's memory management subsystem[1][4]
+ * @note Part of MicroUSC library's memory management subsystem
  * @author Alejandro Ramirez
  * @date May 26, 2025
  */
@@ -69,7 +69,7 @@ typedef memory_pool_t *memory_block_handle_t;
  * 
  * This function sets up a fixed-size block memory pool preallocated in IRAM, 
  * optimized for ESP32/ESP8266 memory constraints. Proper alignment is enforced
- * to prevent fragmentation and ensure cache-friendly access patterns[2][6].
+ * to prevent fragmentation and ensure cache-friendly access patterns.
  * 
  * @param pool Pointer to pre-allocated memory_pool_t structure
  * @param block_size Size of each memory block (bytes). Must be ≥ sizeof(void*).
@@ -77,9 +77,9 @@ typedef memory_pool_t *memory_block_handle_t;
  * @return true - Pool initialized successfully
  * @return false - Invalid parameters or allocation failure
  * 
- * @note Must be called once before any memory pool operations[1][4]. 
+ * @note Must be called once before any memory pool operations. 
  *       Subsequent calls on initialized pools cause undefined behavior.
- *       Use IRAM_ATTR if pool will be accessed from interrupts[2][5].
+ *       Use IRAM_ATTR if pool will be accessed from interrupts.
  */
 bool memory_pool_init(memory_pool_t *pool, const size_t block_size, const size_t num_blocks);
 
@@ -87,16 +87,16 @@ bool memory_pool_init(memory_pool_t *pool, const size_t block_size, const size_t
  * @brief Dynamically allocate and initialize a memory pool in IRAM.
  * 
  * This function creates a new memory pool structure and its associated blocks in IRAM,
- * optimized for ESP32/ESP8266 memory constraints with proper alignment to prevent fragmentation[1][6].
+ * optimized for ESP32/ESP8266 memory constraints with proper alignment to prevent fragmentation.
  * Combines allocation and initialization into a single step for convenience.
  * 
  * @param block_size Size of each memory block (bytes). Must be ≥ sizeof(void*).
  * @param num_blocks Total blocks in pool. Determines total pool size.
  * @return memory_pool_t* - Pointer to initialized pool, or NULL on failure
  * 
- * @note Caller must free with memory_pool_free() to avoid leaks[1][4].
- *       Designed for cache-friendly access patterns and ISR safety when using IRAM_ATTR[5][6].
- *       Prefer this over manual initialization for dynamic pool management[4].
+ * @note Caller must free with memory_pool_free() to avoid leaks.
+ *       Designed for cache-friendly access patterns and ISR safety when using IRAM_ATTR.
+ *       Prefer this over manual initialization for dynamic pool management.
  */
 memory_pool_t *memory_pool_malloc(const size_t block_size, const size_t num_blocks)  __attribute__((malloc));
 
@@ -107,13 +107,13 @@ memory_pool_t *memory_pool_malloc(const size_t block_size, const size_t num_bloc
  *
  * This function returns a pointer to a free memory block from the specified memory pool.
  * If no blocks are available, it returns NULL.
- * The allocation is optimized for ESP32/ESP8266 and embedded systems, ensuring efficient use of IRAM and minimal fragmentation[1][2].
+ * The allocation is optimized for ESP32/ESP8266 and embedded systems, ensuring efficient use of IRAM and minimal fragmentation.
  *
  * @param pool Pointer to an initialized memory_pool_t structure.
  * @return void* Pointer to a free memory block, or NULL if the pool is exhausted.
  *
  * @note The returned pointer must not be freed directly; use memory_pool_free_block() or an equivalent pool-specific release function.
- *       Suitable for use in embedded and real-time applications where deterministic memory allocation is required[2][6].
+ *       Suitable for use in embedded and real-time applications where deterministic memory allocation is required.
  */
 void *memory_pool_alloc(memory_pool_t *pool)  __attribute__((malloc));
 
@@ -122,13 +122,13 @@ void *memory_pool_alloc(memory_pool_t *pool)  __attribute__((malloc));
  *
  * This function releases a previously allocated memory block back to the specified memory pool,
  * making it available for future allocations. It is designed for efficient memory management
- * in embedded systems and ensures minimal fragmentation when used with preallocated memory pools[1][2][3].
+ * in embedded systems and ensures minimal fragmentation when used with preallocated memory pools.
  *
  * @param pool  Pointer to an initialized memory_pool_t structure.
  * @param block Pointer to the memory block to be returned to the pool.
  *
  * @note The block must have been allocated from the same pool using memory_pool_alloc().
- *       This function is safe for use in real-time and FreeRTOS-based applications on ESP32/ESP8266[1][2][3][6].
+ *       This function is safe for use in real-time and FreeRTOS-based applications on ESP32/ESP8266.
  */
 void memory_pool_free(memory_pool_t *pool, void *block);
 
@@ -136,15 +136,15 @@ void memory_pool_free(memory_pool_t *pool, void *block);
  * @brief Destroy a memory pool and release all associated resources.
  *
  * This function deallocates all memory and internal structures associated with the specified memory pool,
- * ensuring that no memory leaks occur and that all resources are properly cleaned up[1][2][5].
+ * ensuring that no memory leaks occur and that all resources are properly cleaned up.
  * After calling this function, the memory_pool_t pointer and any blocks previously allocated from the pool
- * must not be used[1][2][5].
+ * must not be used.
  *
  * @param pool Pointer to the memory_pool_t structure to be destroyed.
  *
  * @note This function should be called when the memory pool is no longer needed, typically during
- *       system shutdown or module cleanup in embedded and ESP32/ESP8266 applications[2][7].
- *       Do not use the pool or any of its blocks after destruction to avoid undefined behavior[1][2][5].
+ *       system shutdown or module cleanup in embedded and ESP32/ESP8266 applications.
+ *       Do not use the pool or any of its blocks after destruction to avoid undefined behavior.
  */
 void memory_pool_destroy(memory_pool_t* pool);
 

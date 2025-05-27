@@ -9,10 +9,10 @@
  * @brief Internal system and power management API for MicroUSC on ESP32/ESP8266.
  *
  * This header provides internal function declarations for system-level configuration,
- * error handling, power management, and RTC variable storage within the MicroUSC library[2][3][4][5].
+ * error handling, power management, and RTC variable storage within the MicroUSC library.
  * It enables precise control over sleep/wakeup sources, custom error handler registration,
  * and persistent variable management, supporting robust embedded system design and modular
- * code organization[2][3][4][5][6].
+ * code organization.
  *
  * Key features:
  *   - Sleep mode and wakeup configuration (timer and GPIO-based)
@@ -22,12 +22,12 @@
  *   - One-time system setup and initialization routines
  *
  * Usage:
- *   - Include this header only in modules requiring direct access to MicroUSC system internals[5][6].
- *   - Call initialization and configuration routines during system startup or power mode transitions[3][4].
- *   - Use error handler and status code functions for robust error and state management[3][4][6].
+ *   - Include this header only in modules requiring direct access to MicroUSC system internals.
+ *   - Call initialization and configuration routines during system startup or power mode transitions.
+ *   - Use error handler and status code functions for robust error and state management.
  *
  * @note This header is intended for internal use within the MicroUSC library and should not be exposed
- *       to application-level code unless advanced system control is required[5][6].
+ *       to application-level code unless advanced system control is required.
  *
  * @author Alejandro Ramirez
  * @date May 26, 2025
@@ -54,7 +54,7 @@ typedef void(*microusc_error_handler)();
  *
  * @param time The timer duration in microseconds until the wakeup ISR is triggered.
  *
- * @note This is essential for applications requiring precise timed wakeups and low-power operation on ESP32[1][8].
+ * @note This is essential for applications requiring precise timed wakeups and low-power operation on ESP32.
  */
 void microusc_set_sleep_mode_timer_wakeup(uint64_t time);
 
@@ -68,7 +68,7 @@ void microusc_set_sleep_mode_timer_wakeup(uint64_t time);
  *
  * @param option Set to true to enable the timer wakeup, or false to disable it.
  *
- * @note This function is typically used in embedded ESP32 projects where precise timing and wakeup control are required[1][8].
+ * @note This function is typically used in embedded ESP32 projects where precise timing and wakeup control are required.
  */
 void microusc_set_sleep_mode_timer(bool option);
 
@@ -255,7 +255,7 @@ void set_microusc_system_error_handler_default(void);
  *
  * @note
  * - The mapping between `microusc_status` values and system actions must be documented elsewhere (e.g., in the enum definition or system design documentation).
- * - This function is intended for use in embedded ESP32 applications and should be called whenever a system state change is required[1][4].
+ * - This function is intended for use in embedded ESP32 applications and should be called whenever a system state change is required.
  * - Ensure thread safety if this function is called from multiple tasks or ISRs.
  */
 void set_microusc_system_code(microusc_status code);
@@ -272,9 +272,9 @@ void set_microusc_system_code(microusc_status code);
  * - Other error codes: Initialization failed (specific error depends on implementation)
  *
  * @note Calling this function multiple times may cause resource leaks, 
- *       hardware conflicts, or undefined behavior due to duplicate initialization[1][2].
+ *       hardware conflicts, or undefined behavior due to duplicate initialization.
  *       Ensure it is only called once during the application lifecycle, typically
- *       in app_main() before entering the main execution loop[4][6].
+ *       in app_main() before entering the main execution loop.
  */
 esp_err_t microusc_system_setup(void);
 

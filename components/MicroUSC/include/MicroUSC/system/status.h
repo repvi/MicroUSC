@@ -9,17 +9,17 @@
  * @brief Driver configuration status reporting for MicroUSC on ESP32/ESP8266.
  *
  * This header declares the usc_print_driver_configurations() function, which outputs the current
- * configuration settings for all drivers managed by the MicroUSC system[1][2]. It is primarily used
+ * configuration settings for all drivers managed by the MicroUSC system. It is primarily used
  * for debugging, diagnostics, and verification to ensure that driver parameters and hardware interface
- * settings are correctly initialized and maintained during development or troubleshooting[1][2][4].
+ * settings are correctly initialized and maintained during development or troubleshooting.
  *
  * Usage:
  *   - Include this header in modules that require runtime driver configuration reporting.
  *   - Call usc_print_driver_configurations() during system startup, initialization, or when
- *     diagnosing issues with driver setup and serial communication[1][3][4].
+ *     diagnosing issues with driver setup and serial communication.
  *
  * @note This function is designed for ESP32/ESP8266 embedded systems and supports robust
- *       system configuration, hardware interface verification, and startup diagnostics[1][2][4].
+ *       system configuration, hardware interface verification, and startup diagnostics.
  *
  * @author Alejandro Ramirez
  * @date May 26, 2025
@@ -36,10 +36,10 @@ extern "C" {
  *
  * This function outputs the active configuration settings for the drivers managed by the system.
  * It is typically used for debugging, diagnostics, or verification purposes to ensure that all driver
- * parameters are set as intended during development or troubleshooting[1][2][4].
+ * parameters are set as intended during development or troubleshooting.
  *
  * @note Use this function to review hardware interface settings, verify initialization, or log
- * configuration details during system startup or runtime[2][4].
+ * configuration details during system startup or runtime.
  */
 void usc_print_driver_configurations(void);
 
