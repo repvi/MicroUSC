@@ -135,12 +135,12 @@ void microusc_set_sleepmode_wakeup_default(void)
     microusc_set_wakeup_pin_status(false);
 }
 
-__noreturn void __microusc_system_restart(void)
+static __noreturn void microusc_system_restart(void)
 {
     esp_restart();
 }
 
-__always_inline unsigned int calculate_checksum(unsigned int value)
+static __always_inline unsigned int calculate_checksum(unsigned int value)
 {
     return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
 }
@@ -179,7 +179,7 @@ void *get_system_rtc_var(const char key)
     return NULL;
 }
 
-void __set_rtc_cycle(void)
+static void set_rtc_cycle(void)
 {
     if (checksum != calculate_checksum(__system_reboot_count)) {
         __system_reboot_count = 0; // Reset only on corruption detection
@@ -191,9 +191,9 @@ void __set_rtc_cycle(void)
     checksum = calculate_checksum(__system_reboot_count); // Update valid checksum
 }
 
-__always_inline void __increment_rtc_cycle(void) 
+static __always_inline void __increment_rtc_cycle(void) 
 {
-    __set_rtc_cycle();
+    set_rtc_cycle();
 }
 
 void __microusc_sleep_mode(void)
@@ -281,7 +281,7 @@ void IRAM_ATTR microusc_resume_drivers(void)
     }
 }
 
-void __microusc_system_task(void *p)
+static void microusc_system_task(void *p)
 {
     microusc_status system_status;
     while (1) {
@@ -289,7 +289,7 @@ void __microusc_system_task(void *p)
             ESP_LOGI(TAG, "Internal has been called!");
             switch(system_status) {
                 case USC_SYSTEM_OFF:
-                    __microusc_system_restart();
+                    microusc_system_restart();
                     break;
                 case USC_SYSTEM_SLEEP:
                     builtin_led_system(USC_SYSTEM_SLEEP);
@@ -336,7 +336,7 @@ void __microusc_system_task(void *p)
 }
 
 // needs to implement gpio isr trigger
-esp_err_t microusc_system_task(void)
+esp_err_t microusc_system_setup(void)
 {
     __microusc_queue_action = xQueueCreate(3, sizeof(microusc_status));
     if (__microusc_queue_action == NULL) {
@@ -346,7 +346,7 @@ esp_err_t microusc_system_task(void)
     init_builtin_led();
     
     xTaskCreatePinnedToCore(
-        __microusc_system_task,
+        microusc_system_task,
         "microUSB System",
         INTERNAL_TASK_STACK_SIZE,
         NULL,
@@ -355,7 +355,7 @@ esp_err_t microusc_system_task(void)
         MICROUSC_CORE
     );
 
-    __set_rtc_cycle(); // Set the RTC cycle variable
+    set_rtc_cycle(); // Set the RTC cycle variable
 
     if (__system_reboot_count != 0) {
         ESP_LOGW(TAG, "System fail count: %u", __system_reboot_count);
