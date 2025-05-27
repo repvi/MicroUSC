@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file memory_pool.h
  * @brief IRAM-optimized memory pool management for ESP32/ESP8266 embedded systems

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file tiny_kernel.h
  * @brief MicroUSC Tiny Kernel Initialization for ESP32/ESP8266 Embedded Systems

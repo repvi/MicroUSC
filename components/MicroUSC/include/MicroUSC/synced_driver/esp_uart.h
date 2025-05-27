@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file esp_uart.h
  * @brief UART driver abstraction layer for ESP32/ESP8266 embedded systems

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file USCdriver.h
  * @brief MicroUSC UART Driver API for ESP32/ESP8266 Embedded Systems

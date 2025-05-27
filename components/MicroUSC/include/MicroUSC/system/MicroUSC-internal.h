@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file MicroUSC-internal.h
  * @brief Internal system and power management API for MicroUSC on ESP32/ESP8266.

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file initState.h
  * @brief Driver and task initialization state management for the MicroUSC system on ESP32/ESP8266.

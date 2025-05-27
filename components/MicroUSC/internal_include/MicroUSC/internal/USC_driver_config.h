@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file USC_driver_config.h
  * @brief MicroUSC driver configuration and compiler abstraction layer for ESP32/ESP8266

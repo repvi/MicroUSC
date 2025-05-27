@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file uscdef.h
  * @brief Core type definitions and macros for MicroUSC driver system on ESP32/ESP8266

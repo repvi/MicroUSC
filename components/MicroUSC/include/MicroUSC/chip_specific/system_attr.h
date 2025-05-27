@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file system_attr.h
  * @brief Built-in LED control and system status indication for MicroUSC on ESP32/ESP8266.

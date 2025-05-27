@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /**
  * @file atomic_sys_op.h
  * @brief Atomic data queue operations for ESP32/ESP8266 embedded systems
