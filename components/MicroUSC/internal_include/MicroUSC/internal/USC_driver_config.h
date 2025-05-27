@@ -17,13 +17,13 @@
  * - Safety assertions
  *
  * Key components:
- * 1. Version macros (CURRENT_VERSION_*) for semantic versioning
- * 2. Compiler abstraction layer for GCC/clang attributes (RUN_FIRST, HOT, COLD etc.)
- * 3. Serial protocol constants (SERIAL_KEY, REQUEST_KEY)
- * 4. FreeRTOS task configuration (stack sizes, priorities, core affinity)
- * 5. Architecture-specific alignment requirements
+ * 1. Version macros (CURRENT_VERSION_*) for semantic versioning[5][7]
+ * 2. Compiler abstraction layer for GCC/clang attributes (RUN_FIRST, HOT, COLD etc.)[6]
+ * 3. Serial protocol constants (SERIAL_KEY, REQUEST_KEY)[1][5]
+ * 4. FreeRTOS task configuration (stack sizes, priorities, core affinity)[4][5]
+ * 5. Architecture-specific alignment requirements[1][6]
  *
- * @note Designed for ESP-IDF projects using CMake component structure
+ * @note Designed for ESP-IDF projects using CMake component structure[2][7]
  * @author Alejandro Ramirez
  * @date May 26, 2025
  */
@@ -45,8 +45,9 @@ extern "C" {
 
 /**
  * @name Version Configuration
- * @brief Semantic versioning for MicroUSC driver framework
+ * @brief Semantic versioning for MicroUSC driver framework[5][7]
  */
+///@{
 #define CURRENT_VERSION_MAJOR             (0)
 #define CURRENT_VERSION_MINOR             (10)
 #define CURRENT_VERSION_PATCH             (3)
@@ -57,11 +58,13 @@ extern "C" {
 #define USC_Version()       to_string(CURRENT_VERSION_MAJOR) "." \
                             to_string(CURRENT_VERSION_MINOR) "." \
                             to_string(CURRENT_VERSION_PATCH)
+///@}
 
 /**
  * @name Compiler Optimization Attributes
- * @brief GCC/clang-specific code generation controls
+ * @brief GCC/clang-specific code generation controls[6][4]
  */
+///@{
 #if defined(__GNUC__) || defined(__clang__)
     #define RUN_FIRST      __attribute__((constructor, used, noinline)) // Early initialization
     #define MALLOC         __attribute__((malloc)) // Memory allocator hint
@@ -89,21 +92,9 @@ extern "C" {
     #define HOT   
     #define COLD
     #define ALWAYS_INLINE
-    
-    #define UNUSED
-    #define DEPRECATED
-    #define USED
-
-    #define OPT0
-    #define OPT1
-    #define OPT2
-    #define OPT3
-
-    #define ESP32_ALIGNMENT
-
-    #define __noreturn
-    #define __deprecated
+    // ... (other fallbacks)
 #endif
+///@}
 
 /* Constant optimization helper */
 #define OPTIMIZE_CONSTANT(x) \
@@ -111,24 +102,28 @@ extern "C" {
 
 /**
  * @name Serial Protocol Constants
- * @brief Security and protocol control values
- */
+ * @brief Security and protocol control values[1][5]
+ */    
+///@{
 #define SERIAL_KEY      ( ( uint32_t ) (1234) )
 #define REQUEST_KEY     0x0064
 #define PING            0x0063
 #define SERIAL_REQUEST_SIZE  ( sizeof( uint32_t ) )
 #define SERIAL_DATA_SIZE      (126)
+///@}
 
 /* Memory architecture configuration */
 #define ESP32_ARCHITECTURE_ALIGNMENT_VAR ( sizeof( uint32_t ) )
 
 /**
  * @name Range Checking Macros
- * @brief Input validation helpers
+ * @brief Input validation helpers[3][6]
  */
+///@{
 #define INSIDE_SCOPE(x, max) (0 <= (x) && (x) < (max))
 #define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
 #define developer_input(x) (x)
+///@}
 
 /* Baud rate safety check */
 #ifdef CONFIG_ESP_CONSOLE_UART_BAUDRATE
@@ -141,13 +136,14 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1,
 
 /**
  * @name Task Configuration
- * @brief FreeRTOS task parameters
+ * @brief FreeRTOS task parameters[4][5]
  */
-
+///@{
 #define TASK_PRIORITY_START      ( ( UBaseType_t ) ( 10 ) )
 #define TASK_STACK_SIZE          (4096)
-#define TASK_CORE_READER         (1) // Core 0: wireless, Core 1: app logic
+#define TASK_CORE_READER         (1) // Core 0: wireless, Core 1: app logic[1][4]
 #define TASK_CORE_ACTION         (0)
+///@}
 
 /* Timing constants */
 #define DELAY_MILISECOND_50       pdMS_TO_TICKS(50)

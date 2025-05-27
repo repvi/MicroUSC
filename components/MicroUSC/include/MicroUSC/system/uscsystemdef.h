@@ -11,15 +11,15 @@
  * This header defines the microusc_status enumeration, representing various operational
  * and diagnostic states for the MicroUSC system. These states are used throughout the
  * system code to control behavior, manage power modes, handle connectivity, and report
- * hardware or driver status.
+ * hardware or driver status[3][4][5].
  *
  * Usage:
  *   - Include this header in modules that require system-level state management.
  *   - Use microusc_status values to represent and switch between system modes,
- *     such as sleep, pause, connectivity, and error states.
+ *     such as sleep, pause, connectivity, and error states[3][4][5].
  *
  * @note Designed for modular ESP32/ESP8266 projects using conditional code and
- *       hardware interface control.
+ *       hardware interface control[3][4][5].
  *
  * @author Alejandro Ramirez
  * @date May 26, 2025
