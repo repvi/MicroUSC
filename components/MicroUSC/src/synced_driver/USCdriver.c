@@ -1,3 +1,4 @@
+#include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
@@ -7,7 +8,6 @@
 #include "string.h"
 #include "esp_system.h"
 #include "esp_log.h"
-#include "stdatomic.h"
 
 #define TAG                "[USC DRIVER]"
 #define TASK_TAG           "[DRIVER READER]"
@@ -20,6 +20,7 @@
 #define NOT_FOUND (( uint32_t ) ( -1 ) )
 
 #define SERIAL_DATA_STORAGE_CAPACITY  256
+
 struct usc_bit_manip {
     UBaseType_t active_driver_bits;
     portMUX_TYPE critical_lock;
@@ -172,7 +173,7 @@ esp_err_t check_valid_uart_config( const uart_config_t *uart_config,
     vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
 
     // Initialize UAR
-    if (developer_input(uart_init(*port_config, *uart_config, &uart_queue[i], UART_QUEUE_SIZE) != ESP_OK)) {
+    if (uart_init(*port_config, *uart_config, &uart_queue[i], UART_QUEUE_SIZE) != ESP_OK) {
         ESP_LOGE(TAG, "Initialization failed");
         return ESP_FAIL;
     }
@@ -264,6 +265,7 @@ esp_err_t usc_driver_init( const char *driver_name,
 
     xSemaphoreGive(system_lock); // 1 OUT
     xSemaphoreGive(current_driver->sync_signal); // Release the mutex lock 2 OUT
+    set_microusc_system_code(USC_SYSTEM_SUCCESS);
     return ESP_OK;
 }
 
@@ -272,7 +274,7 @@ esp_err_t usc_driver_write( const usc_config_t *config,
                             const size_t len
 ) {
     if (config->baud_rate < CONFIGURED_BAUDRATE) { 
-        TickType_t delay = ( config->baud_rate / CONFIGURED_BAUDRATE ) / portTICK_PERIOD_MS;
+        const TickType_t delay = ( config->baud_rate / CONFIGURED_BAUDRATE ) / portTICK_PERIOD_MS;
         literate_bytes(data, const char, len) {
             if (uart_write_bytes(config->uart_config.port, begin /* from literate_bytes */, 1) == -1) {
                 return ESP_FAIL;

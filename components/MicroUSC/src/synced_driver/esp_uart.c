@@ -7,34 +7,21 @@
 #define DLEAY_MILISECOND_10      (10) // 1 second delay
 #define DLEAY_MILISECOND_50      (50) // 1 second delay
 
+#define TIMEOUT pdMS_TO_TICKS     (100)
+
+#define BUFFER_SIZE               (64)
+#define UART_QUEUE_SIZE           (10)
+
+#define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
+
 esp_err_t uart_init( uart_port_config_t port_config, 
                      uart_config_t uart_config, 
                      QueueHandle_t *uart_queue, 
                      const size_t queue_size
 ) {
-    esp_err_t res = uart_param_config(port_config.port, &uart_config);
-    if (res == ESP_OK) {
-        res = uart_set_pin(port_config.port, port_config.tx, port_config.rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-        if (res == ESP_OK) {
-            res = uart_driver_install( port_config.port, 
-                                       BUFFER_SIZE * 2, 
-                                       0, 
-                                       queue_size, 
-                                       uart_queue, 
-                                       0
-                                     );
-    
-            if (res != ESP_OK) {
-                return res;
-            }
-
-            if (*uart_queue == NULL) {
-                return ESP_FAIL;
-            }
-            ESP_LOGI(TAG, "UART initialized, queue handle: %p", *uart_queue);
-        }
-    }
-    return res;
+    ESP_ERROR_CHECK(uart_param_config(port_config.port, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(port_config.port, port_config.tx, port_config.rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_driver_install(port_config.port, BUFFER_SIZE * 2, 0, queue_size, uart_queue, 0));
 }
 
 uint8_t *uart_read( uart_port_t uart, 
@@ -44,12 +31,10 @@ uint8_t *uart_read( uart_port_t uart,
                     const TickType_t delay
 ) {
     if (buf == NULL) {
-        buf = (uint8_t *)heap_caps_malloc(len, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-        if (buf == NULL) {
-            ESP_LOGE(TAG, "Failed to allocate memory for buffer");
-            return NULL;
-        }
+        ESP_LOGE(TAG, "Buffer is not initialized");
+        return NULL;
     }
+
     memset(buf, 0, len); // make sure buf is clean
 
     uart_event_t event;
@@ -106,5 +91,3 @@ void uart_port_config_deinit(uart_port_config_t *uart_config)
     uart_config->rx = GPIO_NUM_NC; // -1
     uart_config->tx = GPIO_NUM_NC; // -1
 }
-
-#undef INCLUDE_DELAY
