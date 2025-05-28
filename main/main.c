@@ -70,17 +70,6 @@ void app_main(void) {
 
     init_MicroUSC_system();
 
-    /*
-    uart_config_t setting = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        // .rx_flow_ctrl_thresh = 122, // Only if using HW flow control
-    };
-    */
-
     uart_config_t setting = STANDARD_UART_CONFIG; // only for debugging
     /*
     uart_port_config_t pins = {

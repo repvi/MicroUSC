@@ -5,6 +5,7 @@
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/internal/initStart.h"
 #include "MicroUSC/internal/genList.h"
+#include "MicroUSC/internal/uscdef.h"
 #include "esp_system.h"
 #include <esp_task_wdt.h>
 #include "esp_chip_info.h"
@@ -37,29 +38,46 @@
 #define WDT_TIMER_WAIT 3
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 
-RTC_NOINIT_ATTR unsigned int __system_reboot_count;
-    
+RTC_NOINIT_ATTR unsigned int __system_reboot_count; // only accessed by the system
+RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
+
+struct queueOverFlow {
+    size_t count;
+    portMUX_TYPE lock;
+} overflow = {.count = 0, .lock = portMUX_INITIALIZER_UNLOCKED};
+
+struct rtc_map {
+    char key;
+    uint8_t size;
+};
+
 RTC_NOINIT_ATTR struct rtc_memory_t {
     uint8_t buf[RTC_MEMORY_BUFFER_SIZE]; // RTC memory buffer
-    unsigned int remaining_size; // Remaining size of the buffer
-    char address_key[RTC_MEMORY_STORAGE_KEY_SIZE]; // Address of the initialized memory
+    struct rtc_map mapping[RTC_MEMORY_STORAGE_KEY_SIZE];
     int address_key_index; // Index for the address key
-} __rtc_memory = {.buf = {0}, .remaining_size = RTC_MEMORY_BUFFER_SIZE, .address_key = {0}, .address_key_index = 0};
+    int remaining_mem;
+    portMUX_TYPE lock;
+} rtc_memory = {.buf = {0}, .mapping = {0}, .address_key_index = 0, .remaining_mem = RTC_MEMORY_BUFFER_SIZE, .lock = portMUX_INITIALIZER_UNLOCKED};
 
 struct sleep_config_t {
     gpio_num_t wakeup_pin;
     uint64_t sleep_time;
     bool wakeup_pin_enable;
     bool sleep_time_enable;
-} __microusc_system_sleep;
+    portMUX_TYPE selectlock;
+} microusc_system_sleep;
+
+struct system_handler {
+    TaskHandle_t task;
+};
 
 microusc_error_handler __microusc_system_error_handler;
-
-RTC_NOINIT_ATTR unsigned int checksum;
 
 intr_handle_t micro_usc_isr_handler = NULL;
 
 QueueHandle_t __microusc_queue_action = NULL;
+
+TaskHandle_t microusc_task_handler;
 
 void IRAM_ATTR microusc_software_isr_handler(void *arg)
 {
@@ -76,13 +94,6 @@ __deprecated void __system_isr_trigger(void)
 {
     printf("Triggering from core %d\n", xPortGetCoreID());
     esp_intr_enable(micro_usc_isr_handler);
-}
-
-__deprecated void __system_task_trigger(void) 
-{
-    /*
-    xTaskNotifyGive(__microusc_critical_handle);
-    */
 }
 
 __deprecated void microusc_system_isr_pin(gpio_num_t pin) 
@@ -109,22 +120,22 @@ __deprecated void microusc_system_isr_pin(gpio_num_t pin)
 
 __always_inline void microusc_set_sleep_mode_timer_wakeup(uint64_t time) 
 {
-    __microusc_system_sleep.sleep_time = time;
+    microusc_system_sleep.sleep_time = time;
 }
 
 __always_inline void microusc_set_sleep_mode_timer(bool option) 
 {
-    __microusc_system_sleep.sleep_time_enable = option;
+    microusc_system_sleep.sleep_time_enable = option;
 }
 
 __always_inline void microusc_set_wakeup_pin(gpio_num_t pin) 
 {
-    __microusc_system_sleep.wakeup_pin = pin;
+    microusc_system_sleep.wakeup_pin = pin;
 }
 
 __always_inline void microusc_set_wakeup_pin_status(bool option)
 {
-    __microusc_system_sleep.wakeup_pin_enable = option;
+    microusc_system_sleep.wakeup_pin_enable = option;
 }
 
 void microusc_set_sleepmode_wakeup_default(void) 
@@ -145,38 +156,46 @@ static __always_inline unsigned int calculate_checksum(unsigned int value)
     return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
 }
 
-void save_system_rtc_var(void *var, const size_t size, const char key) 
+void save_system_rtc_var(void *var, const size_t size, const char key)
 {
     if (var == NULL || size == 0 || key == '\0') {
         ESP_LOGE(TAG, "Invalid parameters for saving RTC variable");
         return;
     }
 
-    if (size <= __rtc_memory.remaining_size && __rtc_memory.address_key_index < RTC_MEMORY_STORAGE_KEY_SIZE) {
-        memcpy(__rtc_memory.buf, var, size); // Copy the variable to the RTC memory
-        __rtc_memory.remaining_size -= size; // Decrease the remaining size
-        __rtc_memory.address_key[__rtc_memory.address_key_index++] = key; // Save the key
-        ESP_LOGI(TAG, "Saved %u bytes to RTC memory", size);
+    portENTER_CRITICAL(&rtc_memory.lock);
+    {
+        if (size <= rtc_memory.remaining_mem && rtc_memory.address_key_index < RTC_MEMORY_STORAGE_KEY_SIZE) {
+            const int offset = RTC_MEMORY_BUFFER_SIZE - rtc_memory.remaining_mem;
+            uint8_t *ptr = rtc_memory.buf + offset;
+            memcpy(ptr, var, size); // Copy the variable to the RTC memory
+            rtc_memory.remaining_size -= size; // Decrease the remaining size
+            rtc_memory.address_key[rtc_memory.address_key_index++] = key; // Save the key            
+            ESP_LOGI(TAG, "Saved %u bytes to RTC memory", size);
+        }
+        else{
+            ESP_LOGE(TAG, "Not enough space in RTC memory");
+        }
     }
-    else{
-        ESP_LOGE(TAG, "Not enough space in RTC memory");
-        return;
-    }
+    portEXIT_CRITICAL(&rtc_memory.lock);
 }
 
 void *get_system_rtc_var(const char key)
 {
-    for (char *begin = __rtc_memory.address_key; *begin != '\0'; begin++) {
-        if (*begin == key) {
-            ESP_LOGI(TAG, "Key found in RTC memory");
-            return __rtc_memory.buf;
+    uintptr_t address;
+    portENTER_CRITICAL(&rtc_memory.lock);
+    {
+        size_t offset = 0;
+        define_iteration(rtc_memory.mapping, struct rtc_map, map, RTC_MEMORY_STORAGE_KEY_SIZE) {
+            if (map->key == key) {
+                address = (uintptr_t)rtc_memory.buf + offset;
+                break;
+            }
+            offset += map->size;
         }
     }
-    if (strncmp(__rtc_memory.address_key, &key, sizeof(char)) == 0) {
-        return __rtc_memory.buf;
-    }
-    ESP_LOGE(TAG, "Key mismatch for RTC memory");
-    return NULL;
+    portEXIT_CRITICAL(&rtc_memory.lock);
+    return (void *)address;
 }
 
 static void set_rtc_cycle(void)
@@ -191,24 +210,24 @@ static void set_rtc_cycle(void)
     checksum = calculate_checksum(__system_reboot_count); // Update valid checksum
 }
 
-static __always_inline void increment_rtc_cycle(void) 
+static __always_inline void increment_rtc_cycle(void)
 {
     set_rtc_cycle();
 }
 
 static void microusc_sleep_mode(void)
 {
-    bool sleep_time_enabled = __microusc_system_sleep.sleep_time_enable;
-    bool wakeup_pin_enable = __microusc_system_sleep.wakeup_pin_enable;
+    bool sleep_time_enabled = microusc_system_sleep.sleep_time_enable;
+    bool wakeup_pin_enable = microusc_system_sleep.wakeup_pin_enable;
 
     if (!(sleep_time_enabled || wakeup_pin_enable)) {
         return; // do nothing as timer is completely disabled
     }
     if (sleep_time_enabled) {
-        esp_sleep_enable_timer_wakeup(__microusc_system_sleep.sleep_time);
+        esp_sleep_enable_timer_wakeup(microusc_system_sleep.sleep_time);
     }
     if (wakeup_pin_enable) {
-        esp_sleep_enable_ext0_wakeup(__microusc_system_sleep.wakeup_pin, 1);
+        esp_sleep_enable_ext0_wakeup(microusc_system_sleep.wakeup_pin, 1);
     }
 
     esp_deep_sleep_start();
@@ -238,20 +257,19 @@ static void microusc_system_error_handler_default(void)
 {
     ESP_LOGE(TAG, "System error handler called");
     ESP_LOGE(TAG, "Rebooting system...");
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
     // shutdown all drivers function here
     usc_print_driver_configurations(); // Print the driver configurations
-    increment_rtc_cycle(); // Increment the RTC cycle variable
     microusc_pause_drivers();
     microusc_system_restart();
 }
 
 void set_microusc_system_error_handler(microusc_error_handler handler)
 {
+    #ifdef MICROUSC_DEBUG
     if (handler == NULL) {
-        ESP_LOGE(TAG, "Error handler is NULL");
-        return;
+        set_microusc_system_code(USC_SYSTEM_ERROR);
     }
+    #endif
     __microusc_system_error_handler = handler;
 }
 
@@ -260,18 +278,41 @@ inline void set_microusc_system_error_handler_default(void)
     set_microusc_system_error_handler(microusc_system_error_handler_default);
 }
 
+// completely flush the queue to make it fully available
+static void microusc_queue_overflow_handler(void)
+{
+    vTaskSuspend(microusc_task_handler);
+    while (uxQueueSpacesAvailable(__microusc_queue_action) != MICROUSC_QUEUEHANDLE_SIZE) {
+        xQueueReceive(__microusc_queue_action, &system_status, portMAX_DELAY)
+    }
+    vTaskResume(microusc_task_handler);
+}
+
 inline void set_microusc_system_code(microusc_status code)
 {
-    #ifdef MICROUSC_DEBUG
-    if(xQueueSend(__microusc_queue_action, &code, portMAX_DELAY) == pdTRUE) {
-        ESP_LOGI(TAG, "Successfully ran sub system");
+    if (eTaskGetState(microusc_task_handler) == eSuspended) {
+        // this only runs if the task is not suspended due to flushing the queue at the meantime
+        if (uxQueueSpacesAvailable(__microusc_queue_action) != 0) {
+            xQueueSend(__microusc_queue_action, &code, 0);
+            taskENTER_CRITICAL(&overflow.lock);
+            {
+                overflow.count = 0;
+            }
+            taskEXIT_CRITICAL(&overflow.lock);
+        }
+        else {
+            ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
+            taskENTER_CRITICAL(&overflow.lock);
+            {
+                overflow.count++;
+                if (overflow.count == 3) {
+                    microusc_queue_overflow_handler();
+                    // don't need to make count to 0 unless for safety
+                }
+            }
+            taskEXIT_CRITICAL(&overflow.lock);
+        }
     }
-    else {
-        ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
-    }
-    #else
-    xQueueSend(__microusc_queue_action, &code, portMAX_DELAY);
-    #endif
 }
 
 void print_system_info(void) {
@@ -301,7 +342,6 @@ static void microusc_system_task(void *p)
     microusc_status system_status;
     while (1) {
         if (xQueueReceive(__microusc_queue_action, &system_status, portMAX_DELAY) == pdPASS) {
-            ESP_LOGI(TAG, "Internal has been called!");
             switch(system_status) {
                 case USC_SYSTEM_OFF:
                     microusc_system_restart();
@@ -380,7 +420,7 @@ esp_err_t microusc_system_setup(void)
         INTERNAL_TASK_STACK_SIZE,
         NULL,
         MICROUSC_SYSTEM_PRIORITY,
-        NULL,
+        &microusc_task_handler,
         MICROUSC_CORE
     );
 
@@ -403,6 +443,5 @@ void init_MicroUSC_system(void) {
     ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_configuration_storage());
     ESP_ERROR_CHECK(microusc_system_setup()); // system task will run on core 0, mandatory
-    //usc_print_driver_configurations(); // Print the driver configurations
     vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
 }
