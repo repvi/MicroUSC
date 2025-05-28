@@ -242,7 +242,16 @@ inline void set_microusc_system_error_handler_default(void)
 
 inline void set_microusc_system_code(microusc_status code)
 {
-    xQueueSend(__microusc_queue_action, &code, portMAX_DELAY);
+    #ifdef MICROUSC_DEBUG
+    if(xQueueSend(__microusc_queue_action, &code, 0) == pdTRUE) {
+        ESP_LOGI(TAG, "Successfully ran sub system");
+    }
+    else {
+        ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
+    }
+    #else
+    xQueueSend(__microusc_queue_action, &code, 0);
+    #endif
 }
 
 void print_system_info(void) {
@@ -282,6 +291,11 @@ void IRAM_ATTR microusc_resume_drivers(void)
     }
 }
 
+static void show_memory_usage(void) 
+{
+    
+}
+
 static void microusc_system_task(void *p)
 {
     microusc_status system_status;
@@ -317,7 +331,7 @@ static void microusc_system_task(void *p)
                     builtin_led_system(USC_SYSTEM_LED_OFF);
                     break;
                 case USC_SYSTEM_MEMORY_USAGE:
-                    // implement in the future
+                    show_memory_usage();
                     break;
                 case USC_SYSTEM_SPECIFICATIONS:
                     print_system_info();
@@ -339,7 +353,7 @@ static void microusc_system_task(void *p)
 // needs to implement gpio isr trigger
 esp_err_t microusc_system_setup(void)
 {
-    __microusc_queue_action = xQueueCreate(3, sizeof(microusc_status));
+    __microusc_queue_action = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(microusc_status));
     if (__microusc_queue_action == NULL) {
         return ESP_ERR_NO_MEM;
     }
@@ -366,9 +380,6 @@ esp_err_t microusc_system_setup(void)
     microusc_set_sleepmode_wakeup_default();
 
     set_microusc_system_error_handler_default(); // Set the default error handler
-    set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code
-    set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code
-    set_microusc_system_code(USC_SYSTEM_DEFAULT); // Set the default system code
 
     ESP_LOGI(TAG, "Internal has been set");
     return ESP_OK;
@@ -386,7 +397,7 @@ static esp_err_t init_memory_handlers(void) {
     return init_hidden_driver_lists();
 }
 
-void __init init_tiny_kernel(void) {
+void __init init_MicroUSC_system(void) {
     ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_configuration_storage());
     ESP_ERROR_CHECK(microusc_system_setup()); // system task will run on core 0, mandatory

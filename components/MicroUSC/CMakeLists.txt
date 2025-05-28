@@ -22,7 +22,6 @@ set(MICROUSC_SYNCED_DRIVER
 )
 
 set(MICROUSC_SYSTEM
-    "system/kernel.c"
     "system/memory_pool.c"
     "system/MicroUSC-internal.c"
     "system/status.c"
@@ -62,4 +61,5 @@ target_compile_definitions(
         MICROUSC_DEBUG=y
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
+        MICROUSC_QUEUEHANDLE_SIZE=4
 )

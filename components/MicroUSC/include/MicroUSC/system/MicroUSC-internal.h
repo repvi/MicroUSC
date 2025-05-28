@@ -19,13 +19,26 @@
  *   - RTC memory variable storage and retrieval for low-power retention
  *   - Custom and default system error handler management
  *   - System status code management for state transitions and diagnostics
- *   - One-time system setup and initialization routines
+ *   - One-time system setup and initialization routines 
+ *   - **Single initialization:** Must be called exactly once at the start of app_main().
+ *   - **Priority inheritance:** Sets up FreeRTOS task priorities for driver operations.
+ *   - **Resource tracking:** Monitors memory and IRQ usage for embedded constraints.
+ *   - **Dependency chain:** Initializes all core subsystems required by MicroUSC.
  *
  * Usage:
  *   - Include this header only in modules requiring direct access to MicroUSC system internals.
  *   - Call initialization and configuration routines during system startup or power mode transitions.
  *   - Use error handler and status code functions for robust error and state management.
+ * 
+ * Usage Protocol:
+ * 1. Call `init_tiny_kernel();` as the very first line in your app_main().
+ * 2. Do not re-initialize or call again—subsequent calls will cause resource conflicts.
+ * 3. After initialization, all driver, memory, and task management functions may be safely used.
  *
+ * 
+ * @warning Calling this after any other MicroUSC initialization or driver/memory setup
+ *          will cause resource conflicts, memory corruption, and unpredictable system behavior.
+ * 
  * @note This header is intended for internal use within the MicroUSC library and should not be exposed
  *       to application-level code unless advanced system control is required[5][6].
  *
@@ -213,7 +226,7 @@ void set_microusc_system_error_handler(microusc_error_handler handler);
  *       microusc_status enum or macro set.
  *
  * @example
- *   set_microusc_system_code(USC_SYSTEM_DEFAULT);
+ *   set_microusc_system_code(USC_SYSTEM_SUCCESS);
  *   set_microusc_system_code(USC_SYSTEM_ERROR);
  */
 void set_microusc_system_code(microusc_status code);
@@ -277,6 +290,18 @@ void set_microusc_system_code(microusc_status code);
  *       in app_main() before entering the main execution loop[4][6].
  */
 esp_err_t microusc_system_setup(void);
+
+
+/**
+ * @brief Initialize the Tiny Kernel core for the MicroUSC library.
+ *
+ * This function must be called first during system startup on the ESP32 before using any other MicroUSC library features.
+ * It sets up the core kernel structures and services essential for the MicroUSC system to function correctly.
+ *
+ * @note RUN_FIRST: This function should be invoked at the very start of your application, typically at the beginning of app_main().
+ *       Only call this function once during the system's lifetime.
+ */
+void init_MicroUSC_system(void);
 
 #ifdef __cplusplus
 }

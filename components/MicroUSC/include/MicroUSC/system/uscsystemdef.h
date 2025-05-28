@@ -32,7 +32,7 @@ extern "C" {
 #endif
 
 typedef enum {
-    USC_SYSTEM_DEFAULT,           ///< Default/idle system state
+    USC_SYSTEM_SUCCESS,           ///< Default/idle system state
     USC_SYSTEM_OFF,               ///< System powered off
     USC_SYSTEM_SLEEP,             ///< System in sleep mode
     USC_SYSTEM_PAUSE,             ///< System paused

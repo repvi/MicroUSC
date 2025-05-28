@@ -80,7 +80,7 @@ void builtin_led_system(microusc_status status)
 {
     bool builtin_led = true;
     switch (status) {
-        case USC_SYSTEM_DEFAULT:
+        case USC_SYSTEM_SUCCESS:
             builtin_led = false;
             break;
         case USC_SYSTEM_SLEEP:

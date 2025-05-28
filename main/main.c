@@ -1,8 +1,5 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
-#include "MicroUSC/system/kernel.h"
 #include "MicroUSC/synced_driver/USCdriver.h" // make it MicroUSC/USCdriver.h in the future
-#include "MicroUSC/system/MicroUSC-internal.h"
-#include "MicroUSC/system/status.h"
 #include "testing_driver.h"
 #include "speed_test.h"
 

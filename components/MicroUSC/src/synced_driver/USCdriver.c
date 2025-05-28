@@ -266,6 +266,7 @@ esp_err_t usc_driver_init( const char *driver_name,
 
     xSemaphoreGive(system_lock); // 1 OUT
     xSemaphoreGive(current_driver->sync_signal); // Release the mutex lock 2 OUT
+    set_microusc_system_code(USC_SYSTEM_SUCCESS);
     return ESP_OK;
 }
 
