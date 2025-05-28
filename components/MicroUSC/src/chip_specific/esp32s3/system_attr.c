@@ -8,7 +8,6 @@
 
 #define LED_STRIP_RMT_RES_HZ (10 * 1000 * 1000) // 10 MH
 
-
 #define TAG "[LED]"
 
 typedef struct {
@@ -19,9 +18,9 @@ typedef struct {
 
 RGBcolor colorBase = {0};
 
-led_strip_handle_t led_strip;
+led_strip_handle_t led_strip = NULL;
 
-static void set_off(led_strip_handle_t led_s) 
+void set_off(led_strip_handle_t led_s) 
 {
     ESP_ERROR_CHECK(led_strip_clear(led_s));
     ESP_ERROR_CHECK(led_strip_refresh(led_s));
@@ -29,7 +28,8 @@ static void set_off(led_strip_handle_t led_s)
 
 void init_builtin_led(void) 
 {
-    led_strip_config_t strip_config = {
+    ESP_LOGI(TAG, "esp32s3");
+        led_strip_config_t strip_config = {
         .strip_gpio_num = LED_STRIP_GPIO_PIN,
         .max_leds = LED_STRIP_LED_COUNT,
         .led_model = LED_MODEL_WS2812,
@@ -40,12 +40,20 @@ void init_builtin_led(void)
     led_strip_rmt_config_t rmt_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .resolution_hz = LED_STRIP_RMT_RES_HZ,
-        .flags.with_dma = false, // DMA not recommended for ESP32-S3 RMT[5]
+        .flags.with_dma = false, // Required for ESP32-S3
     };
 
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
-    
-    set_off(led_strip);
+    ESP_LOGI(TAG, "Before");
+
+    esp_err_t ret = led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip);
+    if (ret != ESP_OK || led_strip == NULL) {
+        ESP_LOGE(TAG, "LED strip init failed: %s", esp_err_to_name(ret));
+        return; // Handle error
+    }
+
+    ESP_LOGI(TAG, "After");
+
+    set_off(led_strip); // Now safe to use
     ESP_LOGI(TAG, "Initialized");
 }
 

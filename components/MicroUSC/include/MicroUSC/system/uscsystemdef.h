@@ -36,6 +36,7 @@ typedef enum {
     USC_SYSTEM_OFF,               ///< System powered off
     USC_SYSTEM_SLEEP,             ///< System in sleep mode
     USC_SYSTEM_PAUSE,             ///< System paused
+    USC_SYSTEM_RESUME,            ///< System resumes
     USC_SYSTEM_WIFI_CONNECT,      ///< WiFi connection in progress
     USC_SYSTEM_BLUETOOTH_CONNECT, ///< Bluetooth connection in progress
     USC_SYSTEM_LED_ON,            ///< LED is turned on

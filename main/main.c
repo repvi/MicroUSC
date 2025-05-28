@@ -1,5 +1,6 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
 #include "MicroUSC/synced_driver/USCdriver.h" // make it MicroUSC/USCdriver.h in the future
+#include "MicroUSC/system/MicroUSC-internal.h"
 #include "testing_driver.h"
 #include "speed_test.h"
 
@@ -67,7 +68,7 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    init_tiny_kernel();
+    init_MicroUSC_system();
 
     /*
     uart_config_t setting = {
@@ -122,11 +123,12 @@ void app_main(void) {
     set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
     set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
 
-    //set_microusc_system_code(USC_SYSTEM_LED_ON);
-    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //set_microusc_system_code(USC_SYSTEM_LED_OFF);
-    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_SLEEP);
+    set_microusc_system_code(USC_SYSTEM_PAUSE);
+    vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_RESUME);
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_ERROR);
+    //set_microusc_system_code(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");
 }

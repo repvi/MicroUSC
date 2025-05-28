@@ -1,6 +1,5 @@
 #include "MicroUSC/chip_specific/system_attr.h"
 #include "MicroUSC/system/MicroUSC-internal.h"
-#include "MicroUSC/system/kernel.h"
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
 #include "MicroUSC/internal/USC_driver_config.h"
@@ -192,12 +191,12 @@ static void set_rtc_cycle(void)
     checksum = calculate_checksum(__system_reboot_count); // Update valid checksum
 }
 
-static __always_inline void __increment_rtc_cycle(void) 
+static __always_inline void increment_rtc_cycle(void) 
 {
     set_rtc_cycle();
 }
 
-void __microusc_sleep_mode(void)
+static void microusc_sleep_mode(void)
 {
     bool sleep_time_enabled = __microusc_system_sleep.sleep_time_enable;
     bool wakeup_pin_enable = __microusc_system_sleep.wakeup_pin_enable;
@@ -213,62 +212,6 @@ void __microusc_sleep_mode(void)
     }
 
     esp_deep_sleep_start();
-}
-
-void __microusc_system_error_handler_default(void)
-{
-    ESP_LOGE(TAG, "System error handler called");
-    ESP_LOGE(TAG, "Rebooting system...");
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
-    // shutdown all drivers function here
-    usc_print_driver_configurations(); // Print the driver configurations
-    __increment_rtc_cycle(); // Increment the RTC cycle variable
-    esp_restart();
-}
-
-void set_microusc_system_error_handler(microusc_error_handler handler)
-{
-    if (handler == NULL) {
-        ESP_LOGE(TAG, "Error handler is NULL");
-        return;
-    }
-    __microusc_system_error_handler = handler;
-}
-
-inline void set_microusc_system_error_handler_default(void) 
-{
-    set_microusc_system_error_handler(__microusc_system_error_handler_default);
-}
-
-inline void set_microusc_system_code(microusc_status code)
-{
-    #ifdef MICROUSC_DEBUG
-    if(xQueueSend(__microusc_queue_action, &code, 0) == pdTRUE) {
-        ESP_LOGI(TAG, "Successfully ran sub system");
-    }
-    else {
-        ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
-    }
-    #else
-    xQueueSend(__microusc_queue_action, &code, 0);
-    #endif
-}
-
-void print_system_info(void) {
-    esp_chip_info_t chip_info;
-    esp_chip_info(&chip_info);
-
-    printf("ESP32 Chip Info:\n");
-    printf("  Model: %s\n", chip_info.model == CHIP_ESP32 ? "ESP32" : "Other");
-    printf("  Cores: %d\n", chip_info.cores);
-    printf("  Features: WiFi%s%s\n", 
-           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
-           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
-}
-
-inline void __call_usc_error_handler(void) 
-{
-    __microusc_system_error_handler();
 }
 
 void IRAM_ATTR microusc_pause_drivers(void)
@@ -291,6 +234,63 @@ void IRAM_ATTR microusc_resume_drivers(void)
     }
 }
 
+static void microusc_system_error_handler_default(void)
+{
+    ESP_LOGE(TAG, "System error handler called");
+    ESP_LOGE(TAG, "Rebooting system...");
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
+    // shutdown all drivers function here
+    usc_print_driver_configurations(); // Print the driver configurations
+    increment_rtc_cycle(); // Increment the RTC cycle variable
+    microusc_pause_drivers();
+    microusc_system_restart();
+}
+
+void set_microusc_system_error_handler(microusc_error_handler handler)
+{
+    if (handler == NULL) {
+        ESP_LOGE(TAG, "Error handler is NULL");
+        return;
+    }
+    __microusc_system_error_handler = handler;
+}
+
+inline void set_microusc_system_error_handler_default(void) 
+{
+    set_microusc_system_error_handler(microusc_system_error_handler_default);
+}
+
+inline void set_microusc_system_code(microusc_status code)
+{
+    #ifdef MICROUSC_DEBUG
+    if(xQueueSend(__microusc_queue_action, &code, portMAX_DELAY) == pdTRUE) {
+        ESP_LOGI(TAG, "Successfully ran sub system");
+    }
+    else {
+        ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
+    }
+    #else
+    xQueueSend(__microusc_queue_action, &code, portMAX_DELAY);
+    #endif
+}
+
+void print_system_info(void) {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+
+    printf("ESP32 Chip Info:\n");
+    printf("  Model: %s\n", chip_info.model == CHIP_ESP32 ? "ESP32" : "Other");
+    printf("  Cores: %d\n", chip_info.cores);
+    printf("  Features: WiFi%s%s\n", 
+           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+}
+
+inline void __call_usc_error_handler(void) 
+{
+    __microusc_system_error_handler();
+}
+
 static void show_memory_usage(void) 
 {
     
@@ -308,11 +308,15 @@ static void microusc_system_task(void *p)
                     break;
                 case USC_SYSTEM_SLEEP:
                     builtin_led_system(USC_SYSTEM_SLEEP);
-                    __microusc_sleep_mode();
+                    microusc_sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
                     builtin_led_system(USC_SYSTEM_PAUSE);
                     microusc_pause_drivers();
+                    break;
+                case USC_SYSTEM_RESUME:
+                    builtin_led_system(USC_SYSTEM_SUCCESS); // turns off the built-in led
+                    microusc_resume_drivers();
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);
@@ -359,7 +363,17 @@ esp_err_t microusc_system_setup(void)
     }
 
     init_builtin_led();
-    
+
+    set_rtc_cycle(); // Set the RTC cycle variable
+
+    if (__system_reboot_count != 0) {
+        ESP_LOGW(TAG, "System fail count: %u", __system_reboot_count);
+        vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
+    }
+
+    microusc_set_sleepmode_wakeup_default();
+    set_microusc_system_error_handler_default(); // Set the default error handler
+
     xTaskCreatePinnedToCore(
         microusc_system_task,
         "microUSB System",
@@ -370,18 +384,6 @@ esp_err_t microusc_system_setup(void)
         MICROUSC_CORE
     );
 
-    set_rtc_cycle(); // Set the RTC cycle variable
-
-    if (__system_reboot_count != 0) {
-        ESP_LOGW(TAG, "System fail count: %u", __system_reboot_count);
-        vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
-    }
-
-    microusc_set_sleepmode_wakeup_default();
-
-    set_microusc_system_error_handler_default(); // Set the default error handler
-
-    ESP_LOGI(TAG, "Internal has been set");
     return ESP_OK;
 }
 
@@ -397,11 +399,10 @@ static esp_err_t init_memory_handlers(void) {
     return init_hidden_driver_lists();
 }
 
-void __init init_MicroUSC_system(void) {
+void init_MicroUSC_system(void) {
     ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_configuration_storage());
     ESP_ERROR_CHECK(microusc_system_setup()); // system task will run on core 0, mandatory
-    ESP_LOGI(TAG, "System drivers initialized successfully\n");
     //usc_print_driver_configurations(); // Print the driver configurations
     vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
 }

@@ -61,5 +61,5 @@ target_compile_definitions(
         MICROUSC_DEBUG=y
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
-        MICROUSC_QUEUEHANDLE_SIZE=4
+        MICROUSC_QUEUEHANDLE_SIZE=3
 )
