@@ -37,6 +37,7 @@
 
 #define WDT_TIMER_WAIT 3
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
+
 RTC_NOINIT_ATTR unsigned int __system_reboot_count;
     
 RTC_NOINIT_ATTR struct rtc_memory_t {
@@ -371,4 +372,25 @@ esp_err_t microusc_system_setup(void)
 
     ESP_LOGI(TAG, "Internal has been set");
     return ESP_OK;
+}
+
+static esp_err_t init_memory_handlers(void) {
+    driver_system.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)
+    if (driver_system.lock == NULL) {
+        ESP_LOGE(TAG, "Could not initialize main driver lock");
+        return ESP_FAIL;
+    }
+    xSemaphoreGive(driver_system.lock);
+    INIT_LIST_HEAD(&driver_system.driver_list.list);
+
+    return init_hidden_driver_lists();
+}
+
+void __init init_tiny_kernel(void) {
+    ESP_ERROR_CHECK(init_memory_handlers());
+    ESP_ERROR_CHECK(init_configuration_storage());
+    ESP_ERROR_CHECK(microusc_system_setup()); // system task will run on core 0, mandatory
+    ESP_LOGI(TAG, "System drivers initialized successfully\n");
+    //usc_print_driver_configurations(); // Print the driver configurations
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
 }

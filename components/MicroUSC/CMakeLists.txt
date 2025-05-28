@@ -59,6 +59,7 @@ target_compile_definitions(
     PUBLIC
         DRIVER_MAX=3
     PRIVATE 
+        MICROUSC_DEBUG=y
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
 )

@@ -1,3 +1,4 @@
+#include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
@@ -20,6 +21,7 @@
 #define NOT_FOUND (( uint32_t ) ( -1 ) )
 
 #define SERIAL_DATA_STORAGE_CAPACITY  256
+
 struct usc_bit_manip {
     UBaseType_t active_driver_bits;
     portMUX_TYPE critical_lock;

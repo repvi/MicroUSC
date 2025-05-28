@@ -83,6 +83,7 @@ extern "C" {
 
     #define ESP32_ALIGNMENT  __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
 
+    #define __init __attribute__((constructor))
     #define __noreturn __attribute__((noreturn))
     #define __deprecated __attribute__((deprecated))
 #else
@@ -92,7 +93,10 @@ extern "C" {
     #define HOT   
     #define COLD
     #define ALWAYS_INLINE
-    // ... (other fallbacks)
+
+    #define __init
+    #define __noreturn
+    #define __deprecated
 #endif
 ///@}
 

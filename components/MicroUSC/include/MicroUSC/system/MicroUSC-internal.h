@@ -12,7 +12,7 @@
  * error handling, power management, and RTC variable storage within the MicroUSC library[2][3][4][5].
  * It enables precise control over sleep/wakeup sources, custom error handler registration,
  * and persistent variable management, supporting robust embedded system design and modular
- * code organization[2][3][4][5][6].
+ * code organization.
  *
  * Key features:
  *   - Sleep mode and wakeup configuration (timer and GPIO-based)
@@ -22,9 +22,9 @@
  *   - One-time system setup and initialization routines
  *
  * Usage:
- *   - Include this header only in modules requiring direct access to MicroUSC system internals[5][6].
- *   - Call initialization and configuration routines during system startup or power mode transitions[3][4].
- *   - Use error handler and status code functions for robust error and state management[3][4][6].
+ *   - Include this header only in modules requiring direct access to MicroUSC system internals.
+ *   - Call initialization and configuration routines during system startup or power mode transitions.
+ *   - Use error handler and status code functions for robust error and state management.
  *
  * @note This header is intended for internal use within the MicroUSC library and should not be exposed
  *       to application-level code unless advanced system control is required[5][6].
