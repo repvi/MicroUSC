@@ -78,11 +78,16 @@ void app_main(void) {
         .port = UART_NUM_2
     };
     */
-
+    ESP_LOGI("TAG", "CCCCC");
+    multi_heap_info_t info;
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
+    info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
+    ESP_LOGI("TAG", "sssss");
     uart_port_config_t pins = {
-        .port = UART_NUM_0,
-        .rx = GPIO_NUM_17,
-        .tx = GPIO_NUM_18
+        .port = UART_NUM_2, // make it to 1
+        .rx = GPIO_NUM_16, // 17
+        .tx = GPIO_NUM_17 // 18
     };
 
     // code should go after here
@@ -109,14 +114,14 @@ void app_main(void) {
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
     */   
 
-    set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
-    set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
+    //set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
+    //set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
 
-    set_microusc_system_code(USC_SYSTEM_PAUSE);
-    vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_RESUME);
-    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_ERROR);
+    //set_microusc_system_code(USC_SYSTEM_PAUSE);
+    //vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    //set_microusc_system_code(USC_SYSTEM_RESUME);
+    //vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    //set_microusc_system_code(USC_SYSTEM_ERROR);
     //set_microusc_system_code(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");

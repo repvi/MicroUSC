@@ -49,7 +49,7 @@ extern "C" {
         .parity    = UART_PARITY_DISABLE, \
         .stop_bits = UART_STOP_BITS_1, \
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, \
-        // .rx_flow_ctrl_thresh = 122, // Only if using HW flow control
+        /* .rx_flow_ctrl_thresh = 122, // Only if using HW flow control */ \
     }
 
 /* --- Type Definitions --- */

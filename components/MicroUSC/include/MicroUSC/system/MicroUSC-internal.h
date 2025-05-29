@@ -273,6 +273,9 @@ void set_microusc_system_error_handler_default(void);
  */
 void set_microusc_system_code(microusc_status code);
 
+
+void microusc_infloop(void);
+
 /**
  * @brief Initialize the MicroUSC system components and resources.
  *

@@ -62,4 +62,5 @@ target_compile_definitions(
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
         MICROUSC_QUEUEHANDLE_SIZE=3
+        UART_QUEUE_SIZE=10
 )

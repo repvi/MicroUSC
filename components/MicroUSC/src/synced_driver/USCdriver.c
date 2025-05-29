@@ -55,11 +55,6 @@ __attribute__((unused)) void free_bit_manip(usc_bit_manip *bit_manip)
 
 esp_err_t init_configuration_storage(void) 
 {
-    STATIC_INIT_SAFETY init = initZERO;
-    if (init == initONE) {
-        return ESP_FAIL; // doesn't allow for reinitialization
-    }
-
     if (init_usc_bit_manip(&priority_storage) != ESP_OK) {
         return ESP_ERR_NO_MEM;
     }
@@ -69,7 +64,6 @@ esp_err_t init_configuration_storage(void)
         return ESP_ERR_NO_MEM;
     }
 
-    init = initONE;
     return ESP_OK;
 }
 
@@ -83,10 +77,13 @@ void usc_driver_clean_data(usc_driver_t *driver) {
 */
 
 //returns the first bit that is 0
-UBaseType_t getCurrentEmptyDriverIndex(void) 
+UBaseType_t getCurrentEmptyDriverIndex(void)
 {
+    UBaseType_t driver_bits;
     portENTER_CRITICAL(&priority_storage.critical_lock);
-    const UBaseType_t driver_bits = priority_storage.active_driver_bits;
+    {
+        driver_bits = priority_storage.active_driver_bits;
+    }
     portEXIT_CRITICAL(&priority_storage.critical_lock);
     UBaseType_t v;
     for (UBaseType_t i = 0; i < DRIVER_MAX; i++) { // there can be alternate code for this function, could have performance difference between the two possibly
@@ -102,9 +99,12 @@ UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void)
 {
     const UBaseType_t v = getCurrentEmptyDriverIndex();
     if (v != NOT_FOUND) {
+        UBaseType_t occupied_bits;
         portENTER_CRITICAL(&priority_storage.critical_lock);
-        priority_storage.active_driver_bits |= BIT(v); // bit is now occupied
-        const UBaseType_t occupied_bits = priority_storage.active_driver_bits;
+        {
+            priority_storage.active_driver_bits |= BIT(v); // bit is now occupied
+            occupied_bits = priority_storage.active_driver_bits;
+        }
         portEXIT_CRITICAL(&priority_storage.critical_lock);
         ESP_LOGI(TAG, "Bit is now: %u", occupied_bits);
     }
@@ -117,6 +117,26 @@ void create_usc_driver_task( struct usc_driver_t *driver,
                              const UBaseType_t i
 ) { // might neeed adjustment
     const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
+    /*
+    size_t free_heap = esp_get_free_heap_size();
+    size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    size_t required_memory = TASK_STACK_SIZE + sizeof(StaticTask_t) + 100; // Rough estimate
+    
+    ESP_LOGI("USC_DRIVER", "Before task creation:");
+    ESP_LOGI("USC_DRIVER", "Free heap: %d bytes", free_heap);
+    ESP_LOGI("USC_DRIVER", "Largest block: %d bytes", largest_block);
+    ESP_LOGI("USC_DRIVER", "Required: ~%d bytes", required_memory);
+    //ESP_LOGI("USC_DRIVER", "Task name: %s", driver->driver_storage.driver_setting.driver_name);
+    */
+
+    ESP_LOGI("TAG", "CCCCC");
+    multi_heap_info_t info;
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
+    info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
+    ESP_LOGI("TAG", "sssss");
+
+    ESP_LOGI(TAG, "Accessing");
 
     xTaskCreatePinnedToCore(
         usc_driver_read_task,                                // Task function
@@ -127,31 +147,32 @@ void create_usc_driver_task( struct usc_driver_t *driver,
         &driver->driver_storage.driver_tasks.task_handle,    // Task handle
         TASK_CORE_READER                                     // Core to pin the task
     );
+    ESP_LOGI(TAG, "Done");
 }
 
 // todo -> needs to be changed to have remove the task driver (reader) action of the uart
 void create_usc_driver_action_task( struct usc_driver_t *driver,
-                                           usc_data_process_t driver_process,
-                                           const UBaseType_t i
+                                    usc_data_process_t driver_process,
+                                    const UBaseType_t i
 ) {
     const UBaseType_t OFFSET = TASK_PRIORITY_START + i;
     char task_name[15];
     snprintf(task_name, sizeof(task_name), "Action #%d", i);
-
-    xTaskCreatePinnedToCore(
+    // xTaskCreatePinnedToCore
+    xTaskCreate(
         driver_process,                                        // Task function
         task_name,                                             // Task name
         TASK_STACK_SIZE,                                       // Stack size
         (void *)i,                                             // Task parameters
         (OFFSET),                                              // Based on index
-        &driver->driver_storage.driver_tasks.action_handle,    // Task handle
-        TASK_CORE_ACTION                                       // Core to pin the task
+        &driver->driver_storage.driver_tasks.action_handle    // Task handle
+        //TASK_CORE_ACTION                                       // Core to pin the task
     );
 }
 
 // Validate UART configuration
-esp_err_t check_valid_uart_config( const uart_config_t *uart_config,    
-                                   const uart_port_config_t *port_config
+void check_valid_uart_config( const uart_config_t *uart_config,    
+                              const uart_port_config_t *port_config
 ) {
     xSemaphoreTake(driver_system.lock, portMAX_DELAY);
     bool v = ( ( driver_system.size + 1 ) >= DRIVER_MAX );
@@ -159,26 +180,22 @@ esp_err_t check_valid_uart_config( const uart_config_t *uart_config,
 
     if (v) {
         ESP_LOGE(TAG, "Invalid driver index");
-        return ESP_ERR_INVALID_ARG;
+        set_microusc_system_code(USC_SYSTEM_ERROR);
+        return;
     }
 
     if (OUTSIDE_SCOPE(port_config->port, UART_NUM_MAX)) {
         ESP_LOGE(TAG, "Invalid UART port");
-        return ESP_ERR_INVALID_ARG;
+        set_microusc_system_code(USC_SYSTEM_ERROR);
+        return;
     }
 
     UBaseType_t i = getCurrentEmptyDriverIndex();
 
-    ESP_LOGI(TAG, "Got index: %u", i); // show what index it is starting at
     vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS); // 10ms delay
 
     // Initialize UAR
-    if (uart_init(*port_config, *uart_config, &uart_queue[i], UART_QUEUE_SIZE) != ESP_OK) {
-        ESP_LOGE(TAG, "Initialization failed");
-        return ESP_FAIL;
-    }
-    ESP_LOGI(TAG, "Finiished with configuration function");
-    return ESP_OK;
+    uart_init(*port_config, *uart_config, &uart_queue[i], UART_QUEUE_SIZE);
 }
 
 struct usc_driver_t configure_driver_setting( const char *driver_name,
@@ -189,6 +206,8 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
     struct usc_config_t *driver_setting = &driver.driver_storage.driver_setting;
     driver.sync_signal = xSemaphoreCreateBinary(); // probably add if it is NULL or not
     if (driver.sync_signal == NULL) {
+        ESP_LOGE(TAG, "Could not inialize");
+        set_microusc_system_code(USC_SYSTEM_ERROR);
         return driver;
     }
     xSemaphoreGive(driver.sync_signal); // create the section
@@ -199,7 +218,7 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
     }
     else {
         static int no_name = 1;
-        snprintf(driver_setting->driver_name, DRIVER_NAME_SIZE, "Unknown Driver %d", no_name);
+        snprintf(driver_setting->driver_name, DRIVER_NAME_SIZE - 1, "Unknown Driver %d", no_name);
         no_name++;
     }
     driver_setting->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
@@ -207,6 +226,7 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
     SerialDataQueueHandler data = createDataStorageQueue(SERIAL_DATA_STORAGE_CAPACITY);
     if (data == NULL) {
         ESP_LOGE(TAG, "Could not inialize SerialDataQueueHandler for driver");
+        set_microusc_system_code(USC_SYSTEM_ERROR);
     }
     
     driver.driver_storage.driver_setting.data = data;
@@ -216,6 +236,8 @@ struct usc_driver_t configure_driver_setting( const char *driver_name,
     driver_setting->status = NOT_CONNECTED; // As default
     driver_setting->baud_rate = uart_config.baud_rate; // in case, recommended to set
     driver_setting->uart_config = port_config;
+
+    ESP_LOGI(TAG, "Completeted initializing driver");
     return driver;
 }
 
@@ -234,15 +256,17 @@ esp_err_t usc_driver_init( const char *driver_name,
         return ESP_ERR_INVALID_ARG;
     }
 
-    esp_err_t ret = check_valid_uart_config(&uart_config, &port_config);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Invalid UART configuration");
-        return ret;
-    }
+    check_valid_uart_config(&uart_config, &port_config);
 
     UBaseType_t open_spot = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit
 
     struct usc_driver_t driver = configure_driver_setting(driver_name, uart_config, port_config);
+    ESP_LOGI("TAG", "CCCCC");
+    multi_heap_info_t info;
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
+    info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
+    ESP_LOGI("TAG", "sssss");
 
     addSingleDriver(&driver, open_spot);
     SemaphoreHandle_t system_lock = driver_system.lock;
@@ -259,6 +283,12 @@ esp_err_t usc_driver_init( const char *driver_name,
         xSemaphoreGive(system_lock); // 1 OUT
         return ESP_ERR_INVALID_STATE; // Failed to take semaphore
     }
+
+    ESP_LOGI("TAG", "CCCCC");
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
+    info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
+    ESP_LOGI("TAG", "sssss");
 
     create_usc_driver_task(current_driver, open_spot); // create the task for the serial driver implemented
     create_usc_driver_action_task(current_driver, driver_process, open_spot); // create task for the custom function (driver)

@@ -12,6 +12,7 @@
 #include "esp_sleep.h"
 #include "esp_intr_alloc.h"
 #include "esp_attr.h"
+#include "stdint.h"
 
 /* n = 0  -> default value
    n = 1  -> turn off esp32
@@ -52,12 +53,12 @@ struct rtc_map {
 };
 
 RTC_NOINIT_ATTR struct rtc_memory_t {
-    uint8_t buf[RTC_MEMORY_BUFFER_SIZE]; // RTC memory buffer
     struct rtc_map mapping[RTC_MEMORY_STORAGE_KEY_SIZE];
+    uint8_t buf[RTC_MEMORY_BUFFER_SIZE]; // RTC memory buffer
+    portMUX_TYPE lock;
     int address_key_index; // Index for the address key
     int remaining_mem;
-    portMUX_TYPE lock;
-} rtc_memory = {.buf = {0}, .mapping = {0}, .address_key_index = 0, .remaining_mem = RTC_MEMORY_BUFFER_SIZE, .lock = portMUX_INITIALIZER_UNLOCKED};
+} rtc_memory = {.mapping = {}, .buf = {0}, .lock = portMUX_INITIALIZER_UNLOCKED, .address_key_index = 0, .remaining_mem = RTC_MEMORY_BUFFER_SIZE};
 
 struct sleep_config_t {
     gpio_num_t wakeup_pin;
@@ -169,8 +170,8 @@ void save_system_rtc_var(void *var, const size_t size, const char key)
             const int offset = RTC_MEMORY_BUFFER_SIZE - rtc_memory.remaining_mem;
             uint8_t *ptr = rtc_memory.buf + offset;
             memcpy(ptr, var, size); // Copy the variable to the RTC memory
-            rtc_memory.remaining_size -= size; // Decrease the remaining size
-            rtc_memory.address_key[rtc_memory.address_key_index++] = key; // Save the key            
+            rtc_memory.remaining_mem -= size; // Decrease the remaining size
+            rtc_memory.mapping[rtc_memory.address_key_index++].key = key; // Save the key            
             ESP_LOGI(TAG, "Saved %u bytes to RTC memory", size);
         }
         else{
@@ -182,7 +183,7 @@ void save_system_rtc_var(void *var, const size_t size, const char key)
 
 void *get_system_rtc_var(const char key)
 {
-    uintptr_t address;
+    uintptr_t address = 0; // 'NULL'
     portENTER_CRITICAL(&rtc_memory.lock);
     {
         size_t offset = 0;
@@ -282,15 +283,16 @@ inline void set_microusc_system_error_handler_default(void)
 static void microusc_queue_overflow_handler(void)
 {
     vTaskSuspend(microusc_task_handler);
+    microusc_status system_status;
     while (uxQueueSpacesAvailable(__microusc_queue_action) != MICROUSC_QUEUEHANDLE_SIZE) {
-        xQueueReceive(__microusc_queue_action, &system_status, portMAX_DELAY)
+        xQueueReceive(__microusc_queue_action, &system_status, portMAX_DELAY);
     }
     vTaskResume(microusc_task_handler);
 }
 
 inline void set_microusc_system_code(microusc_status code)
 {
-    if (eTaskGetState(microusc_task_handler) == eSuspended) {
+    if (eTaskGetState(microusc_task_handler) != eSuspended) {
         // this only runs if the task is not suspended due to flushing the queue at the meantime
         if (uxQueueSpacesAvailable(__microusc_queue_action) != 0) {
             xQueueSend(__microusc_queue_action, &code, 0);
@@ -394,6 +396,12 @@ static void microusc_system_task(void *p)
     }
 }
 
+__noreturn void microusc_infloop(void)
+{
+    while (1) {
+        // nothing
+    }
+}
 // needs to implement gpio isr trigger
 esp_err_t microusc_system_setup(void)
 {
