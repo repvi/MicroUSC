@@ -29,13 +29,23 @@ UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void);
 
 void usc_driver_read_task(void *pvParameters);
 
+static void task_name_configure(char *restrict des, char *restrict str, char *restrict tmp, size_t len1, size_t len2) {
+    strncpy(des, str, len1);
+    strncat(des, tmp, len2);
+}
+
 static void create_usc_driver_reader( struct usc_driver_t *driver,
                                       const UBaseType_t i
 ) { // might neeed adjustment
     const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
+
     char task_name[30];
-    strncpy(task_name, driver->driver_name, sizeof(task_name));
-    strncat(task_name, READER, sizeof(READER));
+    task_name_configure(task_name, 
+                        driver->driver_name, 
+                        READER, 
+                        sizeof(task_name), 
+                        sizeof(READER)
+                       );
 
     driver->uart_reader.task = xTaskCreateStaticPinnedToCore(
         usc_driver_read_task,                                // Task function
@@ -56,8 +66,13 @@ static void create_usc_driver_processor( struct usc_driver_t *driver,
 ) {
     const UBaseType_t OFFSET = TASK_PRIORITY_START + i;
     char task_name[30];
-    strncpy(task_name, driver->driver_name, sizeof(task_name));
-    strncat(task_name, PROCESSOR, sizeof(PROCESSOR));
+    task_name_configure(task_name, 
+                        driver->driver_name, 
+                        PROCESSOR, 
+                        sizeof(task_name), 
+                        sizeof(PROCESSOR)
+                       );
+
     driver->uart_processor.task = xTaskCreateStaticPinnedToCore(
         driver_process,                                        // Task function
         task_name,                                             // Task name
@@ -65,12 +80,15 @@ static void create_usc_driver_processor( struct usc_driver_t *driver,
         (void *)i,                                             // Task parameters
         (OFFSET),                                              // Based on index
         driver->uart_processor.stack,    // Task handle
-        driver->uart_processor.task_buffer,
+        &driver->uart_processor.task_buffer,
         TASK_CORE_ACTION                                       // Core to pin the task
     );
 }
 
-static void setUpMemDriver(struct usc_driverList *driverList) {
+static void setUpMemDriver( struct usc_driverList *driverList, 
+                            const usc_data_process_t driver_processor,
+                            const UBaseType_t priority
+) {
     struct usc_driver_t *driver = &driverList->driver;
     uint8_t *ptr = (uint8_t *)driverList + DRIVERLIST_SIZE;
 
@@ -90,20 +108,22 @@ static void setUpMemDriver(struct usc_driverList *driverList) {
 
     createDataStorageQueueStatic(driver->data, ptr, data_size);
 
-    create_usc_driver_reader(driver);
-    create_usc_driver_processor(driver, );
+
+    create_usc_driver_reader(driver, priority);
+    create_usc_driver_processor(driver, driver_processor, priority);
 }
 
 // make sure to take the lock and have access and release it manually
 void addSingleDriver( const char *const driver_name,
                       const uart_config_t uart_config,
                       const uart_port_config_t port_config,
-                      const stack_size_t stack_size,
-                      const UBaseType_t priority)
-{
+                      const usc_data_process_t driver_process,
+                      const stack_size_t stack_size
+) {
     struct usc_driverList *new = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
     struct usc_driver_t *driver = &new->driver; // point to the first byte of the allocated memory
 
+    driver->uart_reader.active = true;
     driver->uart_processor.stack_size = stack_size;
     driver->uart_config = uart_config;
     if (strncmp(driver->driver_name, "", DRIVER_NAME_SIZE - 1) != 0) {
@@ -118,10 +138,11 @@ void addSingleDriver( const char *const driver_name,
     driver->port_config = port_config;
     driver->buffer.size = buff_size;
     driver->status = NOT_CONNECTED;
-    driver->priority = priority;
+
+    driver->priority = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit
     driver->has_access = false;
 
-    setUpMemDriver(driver);
+    setUpMemDriver(driver, driver_process, driver->priority);
 
     ESP_LOGI(TAG, "Completeted initializing driver");
 
@@ -149,28 +170,6 @@ void freeDriverList(void)
         heap_caps_free(list);
     }
     driver_system.size = 0;
-}
-
-bool getTask_status(const struct usc_task_manager_t *task)
-{
-    return task->active;
-}
-
-void setTask_status(struct usc_task_manager_t *task, bool active)
-{
-    task->active = active;
-}
-
-void setTaskHandlersNULL(struct usc_task_manager_t *task)
-{
-    task->action_handle = NULL; /* Reset the task handle */
-    task->task_handle = NULL;   /* Reset the action task handle */
-}
-
-void setTaskDefault(struct usc_task_manager_t *task)
-{
-    setTask_status(task, false);
-    setTaskHandlersNULL(task);
 }
 
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size)

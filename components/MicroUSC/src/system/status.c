@@ -27,7 +27,7 @@ static char *status_str(usc_status_t status)
     }
 }
 
-void usc_print_driver_configurations(void) 
+void usc_print_driver_configurations(void)
 {
     int i = 0;
     struct usc_driverList *current, *tmp;

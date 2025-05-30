@@ -80,7 +80,8 @@ extern memory_block_handle_t mem_block_driver_nodes;
 void addSingleDriver( const char *const driver_name,
                       const uart_config_t uart_config,
                       const uart_port_config_t port_config,
-                      const UBaseType_t priority
+                      const usc_data_process_t driver_process,
+                      const stack_size_t stack_size
                     );
                     
 /**
@@ -103,48 +104,6 @@ void removeSingleDriver(struct usc_driverList *item);
  * or reconfiguration in embedded applications[1][2][5].
  */
 void freeDriverList(void);
-
-/**
- * @brief Check if a MicroUSC system task is currently active.
- *
- * @param task Pointer to usc_task_manager_t structure
- * @return true - Task is in RUNNING or READY state
- * @return false - Task is SUSPENDED or DELETED
- *
- * @note Uses FreeRTOS internal task states[2]. Safe for ISR context with proper synchronization[5].
- */
-bool getTask_status(const struct usc_task_manager_t *task);
-
-/**
- * @brief Control task execution state.
- *
- * @param task   Pointer to usc_task_manager_t
- * @param active true=vTaskResume(), false=vTaskSuspend()
- *
- * @note Suspend/resume operations are atomic. Does not handle task deletion[2][5].
- */
-void setTask_status(struct usc_task_manager_t *task, bool active);
-
-/**
- * @brief Reset task notification and event handlers.
- *
- * Sets task->notification_handler and task->event_handler to NULL.
- * Essential for safe task recycling in dynamic ESP32 applications[2][5].
- */
-void setTaskHandlersNULL(struct usc_task_manager_t *task);
-
-/**
- * @brief Reset task to default configuration.
- *
- * Sets:
- * - Priority to tskIDLE_PRIORITY
- * - Stack depth to USC_TASK_STACK_DEFAULT
- * - Handlers to NULL
- * - State to SUSPENDED
- *
- * Prepares tasks for reuse while avoiding memory reallocation[1][2][5].
- */
-void setTaskDefault(struct usc_task_manager_t *task);
 
 #define WAIT_FOR_RESPONSE            ( pdMS_TO_TICKS( 1000 ) )
 

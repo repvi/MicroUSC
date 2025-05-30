@@ -1,5 +1,4 @@
 #include "MicroUSC/internal/system/bit_manip.h"
-#include "USC_driver_config.h"
 
 struct usc_bit_manip {
     UBaseType_t active_driver_bits;
@@ -7,7 +6,6 @@ struct usc_bit_manip {
 };
 
 struct usc_bit_manip priority_storage;
-
 
 static esp_err_t init_usc_bit_manip(struct usc_bit_manip *bit_manip)
 {

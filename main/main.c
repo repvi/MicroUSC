@@ -84,6 +84,7 @@ void app_main(void) {
     printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
     info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
     ESP_LOGI("TAG", "sssss");
+    
     uart_port_config_t pins = {
         .port = UART_NUM_2, // make it to 1
         .rx = GPIO_NUM_16, // 17

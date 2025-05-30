@@ -54,41 +54,11 @@ extern "C" {
 
 /* --- Type Definitions --- */
 
-/** @brief Callback for driver events */
-typedef void (*usc_event_cb_t)(void *);
-
-/** @brief Callback for data processing */
-typedef void (*usc_data_process_t)(void *);
-
 // Forward declarations
-typedef struct usc_driver_t usc_driver_t;
-typedef struct usc_bit_manip usc_bit_manip;
-typedef struct usc_task_manager_t usc_task_manager_t;
-typedef usc_task_manager_t *usc_tasks_t;
+typedef struct usc_driver_t *uscDriverHandler;
 
-esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip);
+// esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip);
 
-/**
- * @brief Initialize configuration storage system and allocate UART buffer
- * 
- * This function performs two critical initialization tasks:
- * 1. Initializes the USC bit manipulation priority storage system
- * 2. Allocates internal memory buffer for future UART operations
- * 
- * The function follows ESP-IDF error handling conventions, returning specific
- * error codes to indicate the type of failure that occurred.
- * 
- * @return esp_err_t Status of initialization
- * @retval ESP_OK               Success - all components initialized
- * @retval ESP_ERR_NO_MEM       Memory allocation failure (either priority storage or UART buffer)
- * 
- * @note UART buffer is allocated from internal SRAM for optimal performance
- * @note Buffer size is defined by buf_SIZE constant
- * @note Caller must ensure proper cleanup if function fails
- * 
- * @warning If this function fails, the system may be in an inconsistent state
- *          where priority storage is initialized but UART buffer is not allocated
- */
 esp_err_t init_configuration_storage(void);
 
 //void usc_driver_clean_data(usc_driver_t *driver);

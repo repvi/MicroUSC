@@ -91,6 +91,13 @@ typedef enum {
 
 typedef size_t stack_size_t;
 
+
+/** @brief Callback for driver events */
+typedef void (*usc_event_cb_t)(void *);
+
+/** @brief Callback for data processing */
+typedef void (*usc_data_process_t)(void *);
+
 /**
  * @brief Complete driver instance definition
  * 
@@ -101,12 +108,14 @@ struct usc_driver_t {
         TaskHandle_t task;
         StaticTask_t task_buffer;
         StackType_t stack[TASK_STACK_SIZE];
+        bool active;
     } uart_reader;
     struct {
         TaskHandle_t task;
         StaticTask_t task_buffer;
         StackType_t *stack;
         size_t stack_size;
+        // always run
     } uart_processor;
     uart_config_t uart_config;
     driver_name_t driver_name;               ///< Human-readable identifier
