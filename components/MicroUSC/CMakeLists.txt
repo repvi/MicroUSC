@@ -1,3 +1,7 @@
+set(MICROUSC_APPLICATION
+    "application/USCdriver.c"
+)
+
 set(MICROUSC_ESP_CHIP "")
 
 if(IDF_TARGET STREQUAL "esp32")
@@ -19,7 +23,6 @@ set(MICROUSC_INTERNAL
 set(MICROUSC_SYNCED_DRIVER
     "synced_driver/atomic_sys_op.c"
     "synced_driver/esp_uart.c"
-    "synced_driver/USCdriver.c"
 )
 
 set(MICROUSC_SYSTEM
@@ -28,6 +31,7 @@ set(MICROUSC_SYSTEM
     "system/status.c"
 )
 
+list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
 list(TRANSFORM MICROUSC_INTERNAL PREPEND "src/")
 list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
@@ -35,6 +39,7 @@ list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
 
 idf_component_register(
     SRCS 
+        ${MICROUSC_APPLICATION}
         ${MICROUSC_ESP_CHIP}
         ${MICROUSC_INTERNAL}
         ${MICROUSC_SYNCED_DRIVER}

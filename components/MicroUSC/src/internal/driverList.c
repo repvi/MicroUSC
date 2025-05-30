@@ -1,7 +1,7 @@
+#include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/driverList.h"
-#include "MicroUSC/system/MicroUSC-internal.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/USCdriver.h"
 #include "debugging/speed_test.h"
 #include "esp_system.h"
 
@@ -23,7 +23,7 @@ __always_inline void ptrOffset(void *ptr, size_t offset) {
     ptr = ( uint8_t * ) ( ( ( uintptr_t )ptr + offset ) );
 }
 
-//defined in "MicroUSC/synced_driver/USCdriver.h"
+//defined in "MicroUSC/USCdriver.h"
 UBaseType_t getCurrentEmptyDriverIndex(void);
 UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void);
 
@@ -61,7 +61,7 @@ static void create_usc_driver_reader( struct usc_driver_t *driver,
 
 // todo -> needs to be changed to have remove the task driver (reader) action of the uart
 static void create_usc_driver_processor( struct usc_driver_t *driver,
-                                         const usc_data_process_t driver_process,
+                                         const usc_process_t driver_process,
                                          const UBaseType_t i
 ) {
     const UBaseType_t OFFSET = TASK_PRIORITY_START + i;
@@ -86,7 +86,7 @@ static void create_usc_driver_processor( struct usc_driver_t *driver,
 }
 
 static void setUpMemDriver( struct usc_driverList *driverList, 
-                            const usc_data_process_t driver_processor,
+                            const usc_process_t driver_processor,
                             const UBaseType_t priority
 ) {
     struct usc_driver_t *driver = &driverList->driver;
@@ -117,7 +117,7 @@ static void setUpMemDriver( struct usc_driverList *driverList,
 void addSingleDriver( const char *const driver_name,
                       const uart_config_t uart_config,
                       const uart_port_config_t port_config,
-                      const usc_data_process_t driver_process,
+                      const usc_process_t driver_process,
                       const stack_size_t stack_size
 ) {
     struct usc_driverList *new = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
@@ -142,7 +142,7 @@ void addSingleDriver( const char *const driver_name,
     driver->priority = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit
     driver->has_access = false;
 
-    setUpMemDriver(driver, driver_process, driver->priority);
+    setUpMemDriver(new, driver_process, driver->priority);
 
     ESP_LOGI(TAG, "Completeted initializing driver");
 
@@ -174,7 +174,6 @@ void freeDriverList(void)
 
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size)
 {
-    const size_t total = sizeof(struct usc_driverList) + sizeof(StaticSemaphore_t);
     const size_t total = sizeof(struct usc_driverList) + (sizeof(StaticSemaphore_t)) + TASK_STACK_SIZE + buffer_size + d_size + sizeof(DataStorageQueueStatic);
     mem_block_driver_nodes = (memory_block_handle_t)memory_handler_malloc(total, DRIVER_MAX);
     if (mem_block_driver_nodes == NULL) {
@@ -191,30 +190,9 @@ __always_inline esp_err_t init_hidden_driver_lists(const size_t buffer_size, con
     return init_driver_list_memory_pool(buffer_size, data_size);
 }
 
-esp_err_t set_driver_default(struct usc_driver_t *driver)
-{
-    SemaphoreHandle_t sync = driver->sync_signal;
-    xSemaphoreTake(sync, portMAX_DELAY);
-    // implement here
-    xSemaphoreGive(sync); /* Unlock the queue */
-    return ESP_OK;
-}
-
-esp_err_t set_driver_default_task(struct usc_driver_t *driver)
-{
-    setTaskDefault(&driver->driver_storage.driver_tasks);
-    return ESP_OK; /* Task is already inactive */
-}
-
 void set_driver_inactive(struct usc_driver_t *driver)
 {
-    struct usc_config_t *driver_setting = &driver->driver_storage.driver_setting;
-    struct usc_task_manager_t *task = &driver->driver_storage.driver_tasks;
     xSemaphoreGive(driver->sync_signal);            /* Unlock the queue */
-    setTask_status(task, false);                    /* Reset the active flag */
-    vTaskDelay(pdMS_TO_TICKS(DELAY_MILISECOND_50)); /* Delay for 1 second */
-    while (!xSemaphoreTake(driver->sync_signal, SEMAPHORE_DELAY));
-    setTaskHandlersNULL(task);
-    driver_setting->status = NOT_CONNECTED; /* Reset the driver status */
+    // implement here
     xSemaphoreGive(driver->sync_signal);    /* Unlock the queue */
 }

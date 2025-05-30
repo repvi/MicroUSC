@@ -1,11 +1,12 @@
+#include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/chip_specific/system_attr.h"
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/status.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/internal/genList.h"
 #include "MicroUSC/internal/uscdef.h"
+#include "MicroUSC/USCdriver.h"
 #include "esp_system.h"
 #include <esp_task_wdt.h>
 #include "esp_chip_info.h"
@@ -238,9 +239,9 @@ void IRAM_ATTR microusc_pause_drivers(void)
 {
     struct usc_driverList *current, *tmp;
     list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
-        struct usc_task_manager_t *task_manager = &current->driver.driver_storage.driver_tasks;
-        vTaskSuspend(task_manager->task_handle);
-        vTaskSuspend(task_manager->action_handle);
+        struct usc_driver_t *driver = &current->driver;
+        vTaskSuspend(driver->uart_processor.task);
+        vTaskSuspend(driver->uart_reader.task);
     }
 }
 
@@ -248,9 +249,9 @@ void IRAM_ATTR microusc_resume_drivers(void)
 {
     struct usc_driverList *current, *tmp;
     list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
-        struct usc_task_manager_t *task_manager = &current->driver.driver_storage.driver_tasks;
-        vTaskResume(task_manager->task_handle);
-        vTaskResume(task_manager->action_handle);
+        struct usc_driver_t *driver = &current->driver;
+        vTaskResume(driver->uart_processor.task);
+        vTaskResume(driver->uart_reader.task);
     }
 }
 

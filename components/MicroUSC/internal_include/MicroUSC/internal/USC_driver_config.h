@@ -143,6 +143,8 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1,
 #define SEMAPHORE_DELAY           pdMS_TO_TICKS(3)
 #define SEMAPHORE_WAIT_TIME       pdMS_TO_TICKS(5000)
 
+#define NOT_FOUND (( uint32_t ) ( -1 ) )
+
 #ifdef __cplusplus
 }
 #endif

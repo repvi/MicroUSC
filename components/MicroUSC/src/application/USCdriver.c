@@ -1,9 +1,9 @@
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/memory_pool.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/USCdriver.h"
+#include "MicroUSC/synced_driver/esp_uart.h"
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/USC_driver_config.h"
-#include "MicroUSC/synced_driver/esp_uart.h"
 #include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/internal/uscdef.h"
 #include "debugging/speed_test.h"
@@ -23,8 +23,6 @@
 #define SERIAL_INPUT_DELAY ( ( TickType_t ) ( 3000 / portTICK_PERIOD_MS ) ) // 3 second delay
 #define SERIAL_RECIEVE_DELAY() vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS) // Wait for response
 
-#define NOT_FOUND (( uint32_t ) ( -1 ) )
-
 #define SERIAL_DATA_STORAGE_CAPACITY  256
 
 QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
@@ -33,7 +31,7 @@ QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
 
 // Validate UART configuration
 static void check_valid_uart_config( const uart_config_t *uart_config,    
-                              const uart_port_config_t *port_config
+                                     const uart_port_config_t *port_config
 ) {
     xSemaphoreTake(driver_system.lock, portMAX_DELAY);
     bool v = ( ( driver_system.size + 1 ) >= DRIVER_MAX );
@@ -67,7 +65,7 @@ struct usc_driver_t *getLastDriver(void) {
 esp_err_t usc_driver_init( const char *const driver_name,
                            const uart_config_t uart_config,
                            const uart_port_config_t port_config,
-                           const usc_data_process_t driver_process,
+                           const usc_process_t driver_process,
                            const stack_size_t stack_size
 ) {
     if (driver_process == NULL) {
@@ -124,7 +122,7 @@ esp_err_t usc_driver_init( const char *const driver_name,
  *       peripheral communication, supporting robust driver and system configuration.
  *       Proper driver initialization must be performed before calling this function.
  */
-static esp_err_t usc_driver_write( const usc_driver_t *driver,
+static esp_err_t usc_driver_write( const struct usc_driver_t *driver,
                                    const char *data,
                                    const size_t len
 ) {
@@ -191,7 +189,7 @@ static usc_status_t process_data(struct usc_driver_t *driver, const UBaseType_t 
     uint8_t *temp_data = uart_read(driver->port_config.port, driver->buffer.memory, driver->buffer.size, uart_queue[i], SERIAL_INPUT_DELAY);
     if (temp_data != NULL) {
         uint32_t data = parse_data(temp_data);
-        dataStorageQueue_add(data_queue, data); // Add the data to the queue
+        dataStorageQueue_add(driver->data, data); // Add the data to the queue
         return DATA_RECEIVED;
     }
     return DATA_RECEIVE_ERROR;

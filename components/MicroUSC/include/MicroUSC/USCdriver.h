@@ -33,7 +33,7 @@
 
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
-#include "MicroUSC/synced_driver/atomic_sys_op.h"
+#include "MicroUSC/uscUniversal.h"
 #include "esp_system.h"
 
 #ifdef __cplusplus
@@ -55,11 +55,13 @@ extern "C" {
 /* --- Type Definitions --- */
 
 // Forward declarations
+typedef void (*usc_process_t)(void *);
+
 typedef struct usc_driver_t *uscDriverHandler;
 
 // esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip);
 
-esp_err_t init_configuration_storage(void);
+// esp_err_t init_configuration_storage(void);
 
 //void usc_driver_clean_data(usc_driver_t *driver);
 
@@ -93,7 +95,9 @@ esp_err_t init_configuration_storage(void);
 esp_err_t usc_driver_init( const char *const driver_name,
                            const uart_config_t uart_config, 
                            const uart_port_config_t port_config, 
-                           const usc_data_process_t driver_process);
+                           const usc_process_t driver_process,
+                           const stack_size_t stack_size
+                         );
 
 //void uart_port_config_deinit(uart_port_config_t *uart_config);
 

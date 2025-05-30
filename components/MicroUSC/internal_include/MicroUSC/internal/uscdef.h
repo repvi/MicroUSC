@@ -89,15 +89,6 @@ typedef enum {
     TIME_OUT,              ///< General operation timeout
 } usc_status_t;
 
-typedef size_t stack_size_t;
-
-
-/** @brief Callback for driver events */
-typedef void (*usc_event_cb_t)(void *);
-
-/** @brief Callback for data processing */
-typedef void (*usc_data_process_t)(void *);
-
 /**
  * @brief Complete driver instance definition
  * 

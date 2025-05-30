@@ -1,4 +1,8 @@
 #include "MicroUSC/internal/system/bit_manip.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "esp_log.h"
+
+#define TAG "[INTERNAL_BIT_MANIP]"
 
 struct usc_bit_manip {
     UBaseType_t active_driver_bits;

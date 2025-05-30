@@ -1,7 +1,7 @@
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/internal/uscdef.h"
 #include "MicroUSC/internal/driverList.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/USCdriver.h"
 #include "esp_system.h"
 
 #define TAG "[STATUS]"
@@ -35,19 +35,13 @@ void usc_print_driver_configurations(void)
         struct usc_driver_t *driver = &current->driver;
         SemaphoreHandle_t lock = driver->sync_signal;
         if (xSemaphoreTake(lock, SEMAPHORE_WAIT_TIME) == pdTRUE) {
-            if (driver->status == DRIVER_UNINITALIALIZED) {
-                ESP_LOGI(TAG, "NOT INITIALIZED on index %d", i);
-                ESP_LOGI("--------", "----------------------------");
-            }
-            else {
-                ESP_LOGI("DRIVER", "      %s",  driver->driver_name);
-                ESP_LOGI("Baud Rate", "   %lu", driver->uart_config.baud_rate);
-                ESP_LOGI("Status", "      %s",  status_str(config->status));
-                ESP_LOGI("UART Port", "   %d",  driver->port_config.port);
-                ESP_LOGI("UART TX Pin", " %d",  driver->port_config.tx);
-                ESP_LOGI("UART RX Pin", " %d",  driver->port_config.rx);
-                ESP_LOGI("--------", "----------------------------");
-            }
+            ESP_LOGI("DRIVER", "      %s",  driver->driver_name);
+            ESP_LOGI("Baud Rate", "   %d", driver->uart_config.baud_rate);
+            ESP_LOGI("Status", "      %s",  status_str(driver->status));
+            ESP_LOGI("UART Port", "   %d",  driver->port_config.port);
+            ESP_LOGI("UART TX Pin", " %d",  driver->port_config.tx);
+            ESP_LOGI("UART RX Pin", " %d",  driver->port_config.rx);
+            ESP_LOGI("--------", "----------------------------");
             xSemaphoreGive(lock);
             i++;
         }

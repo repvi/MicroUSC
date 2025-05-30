@@ -43,6 +43,7 @@ extern "C" {
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/internal/genList.h"
 #include "MicroUSC/internal/uscdef.h"
+#include "MicroUSC/uscUniversal.h"
 #include "esp_err.h"
 
 #ifdef LIST_HEAD
@@ -80,7 +81,7 @@ extern memory_block_handle_t mem_block_driver_nodes;
 void addSingleDriver( const char *const driver_name,
                       const uart_config_t uart_config,
                       const uart_port_config_t port_config,
-                      const usc_data_process_t driver_process,
+                      const usc_process_t driver_process,
                       const stack_size_t stack_size
                     );
                     
@@ -110,38 +111,6 @@ void freeDriverList(void);
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size);
 
 esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
-
-/**
- * @brief Initialize a driver structure with default settings.
- *
- * This function sets all fields of the specified usc_driver_t structure to their default values,
- * ensuring the driver is in a known, safe state before further configuration or use[1][2][3].
- * It should be called once during driver setup, typically at system startup or before
- * assigning custom parameters to the driver[2][5].
- *
- * @param driver Pointer to the usc_driver_t structure to initialize.
- * @return ESP_OK if initialization was successful, or an error code on failure.
- *
- * @note Proper default initialization helps prevent undefined behavior and supports robust
- * system configuration in ESP32-based and embedded MicroUSC projects[1][2][3][7].
- */
-esp_err_t set_driver_default(struct usc_driver_t *driver);
-
-/**
- * @brief Initialize the default task configuration for a driver.
- *
- * This function sets the task-related fields of the specified usc_driver_t structure
- * to their default values, including priority, stack size, handlers, and state[1][2][7].
- * It is typically called after set_driver_default() to ensure both driver and task
- * parameters are correctly initialized before task creation or scheduling[2][7].
- *
- * @param driver Pointer to the usc_driver_t structure whose task configuration will be initialized.
- * @return ESP_OK if task defaults were set successfully, or an error code on failure.
- *
- * @note This function is essential for safe task management and predictable scheduling
- * in FreeRTOS-based ESP32/ESP8266 applications using the MicroUSC library[1][2][7].
- */
-esp_err_t set_driver_default_task(struct usc_driver_t *driver);
 
 /**
  * @brief Deactivate a driver and disconnect all associated functions.
