@@ -67,18 +67,11 @@ typedef bool init_safety;        ///< Initialization state flag
  * @name Initialization Constants
  * @brief Safety markers for driver initialization states
  */
-///@{
 #define STATIC_INIT_SAFETY  static init_safety
 #define initZERO            false  ///< Uninitialized state
 #define initONE             true   ///< Initialized state
 #define DRIVER_NAME_SIZE    (sizeof(driver_name_t))  ///< Maximum driver name length
-///@}
 
-/**
- * @brief Driver communication and operational states
- * 
- * Used in usc_config_t.status to track UART driver lifecycle
- */
 typedef enum {
     NOT_CONNECTED,         ///< Hardware not detected
     CONNECTED,             ///< Physical layer established
@@ -95,39 +88,7 @@ typedef enum {
     TIME_OUT,              ///< General operation timeout
 } usc_status_t;
 
-/**
- * @brief UART driver configuration bundle
- * 
- * Contains hardware parameters and data buffers for serial communication
- */
-struct usc_config_t {
-    uart_port_config_t uart_config;  ///< ESP32 UART port/pin assignments
-    SerialDataQueueHandler data;     ///< RX/TX buffer management
-    driver_name_t driver_name;       ///< Human-readable identifier
-    usc_status_t status;             ///< Current state machine position
-    uint32_t baud_rate;              ///< Link speed (bits/sec)
-    bool has_access;                 ///< Security clearance flag
-};
-
-/**
- * @brief FreeRTOS task control structure
- * 
- * Manages driver-related tasks in ESP32 dual-core environment
- */
-struct usc_task_manager_t {
-    TaskHandle_t task_handle;    ///< UART control task (Core 1)
-    TaskHandle_t action_handle;  ///< Data processing task (Core 0)
-    bool active;                 ///< Task lifecycle flag
-};
-
-/**
- * @brief Base driver configuration container
- */
-struct usc_driver_base_t {
-    struct usc_config_t driver_setting;  ///< Hardware interface parameters
-    struct usc_task_manager_t driver_tasks; ///< Task scheduling controls
-    UBaseType_t priority;                ///< FreeRTOS task priority
-};
+typedef size_t stack_size_t;
 
 /**
  * @brief Complete driver instance definition
@@ -135,9 +96,29 @@ struct usc_driver_base_t {
  * Used in linked list management via genList.h utilities
  */
 struct usc_driver_t {
-    struct usc_driver_base_t driver_storage; ///< Configuration and tasks
-    UBaseType_t priority;                    ///< Execution precedence
+    struct {
+        TaskHandle_t task;
+        StaticTask_t task_buffer;
+        StackType_t stack[TASK_STACK_SIZE];
+    } uart_reader;
+    struct {
+        TaskHandle_t task;
+        StaticTask_t task_buffer;
+        StackType_t *stack;
+        size_t stack_size;
+    } uart_processor;
+    uart_config_t uart_config;
+    driver_name_t driver_name;               ///< Human-readable identifier
+    uart_port_config_t port_config;          ///< ESP32 UART port/pin assignments
+    struct {
+        uint8_t *memory;
+        size_t size;
+    } buffer;
     SemaphoreHandle_t sync_signal;           ///< Thread synchronization
+    SerialDataQueueHandler data;
+    usc_status_t status;                     ///< Current state machine position
+    UBaseType_t priority;                    ///< Execution precedence
+    bool has_access;                         ///< Security clearance flag
 };
 
 /**

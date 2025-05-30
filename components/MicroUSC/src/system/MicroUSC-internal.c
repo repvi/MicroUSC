@@ -334,9 +334,51 @@ inline void __call_usc_error_handler(void)
     __microusc_system_error_handler();
 }
 
+/**
+ * @brief Display ESP32 memory usage statistics for DMA and internal memory regions
+ * 
+ * This function queries the ESP-IDF heap capabilities API to retrieve and display
+ * memory usage information for DMA-capable and internal memory regions.
+ * 
+ * @warning If this function crashes with LoadProhibited exception, it indicates
+ *          heap corruption has already occurred earlier in program execution.
+ *          Common causes include:
+ *          - Buffer overflows writing past allocated memory boundaries
+ *          - Use-after-free operations accessing freed memory
+ *          - Double-free operations corrupting heap metadata
+ *          - Memory alignment issues causing improper memory access
+ *          - Stack overflow damaging heap structures
+ * 
+ * @note Function uses local macro MEMORY_TAG for consistent logging output
+ * @note All memory values are retrieved as const to prevent modification
+ */
 static void show_memory_usage(void) 
 {
+    // Local macro for consistent logging tag - scoped only to this function
+    #define MEMORY_TAG "[MEMORY]"
     
+    // Query DMA capable memory statistics
+    // DMA memory is required for hardware DMA operations and is typically limited
+    const size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
+    const size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
+    
+    // Log DMA memory information
+    ESP_LOGI(MEMORY_TAG, "DMA capable memory:");
+    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_dma);
+    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_dma);
+    
+    // Query internal SRAM memory statistics  
+    // Internal memory is fast SRAM, preferred for performance-critical operations
+    const size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    const size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    
+    // Log internal memory information
+    ESP_LOGI(MEMORY_TAG, "Internal memory:");
+    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_internal);
+    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_internal);
+    
+    // Macro cleanup - undefine to prevent scope leakage
+    #undef MEMORY_TAG
 }
 
 static void microusc_system_task(void *p)
@@ -444,7 +486,7 @@ static esp_err_t init_memory_handlers(void) {
     xSemaphoreGive(driver_system.lock);
     INIT_LIST_HEAD(&driver_system.driver_list.list);
 
-    return init_hidden_driver_lists();
+    return init_hidden_driver_lists(4, 256);
 }
 
 void init_MicroUSC_system(void) {

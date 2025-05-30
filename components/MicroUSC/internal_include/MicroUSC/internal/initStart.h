@@ -77,8 +77,12 @@ extern memory_block_handle_t mem_block_driver_nodes;
  *
  * @note Duplicate driver additions are not checked; ensure uniqueness to avoid conflicts[1][4].
  */
-void addSingleDriver(const struct usc_driver_t *driver, const UBaseType_t priority);
-
+void addSingleDriver( const char *const driver_name,
+                      const uart_config_t uart_config,
+                      const uart_port_config_t port_config,
+                      const UBaseType_t priority
+                    );
+                    
 /**
  * @brief Remove a single driver from the MicroUSC system.
  *
@@ -144,9 +148,9 @@ void setTaskDefault(struct usc_task_manager_t *task);
 
 #define WAIT_FOR_RESPONSE            ( pdMS_TO_TICKS( 1000 ) )
 
-esp_err_t init_driver_list_memory_pool(void);
+esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size);
 
-esp_err_t init_hidden_driver_lists(void);
+esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
 
 /**
  * @brief Initialize a driver structure with default settings.

@@ -10,13 +10,13 @@
  * 
  * Provides fixed-size block memory allocation with ESP32-specific optimizations,
  * including IRAM placement and cache-friendly alignment. Designed for deterministic
- * memory access in FreeRTOS environments and interrupt handlers[1][2][5][6].
+ * memory access in FreeRTOS environments and interrupt handlers.
  *
  * Features:
- * - Preallocated memory pools to prevent fragmentation in constrained environments[4]
- * - Thread-safe operations for FreeRTOS task and ISR contexts[5][8]
- * - Explicit memory placement control (DRAM, PSRAM, IRAM)[1][7]
- * - O(1) allocation/deallocation for real-time performance[6][8]
+ * - Preallocated memory pools to prevent fragmentation in constrained environments
+ * - Thread-safe operations for FreeRTOS task and ISR contexts
+ * - Explicit memory placement control (DRAM, PSRAM, IRAM)
+ * - O(1) allocation/deallocation for real-time performance
  *
  * Usage:
  * 1. Initialize pool with memory_pool_init() or memory_pool_malloc()
@@ -24,7 +24,7 @@
  * 3. Release blocks with memory_pool_free()
  * 4. Destroy pools with memory_pool_destroy() during cleanup
  *
- * @note Part of MicroUSC library's memory management subsystem[1][4]
+ * @note Part of MicroUSC library's memory management subsystem
  * @author Alejandro Ramirez
  * @date May 26, 2025
  */

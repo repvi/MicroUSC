@@ -12,7 +12,7 @@ endif()
 
 set(MICROUSC_INTERNAL
     "internal/genList.c"
-    "internal/initStart.c"
+    "internal/driverList.c"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -59,6 +59,8 @@ target_compile_definitions(
         DRIVER_MAX=3
     PRIVATE 
         MICROUSC_DEBUG=y
+        MICROUSC_UART_DEBUG=y
+        MICROUSC_DEBUG_MEMORY_USAGE=y
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
         MICROUSC_QUEUEHANDLE_SIZE=3

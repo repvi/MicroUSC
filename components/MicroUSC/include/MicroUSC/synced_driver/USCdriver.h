@@ -9,7 +9,7 @@
  * @brief MicroUSC UART Driver API for ESP32/ESP8266 Embedded Systems
  *
  * This header provides the main interface for initializing, managing, and communicating with UART-based drivers
- * in the MicroUSC system on ESP32/ESP8266 platforms[5][6][7]. It integrates with FreeRTOS, memory pools, and atomic
+ * in the MicroUSC system on ESP32/ESP8266 platforms. It integrates with FreeRTOS, memory pools, and atomic
  * operations for robust embedded system design, and is intended to be included in modules that require driver
  * configuration, data transmission, and secure communication.
  *
@@ -61,17 +61,34 @@ typedef void (*usc_event_cb_t)(void *);
 typedef void (*usc_data_process_t)(void *);
 
 // Forward declarations
-typedef struct usc_config_t usc_config_t;
 typedef struct usc_driver_t usc_driver_t;
 typedef struct usc_bit_manip usc_bit_manip;
 typedef struct usc_task_manager_t usc_task_manager_t;
 typedef usc_task_manager_t *usc_tasks_t;
 
-/** @brief FreeRTOS queues for UART data (indexed by DRIVER_MAX) */
-extern QueueHandle_t uart_queue[DRIVER_MAX]; 
-
 esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip);
 
+/**
+ * @brief Initialize configuration storage system and allocate UART buffer
+ * 
+ * This function performs two critical initialization tasks:
+ * 1. Initializes the USC bit manipulation priority storage system
+ * 2. Allocates internal memory buffer for future UART operations
+ * 
+ * The function follows ESP-IDF error handling conventions, returning specific
+ * error codes to indicate the type of failure that occurred.
+ * 
+ * @return esp_err_t Status of initialization
+ * @retval ESP_OK               Success - all components initialized
+ * @retval ESP_ERR_NO_MEM       Memory allocation failure (either priority storage or UART buffer)
+ * 
+ * @note UART buffer is allocated from internal SRAM for optimal performance
+ * @note Buffer size is defined by buf_SIZE constant
+ * @note Caller must ensure proper cleanup if function fails
+ * 
+ * @warning If this function fails, the system may be in an inconsistent state
+ *          where priority storage is initialized but UART buffer is not allocated
+ */
 esp_err_t init_configuration_storage(void);
 
 //void usc_driver_clean_data(usc_driver_t *driver);
@@ -103,66 +120,10 @@ esp_err_t init_configuration_storage(void);
  * - If `driver_name` is NULL, a default name will be used in logs.
  * - The UART driver must be uninstalled with `usc_driver_deinit()` when no longer needed.
  */
-esp_err_t usc_driver_init( const char *driver_name,
+esp_err_t usc_driver_init( const char *const driver_name,
                            const uart_config_t uart_config, 
                            const uart_port_config_t port_config, 
-                           usc_data_process_t driver_process);
-
-/**
- * @brief Write data to a USC (MicroUSC) driver using specified configuration.
- *
- * This function transmits a data buffer to the hardware interface defined by the provided
- * usc_config_t driver settings. It handles the details of serial or peripheral communication,
- * ensuring the data is sent according to the driver’s configuration parameters[1][3][5].
- *
- * @param driver_setting Pointer to the USC driver configuration structure (usc_config_t).
- * @param data Pointer to the data buffer to be transmitted.
- * @param len Number of bytes to write from the data buffer.
- * @return
- *   - ESP_OK: Data was written successfully.
- *   - ESP_FAIL or error code: Transmission failed (see implementation for details).
- *
- * @note This function is typically used in ESP32/ESP8266 embedded systems to abstract serial or
- *       peripheral communication, supporting robust driver and system configuration[1][3][4][5][7].
- *       Proper driver initialization must be performed before calling this function[2][4].
- */
-esp_err_t usc_driver_write( const usc_config_t *driver_setting, 
-                            const char *data, 
-                            const size_t len);
-
-/**
- * @brief Request a password from the USC driver system.
- *
- * This function initiates a password request operation using the specified USC driver configuration.
- * It typically triggers the necessary communication or authentication sequence required by the MicroUSC system,
- * ensuring secure access or operation as defined by the driver settings[1][4].
- *
- * @param driver_setting Pointer to the USC driver configuration structure (usc_config_t).
- * @return
- *   - ESP_OK: Password request initiated successfully.
- *   - ESP_FAIL or other error codes: Failure to initiate the password request (see implementation details).
- *
- * @note Proper driver initialization must be completed before calling this function[2][4].
- *       This function is part of the MicroUSC system configuration and secure communication workflow on ESP32[1][5].
- */
-esp_err_t usc_driver_request_password(usc_config_t *driver_setting);
-
-/**
- * @brief Send a ping command to the USC driver system.
- *
- * This function performs a ping operation using the specified USC driver configuration to check
- * the communication status and responsiveness of the MicroUSC hardware interface.
- * It is typically used for diagnostics, connectivity verification, or health checks[1].
- *
- * @param driver_setting Pointer to the USC driver configuration structure (usc_config_t).
- * @return
- *   - ESP_OK: Ping successful, device responded.
- *   - ESP_FAIL or other error codes: Ping failed, no response or communication error.
- *
- * @note Ensure the driver is properly initialized before calling this function.
- *       This function supports robust system diagnostics and error handling in embedded ESP32 applications[1].
- */
-esp_err_t usc_driver_ping(usc_config_t *driver_setting);
+                           const usc_data_process_t driver_process);
 
 //void uart_port_config_deinit(uart_port_config_t *uart_config);
 

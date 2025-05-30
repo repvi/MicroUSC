@@ -100,9 +100,8 @@ void app_main(void) {
     // uncomment the line below to test the speed of the function
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action));
 
-
     //usc_print_driver_configurations();
-    //usc_print_overdriver_configurations(); 
+    //usc_print_overdriver_configurations();
     
     /*
     uart_port_config_t pinss = {

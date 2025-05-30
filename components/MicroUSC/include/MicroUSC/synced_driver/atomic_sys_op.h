@@ -38,6 +38,11 @@
 extern "C" {
 #endif
 
+
+typedef struct {
+    char memory[sizeof(uint32_t *) + (3 * sizeof(size_t))];
+} DataStorageQueueStatic;
+
 /* --- Opaque Handle Types --- */
 typedef struct DataStorageQueue DataStorageQueue;
 typedef DataStorageQueue *SerialDataQueueHandler;
@@ -53,6 +58,8 @@ typedef DataStorageQueue *SerialDataQueueHandler;
  * @warning Caller must destroy queue to prevent leaks[1][5]
  */
 SerialDataQueueHandler createDataStorageQueue(const size_t len);
+
+void createDataStorageQueueStatic(SerialDataQueueHandler var, void *mem, const size_t serial_data_size);
 
 /**
  * @brief Destroy queue and release resources
