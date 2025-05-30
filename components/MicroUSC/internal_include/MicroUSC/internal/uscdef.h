@@ -73,6 +73,7 @@ typedef bool init_safety;        ///< Initialization state flag
 #define DRIVER_NAME_SIZE    (sizeof(driver_name_t))  ///< Maximum driver name length
 
 typedef enum {
+    DRIVER_UNINITALIALIZED,
     NOT_CONNECTED,         ///< Hardware not detected
     CONNECTED,             ///< Physical layer established
     DISCONNECTED,          ///< Graceful termination

@@ -1,8 +1,9 @@
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
+#include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
-#include "MicroUSC/internal/initStart.h"
+#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/internal/uscdef.h"
 #include "debugging/speed_test.h"
 #include "string.h"
@@ -21,78 +22,15 @@
 #define SERIAL_INPUT_DELAY ( ( TickType_t ) ( 3000 / portTICK_PERIOD_MS ) ) // 3 second delay
 #define SERIAL_RECIEVE_DELAY() vTaskDelay(SERIAL_REQUEST_DELAY_MS / portTICK_PERIOD_MS) // Wait for response
 
-#define INITIALIZE_USC_BIT_MANIP { .active_driver_bits = 0x0 };
-
 #define NOT_FOUND (( uint32_t ) ( -1 ) )
 
 #define SERIAL_DATA_STORAGE_CAPACITY  256
 
-struct usc_bit_manip {
-    UBaseType_t active_driver_bits;
-    portMUX_TYPE critical_lock;
-};
-
-struct usc_bit_manip priority_storage;
-
 QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
 
 uint8_t *buf = NULL;
-//     buf = (uint8_t *)heap_caps_malloc(buf_SIZE, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 
 #define buf_SIZE ( sizeof( uint32_t ) + 1 )
-
-esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip)
-{
-    bit_manip->active_driver_bits = 0;
-    bit_manip->critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
-    return ESP_OK;
-}
-
-esp_err_t init_configuration_storage(void)
-{
-    // Initialize USC bit manipulation priority storage system
-    // This must succeed before proceeding with buffer allocation
-    if (init_usc_bit_manip(&priority_storage) != ESP_OK) {
-        return ESP_ERR_NO_MEM;  // Priority storage initialization failed
-    }
-
-    return ESP_OK;
-}
-
-//returns the first bit that is 0
-static UBaseType_t getCurrentEmptyDriverIndex(void)
-{
-    UBaseType_t driver_bits;
-    portENTER_CRITICAL(&priority_storage.critical_lock);
-    {
-        driver_bits = priority_storage.active_driver_bits;
-    }
-    portEXIT_CRITICAL(&priority_storage.critical_lock);
-    UBaseType_t v;
-    for (UBaseType_t i = 0; i < DRIVER_MAX; i++) { // there can be alternate code for this function, could have performance difference between the two possibly
-        v = BIT(i);
-        if ((v & driver_bits) == 0) {
-            return i; // returns empty bit
-        }
-    }
-    return NOT_FOUND;
-}
-
-static UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void)
-{
-    const UBaseType_t v = getCurrentEmptyDriverIndex();
-    if (v != NOT_FOUND) {
-        UBaseType_t occupied_bits;
-        portENTER_CRITICAL(&priority_storage.critical_lock);
-        {
-            priority_storage.active_driver_bits |= BIT(v); // bit is now occupied
-            occupied_bits = priority_storage.active_driver_bits;
-        }
-        portEXIT_CRITICAL(&priority_storage.critical_lock);
-        ESP_LOGI(TAG, "Bit is now: %u", occupied_bits);
-    }
-    return v;
-}
 
 // Validate UART configuration
 static void check_valid_uart_config( const uart_config_t *uart_config,    

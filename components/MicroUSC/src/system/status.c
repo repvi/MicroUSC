@@ -1,6 +1,6 @@
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/internal/uscdef.h"
-#include "MicroUSC/internal/initStart.h"
+#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
 #include "esp_system.h"
 
@@ -33,22 +33,19 @@ void usc_print_driver_configurations(void)
     struct usc_driverList *current, *tmp;
     list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) {
         struct usc_driver_t *driver = &current->driver;
-        struct usc_driver_base_t *driver_base = &driver->driver_storage;
         SemaphoreHandle_t lock = driver->sync_signal;
         if (xSemaphoreTake(lock, SEMAPHORE_WAIT_TIME) == pdTRUE) {
-            if (driver_base->driver_tasks.active == false) {
+            if (driver->status == DRIVER_UNINITALIALIZED) {
                 ESP_LOGI(TAG, "NOT INITIALIZED on index %d", i);
                 ESP_LOGI("--------", "----------------------------");
             }
             else {
-                const struct usc_config_t *config = &driver_base->driver_setting;
-                ESP_LOGI("DRIVER", "      %s", config->driver_name);
-                ESP_LOGI("Baud Rate", "   %lu",config->baud_rate);
-                ESP_LOGI("Status", "      %s", status_str(config->status));
-                ESP_LOGI("Has Access", "  %d", config->has_access);
-                ESP_LOGI("UART Port", "   %d", config->uart_config.port);
-                ESP_LOGI("UART TX Pin", " %d", config->uart_config.tx);
-                ESP_LOGI("UART RX Pin", " %d", config->uart_config.rx);
+                ESP_LOGI("DRIVER", "      %s",  driver->driver_name);
+                ESP_LOGI("Baud Rate", "   %lu", driver->uart_config.baud_rate);
+                ESP_LOGI("Status", "      %s",  status_str(config->status));
+                ESP_LOGI("UART Port", "   %d",  driver->port_config.port);
+                ESP_LOGI("UART TX Pin", " %d",  driver->port_config.tx);
+                ESP_LOGI("UART RX Pin", " %d",  driver->port_config.rx);
                 ESP_LOGI("--------", "----------------------------");
             }
             xSemaphoreGive(lock);

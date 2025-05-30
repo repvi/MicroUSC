@@ -1,3 +1,4 @@
+#include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
@@ -23,6 +24,9 @@ __always_inline void ptrOffset(void *ptr, size_t offset) {
 }
 
 //defined in "MicroUSC/synced_driver/USCdriver.h"
+UBaseType_t getCurrentEmptyDriverIndex(void);
+UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void);
+
 void usc_driver_read_task(void *pvParameters);
 
 static void create_usc_driver_reader( struct usc_driver_t *driver,
@@ -57,7 +61,7 @@ static void create_usc_driver_processor( struct usc_driver_t *driver,
     driver->uart_processor.task = xTaskCreateStaticPinnedToCore(
         driver_process,                                        // Task function
         task_name,                                             // Task name
-        driver->uart_processor.stack_size,                                       // Stack size
+        driver->uart_processor.stack_size,                     // Stack size
         (void *)i,                                             // Task parameters
         (OFFSET),                                              // Based on index
         driver->uart_processor.stack,    // Task handle
@@ -85,6 +89,9 @@ static void setUpMemDriver(struct usc_driverList *driverList) {
     ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
 
     createDataStorageQueueStatic(driver->data, ptr, data_size);
+
+    create_usc_driver_reader(driver);
+    create_usc_driver_processor(driver, );
 }
 
 // make sure to take the lock and have access and release it manually

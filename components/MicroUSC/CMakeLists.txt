@@ -13,6 +13,7 @@ endif()
 set(MICROUSC_INTERNAL
     "internal/genList.c"
     "internal/driverList.c"
+    "internal/system/bit_manip.c"
 )
 
 set(MICROUSC_SYNCED_DRIVER
