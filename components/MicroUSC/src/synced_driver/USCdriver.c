@@ -59,44 +59,6 @@ esp_err_t init_configuration_storage(void)
     return ESP_OK;
 }
 
-void usc_driver_read_task(void *pvParameters); // header
-
-static void create_usc_driver_task( struct usc_driver_t *driver,
-                                    const UBaseType_t i
-) { // might neeed adjustment
-    const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
-
-    xTaskCreatePinnedToCore(
-        usc_driver_read_task,                                // Task function
-        driver->driver_storage.driver_setting.driver_name,   // Task name
-        TASK_STACK_SIZE,                                     // Stack size
-        (void *)driver,                                      // Task parameters
-        DRIVER_TASK_Priority_START,                          // Increment priority for next task
-        &driver->driver_storage.driver_tasks.task_handle,    // Task handle
-        TASK_CORE_READER                                     // Core to pin the task
-    );
-}
-
-// todo -> needs to be changed to have remove the task driver (reader) action of the uart
-static void create_usc_driver_action_task( struct usc_driver_t *driver,
-                                           const usc_data_process_t driver_process,
-                                           const UBaseType_t i
-) {
-    const UBaseType_t OFFSET = TASK_PRIORITY_START + i;
-    char task_name[15];
-    snprintf(task_name, sizeof(task_name), "Action #%d", i);
-    
-    xTaskCreatePinnedToCore(
-        driver_process,                                        // Task function
-        task_name,                                             // Task name
-        TASK_STACK_SIZE,                                       // Stack size
-        (void *)i,                                             // Task parameters
-        (OFFSET),                                              // Based on index
-        &driver->driver_storage.driver_tasks.action_handle,    // Task handle
-        TASK_CORE_ACTION                                       // Core to pin the task
-    );
-}
-
 //returns the first bit that is 0
 static UBaseType_t getCurrentEmptyDriverIndex(void)
 {
@@ -180,10 +142,10 @@ esp_err_t usc_driver_init( const char *const driver_name,
     UBaseType_t open_spot = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit
 
     addSingleDriver(driver_name, uart_config, port_config, open_spot);
-    
+
     SemaphoreHandle_t system_lock = driver_system.lock;
     xSemaphoreTake(system_lock, portMAX_DELAY); // WILL NOT CONTINUE IF IT DOES NOT RECIEVE AUTHERIZATION 1 IN
-    struct usc_driver_t *current_driver = getLastDriver();
+    struct usc_driver_t *current_driver = getLastDriver(); // check if it was succesfully linked to the sub system
     if (current_driver == NULL) {
         ESP_LOGE(TAG, "Failed to get the last driver in the system driver manager");
         xSemaphoreGive(system_lock); // 1 OUT
@@ -300,6 +262,7 @@ static usc_status_t process_data(const uart_port_t port, SerialDataQueueHandler 
     return DATA_RECEIVE_ERROR;
 }
 
+// do not rename
 void usc_driver_read_task(void *pvParameters)
 {
     const UBaseType_t index = uxTaskPriorityGet(NULL) - TASK_PRIORITY_START; // gets priority ID of the task, more temportary

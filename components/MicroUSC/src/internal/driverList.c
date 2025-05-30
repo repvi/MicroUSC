@@ -1,4 +1,4 @@
-#include "MicroUSC/internal/initStart.h"
+#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/synced_driver/USCdriver.h"
 #include "debugging/speed_test.h"
@@ -6,8 +6,11 @@
 
 #define TAG "[DRIVER INIT]"
 
-#define DRIVERLIST_SIZE     sizeof( struct usc_driverList )
+#define DRIVERLIST_SIZE           sizeof( struct usc_driverList )
+#define STATIC_SEMAPHORE_SIZE     sizeof( StaticSemaphore_t )
 
+#define PROCESSOR  "processor"
+#define READER "reader"
 struct usc_driversHandler driver_system = {0};
 
 memory_block_handle_t mem_block_driver_nodes = NULL;
@@ -19,6 +22,71 @@ __always_inline void ptrOffset(void *ptr, size_t offset) {
     ptr = ( uint8_t * ) ( ( ( uintptr_t )ptr + offset ) );
 }
 
+//defined in "MicroUSC/synced_driver/USCdriver.h"
+void usc_driver_read_task(void *pvParameters);
+
+static void create_usc_driver_reader( struct usc_driver_t *driver,
+                                      const UBaseType_t i
+) { // might neeed adjustment
+    const UBaseType_t DRIVER_TASK_Priority_START = TASK_PRIORITY_START + i;
+    char task_name[30];
+    strncpy(task_name, driver->driver_name, sizeof(task_name));
+    strncat(task_name, READER, sizeof(READER));
+
+    driver->uart_reader.task = xTaskCreateStaticPinnedToCore(
+        usc_driver_read_task,                                // Task function
+        task_name,                                 // Task name
+        TASK_STACK_SIZE,                                     // Stack size
+        (void *)driver,                                      // Task parameters
+        DRIVER_TASK_Priority_START,                          // Increment priority for next task
+        driver->uart_reader.stack,
+        &driver->uart_reader.task_buffer,
+        TASK_CORE_READER                                     // Core to pin the task
+    );
+}
+
+// todo -> needs to be changed to have remove the task driver (reader) action of the uart
+static void create_usc_driver_processor( struct usc_driver_t *driver,
+                                         const usc_data_process_t driver_process,
+                                         const UBaseType_t i
+) {
+    const UBaseType_t OFFSET = TASK_PRIORITY_START + i;
+    char task_name[30];
+    strncpy(task_name, driver->driver_name, sizeof(task_name));
+    strncat(task_name, PROCESSOR, sizeof(PROCESSOR));
+    driver->uart_processor.task = xTaskCreateStaticPinnedToCore(
+        driver_process,                                        // Task function
+        task_name,                                             // Task name
+        driver->uart_processor.stack_size,                                       // Stack size
+        (void *)i,                                             // Task parameters
+        (OFFSET),                                              // Based on index
+        driver->uart_processor.stack,    // Task handle
+        driver->uart_processor.task_buffer,
+        TASK_CORE_ACTION                                       // Core to pin the task
+    );
+}
+
+static void setUpMemDriver(struct usc_driverList *driverList) {
+    struct usc_driver_t *driver = &driverList->driver;
+    uint8_t *ptr = (uint8_t *)driverList + DRIVERLIST_SIZE;
+
+    driver->sync_signal = xSemaphoreCreateBinaryStatic( ( StaticSemaphore_t * ) ( ptr ) ); // probably add if it is NULL or not
+    #ifdef MICROUSC_DEBUG
+    if (driver->sync_signal == NULL) {
+        ESP_LOGE(TAG, "Could not inialize");
+        set_microusc_system_code(USC_SYSTEM_ERROR);
+        return;
+    }
+    #endif
+    xSemaphoreGive(driver->sync_signal); // create the section
+    ptrOffset(ptr, STATIC_SEMAPHORE_SIZE); // move to the free memory after the semaphore
+
+    driver->buffer.memory = ptr;
+    ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
+
+    createDataStorageQueueStatic(driver->data, ptr, data_size);
+}
+
 // make sure to take the lock and have access and release it manually
 void addSingleDriver( const char *const driver_name,
                       const uart_config_t uart_config,
@@ -26,10 +94,8 @@ void addSingleDriver( const char *const driver_name,
                       const stack_size_t stack_size,
                       const UBaseType_t priority)
 {
-    static const size_t OFFSET = sizeof(struct usc_driverList);
-    static const size_t STATIC_SEMAPHORE_SIZE = sizeof(StaticSemaphore_t);
     struct usc_driverList *new = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
-    struct usc_driver_t *driver = &new->driver;
+    struct usc_driver_t *driver = &new->driver; // point to the first byte of the allocated memory
 
     driver->uart_processor.stack_size = stack_size;
     driver->uart_config = uart_config;
@@ -48,28 +114,7 @@ void addSingleDriver( const char *const driver_name,
     driver->priority = priority;
     driver->has_access = false;
 
-    uint8_t *ptr = (uint8_t *)new + DRIVERLIST_SIZE;
-
-    driver->sync_signal = xSemaphoreCreateBinaryStatic(( StaticSemaphore_t *) ( ptr )); // probably add if it is NULL or not
-    #ifdef MICROUSC_DEBUG
-    if (driver->sync_signal == NULL) {
-        ESP_LOGE(TAG, "Could not inialize");
-        set_microusc_system_code(USC_SYSTEM_ERROR);
-        return;
-    }
-    #endif
-    xSemaphoreGive(driver->sync_signal); // create the section
-    ptrOffset(ptr, STATIC_SEMAPHORE_SIZE); // move to the free memory after the semaphore
-
-    driver->buffer.memory = ptr;
-    ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
-
-    createDataStorageQueueStatic(driver->driver_storage.driver_setting.data, ptr, data_size);
-    
-    if (new == NULL) {
-        ESP_LOGE(TAG, "Could not allocate memory from the driver list");
-        return;
-    }
+    setUpMemDriver(driver);
 
     ESP_LOGI(TAG, "Completeted initializing driver");
 
