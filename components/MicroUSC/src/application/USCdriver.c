@@ -217,7 +217,7 @@ void usc_driver_read_task(void *pvParameters)
     //#if (NEEDS_SERIAL_KEY == 1)
     while (1) {
         if (xSemaphoreTake(sync_signal, portMAX_DELAY) == pdTRUE) {
-            if (*active && !hasAccess) {
+            if (*active && !(*hasAccess)) {
                 driver->status = handle_serial_key(driver, index); // Check if the serial key is valid
                 if (driver->status != CONNECTED) {
                     ESP_LOGW(TASK_TAG, "Serial key check failed, retrying...");  // Debugging line to check if the serial key check failed

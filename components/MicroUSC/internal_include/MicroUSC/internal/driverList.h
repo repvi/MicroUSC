@@ -112,6 +112,8 @@ esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_
 
 esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
 
+esp_err_t setUSCtaskSize(stack_size_t size);
+
 /**
  * @brief Deactivate a driver and disconnect all associated functions.
  *

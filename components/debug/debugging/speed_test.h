@@ -10,18 +10,18 @@
         uint64_t start = esp_timer_get_time();                                \
         (func);                                                               \
         uint64_t end = esp_timer_get_time();                                  \
-        ESP_LOGI("[TIMING]", #func " took %llu microseconds\n", end - start); \
+        ESP_LOGI("[TIMING]", #func " took %llu microseconds", end - start);   \
     } while (0)
 
 #define CHECK_FUNCTION_SPEED_WITH_DEBUG(func) do {                            \
         uint64_t start = esp_timer_get_time();                                \
         esp_err_t ret = (func);                                               \
         uint64_t end = esp_timer_get_time();                                  \
-        ESP_LOGI("[TIMING]", "Function: %s, Return Value: %d\n", #func, ret); \
+        ESP_LOGI("[TIMING]", "Function: %s, Return Value: %d", #func, ret);   \
         if ((ret) != ESP_OK) {                                                \
             ESP_LOGE("[TIMING]", "Function: %s", #func);                      \
         }                                                                     \
-        ESP_LOGI("[TIMING]", #func " took %llu microseconds\n", end - start); \
+        ESP_LOGI("[TIMING]", #func " took %llu microseconds", end - start);   \
     } while (0)
 
 #define CHECKPOINT_START \

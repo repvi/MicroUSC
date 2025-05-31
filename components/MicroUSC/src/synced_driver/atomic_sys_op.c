@@ -39,8 +39,7 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
 void createDataStorageQueueStatic(SerialDataQueueHandler var, void *mem, const size_t serial_data_size) 
 {
     var = (SerialDataQueueHandler)mem;
-
-    var->serial_data = (uint32_t *)(var);
+    var->serial_data = ( uint32_t * ) ( ( uint8_t * )mem + sizeof( struct DataStorageQueue ) );
     var->head = 0;
     var->tail = 0;
     var->size = serial_data_size;
@@ -52,7 +51,7 @@ void destroyDataStorageQueue(SerialDataQueueHandler queue)
     heap_caps_free(queue);
 }
 
-void dataStorageQueue_add(SerialDataQueueHandler queue, const uint32_t data) 
+void dataStorageQueue_add(SerialDataQueueHandler queue, const uint32_t data)
 {
     const size_t tail = queue->tail; // get the current index
     if (queue->serial_data[tail] == 0) {

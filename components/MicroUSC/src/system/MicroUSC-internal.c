@@ -467,7 +467,7 @@ esp_err_t microusc_system_setup(void)
 
     xTaskCreatePinnedToCore(
         microusc_system_task,
-        "microUSB System",
+        "microUSC System",
         INTERNAL_TASK_STACK_SIZE,
         NULL,
         MICROUSC_SYSTEM_PRIORITY,

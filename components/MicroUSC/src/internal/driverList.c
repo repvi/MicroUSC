@@ -15,6 +15,7 @@
 struct usc_driversHandler driver_system = {0};
 
 memory_block_handle_t mem_block_driver_nodes = NULL;
+memory_block_handle_t mem_block_task_processor = NULL;
 
 size_t data_size;
 size_t buff_size;
@@ -124,12 +125,17 @@ void addSingleDriver( const char *const driver_name,
     struct usc_driver_t *driver = &new->driver; // point to the first byte of the allocated memory
 
     driver->uart_reader.active = true;
-    driver->uart_processor.stack_size = stack_size;
+    if (mem_block_task_processor == NULL) { // has not been statically initialized
+        driver->uart_processor.stack = (StackType_t *)heap_caps_malloc(stack_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+        driver->uart_processor.stack_size = stack_size;
+    } else {
+        driver->uart_processor.stack = (StackType_t *)memory_pool_alloc(mem_block_task_processor);
+        driver->uart_processor.stack_size = mem_block_task_processor->block_size;
+    }
     driver->uart_config = uart_config;
     if (strncmp(driver->driver_name, "", DRIVER_NAME_SIZE - 1) != 0) {
         strncpy(driver->driver_name, driver_name, sizeof(driver_name_t) - 1); // maybe needs the -1
-    }
-    else {
+    } else {
         static int no_name = 1;
         snprintf(driver->driver_name, DRIVER_NAME_SIZE - 1, "Unknown Driver %d", no_name);
         no_name++;
@@ -182,6 +188,17 @@ esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_
     }
     buff_size = buffer_size;
     data_size = d_size;
+    return ESP_OK;
+}
+
+esp_err_t setUSCtaskSize(stack_size_t size) {
+    mem_block_task_processor = (memory_block_handle_t)memory_handler_malloc(size, DRIVER_MAX);
+    if (mem_block_task_processor == NULL) {
+        ESP_LOGI(TAG, "Could not initialize static memory pool for stack");
+        return ESP_ERR_NO_MEM;
+    }
+    const size_t total_mem = size * DRIVER_MAX;
+    ESP_LOGI(TAG, "Created %d with stack size %d using %u total memory", DRIVER_MAX, size, total_mem);
     return ESP_OK;
 }
 

@@ -114,14 +114,16 @@ void app_main(void) {
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
     */   
 
-    //set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
-    //set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
-
-    //set_microusc_system_code(USC_SYSTEM_PAUSE);
-    //vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //set_microusc_system_code(USC_SYSTEM_RESUME);
-    //vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //set_microusc_system_code(USC_SYSTEM_ERROR);
+    set_microusc_system_code(USC_SYSTEM_LED_ON);
+    set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
+    set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
+    printf("Pausing system...\n");
+    set_microusc_system_code(USC_SYSTEM_PAUSE);
+    set_microusc_system_code(USC_SYSTEM_LED_OFF);
+    vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_RESUME);
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_ERROR);
     //set_microusc_system_code(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");
