@@ -59,7 +59,7 @@ typedef DataStorageQueue *SerialDataQueueHandler;
  */
 SerialDataQueueHandler createDataStorageQueue(const size_t len);
 
-void createDataStorageQueueStatic(SerialDataQueueHandler var, void *mem, const size_t serial_data_size);
+void createDataStorageQueueStatic(SerialDataQueueHandler *var, void *mem, const size_t serial_data_size);
 
 /**
  * @brief Destroy queue and release resources

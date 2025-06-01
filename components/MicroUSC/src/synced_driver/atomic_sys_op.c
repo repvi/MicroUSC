@@ -36,13 +36,13 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
     return var;
 }
 
-void createDataStorageQueueStatic(SerialDataQueueHandler var, void *mem, const size_t serial_data_size) 
+void createDataStorageQueueStatic(SerialDataQueueHandler *var, void *mem, const size_t serial_data_size) 
 {
-    var = (SerialDataQueueHandler)mem;
-    var->serial_data = ( uint32_t * ) ( ( uint8_t * )mem + sizeof( struct DataStorageQueue ) );
-    var->head = 0;
-    var->tail = 0;
-    var->size = serial_data_size;
+    *var = (SerialDataQueueHandler)mem;
+    (*var)->serial_data = ( uint32_t * ) ( ( uint8_t * )mem + sizeof( struct DataStorageQueue ) );
+    (*var)->head = 0;
+    (*var)->tail = 0;
+    (*var)->size = serial_data_size;
 }
 
 void destroyDataStorageQueue(SerialDataQueueHandler queue) 
@@ -54,8 +54,10 @@ void destroyDataStorageQueue(SerialDataQueueHandler queue)
 void dataStorageQueue_add(SerialDataQueueHandler queue, const uint32_t data)
 {
     const size_t tail = queue->tail; // get the current index
+
     if (queue->serial_data[tail] == 0) {
-        const size_t next = ( ( tail + 1 ) < queue->size ) * ( queue->tail + 1 ); // get the next index
+        const bool v = ( ( tail + 1 ) < queue->size );
+        const size_t next = v * ( queue->tail + 1 ); // get the next index
 
         queue->serial_data[next - 1] = data; // store the data in the atomic variable
         queue->tail = next; // increment the current index

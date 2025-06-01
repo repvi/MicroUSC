@@ -23,8 +23,8 @@ struct {
     size_t buffer_size;
 } stored_sizes;
 
-__always_inline void ptrOffset(void *ptr, size_t offset) {
-    ptr = ( uint8_t * ) ( ( ( uintptr_t )ptr + offset ) );
+__always_inline void* ptrOffset(void *ptr, size_t offset) {
+    return (void *)((uint8_t *)ptr + offset);
 }
 
 //defined in "MicroUSC/USCdriver.h"
@@ -105,12 +105,12 @@ static void setUpMemDriver( struct usc_driverList *driverList,
     }
     #endif
     xSemaphoreGive(driver->sync_signal); // create the section
-    ptrOffset(ptr, STATIC_SEMAPHORE_SIZE); // move to the free memory after the semaphore
+    ptr = ptrOffset(ptr, STATIC_SEMAPHORE_SIZE); // move to the free memory after the semaphore
 
     driver->buffer.memory = ptr;
-    ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
+    ptr = ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
 
-    createDataStorageQueueStatic(driver->data, ptr, stored_sizes.data_size);
+    createDataStorageQueueStatic(&driver->data, ptr, stored_sizes.data_size);
 
 
     create_usc_driver_reader(driver, priority);

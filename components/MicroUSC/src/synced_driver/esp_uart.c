@@ -14,9 +14,9 @@
 #define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
 
 void uart_init( uart_port_config_t port_config, 
-                     uart_config_t uart_config, 
-                     QueueHandle_t *uart_queue, 
-                     const size_t queue_size
+                uart_config_t uart_config, 
+                QueueHandle_t *uart_queue, 
+                const size_t queue_size
 ) {
     ESP_ERROR_CHECK(uart_param_config(port_config.port, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(port_config.port, port_config.tx, port_config.rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
