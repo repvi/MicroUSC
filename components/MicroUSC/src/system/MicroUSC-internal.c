@@ -1,17 +1,24 @@
+#include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/chip_specific/system_attr.h"
 #include "MicroUSC/system/MicroUSC-internal.h"
 #include "MicroUSC/system/status.h"
-#include "MicroUSC/synced_driver/USCdriver.h"
 #include "MicroUSC/internal/USC_driver_config.h"
-#include "MicroUSC/internal/initStart.h"
+#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/internal/genList.h"
 #include "MicroUSC/internal/uscdef.h"
+<<<<<<< HEAD
+=======
+#include "MicroUSC/USCdriver.h"
+#include "esp_debug_helpers.h"
+>>>>>>> GP
 #include "esp_system.h"
 #include <esp_task_wdt.h>
 #include "esp_chip_info.h"
 #include "esp_sleep.h"
 #include "esp_intr_alloc.h"
 #include "esp_attr.h"
+#include "stdint.h"
+#include <inttypes.h>
 
 /* n = 0  -> default value
    n = 1  -> turn off esp32
@@ -41,41 +48,100 @@
 RTC_NOINIT_ATTR unsigned int __system_reboot_count; // only accessed by the system
 RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
 
+<<<<<<< HEAD
 struct queueOverFlow {
     size_t count;
     portMUX_TYPE lock;
 } overflow = {.count = 0, .lock = portMUX_INITIALIZER_UNLOCKED};
 
+=======
+>>>>>>> GP
 struct rtc_map {
     char key;
     uint8_t size;
 };
 
 RTC_NOINIT_ATTR struct rtc_memory_t {
+    struct rtc_map mapping[RTC_MEMORY_STORAGE_KEY_SIZE];
     uint8_t buf[RTC_MEMORY_BUFFER_SIZE]; // RTC memory buffer
+<<<<<<< HEAD
     struct rtc_map mapping[RTC_MEMORY_STORAGE_KEY_SIZE];
     int address_key_index; // Index for the address key
     int remaining_mem;
     portMUX_TYPE lock;
 } rtc_memory = {.buf = {0}, .mapping = {0}, .address_key_index = 0, .remaining_mem = RTC_MEMORY_BUFFER_SIZE, .lock = portMUX_INITIALIZER_UNLOCKED};
+=======
+    portMUX_TYPE lock;
+    int address_key_index; // Index for the address key
+    int remaining_mem;
+} rtc_memory = {.mapping = {}, .buf = {0}, .lock = portMUX_INITIALIZER_UNLOCKED, .address_key_index = 0, .remaining_mem = RTC_MEMORY_BUFFER_SIZE};
+
+#define INITIALIZE_RTC_MEMORY { \
+    .mapping = {}, \
+    .buf = {0}, \
+    .lock = portMUX_INITIALIZER_UNLOCKED, \
+    .address_key_index = 0, \
+    .remaining_mem = RTC_MEMORY_BUFFER_SIZE \
+}
+>>>>>>> GP
 
 struct sleep_config_t {
     gpio_num_t wakeup_pin;
     uint64_t sleep_time;
     bool wakeup_pin_enable;
     bool sleep_time_enable;
+<<<<<<< HEAD
     portMUX_TYPE selectlock;
 } microusc_system_sleep;
 
 struct system_handler {
     TaskHandle_t task;
 };
+=======
+} microusc_system_sleep;
+>>>>>>> GP
 
-microusc_error_handler __microusc_system_error_handler;
+struct {
+    struct {
+        StackType_t stack[TASK_STACK_SIZE];
+        StaticTask_t taskBuffer;
+        TaskHandle_t main_task;
+    } task;
+    struct {
+        gpio_num_t wakeup_pin;
+        uint64_t sleep_time;
+        bool wakeup_pin_enable;
+        bool sleep_time_enable;
+    } deep_sleep;
+    struct {
+        QueueHandle_t queue_handler;
+        size_t count;
+    } queue_system;
+    portMUX_TYPE critical_lock;
+    intr_handle_t isr_handler;
+    struct {
+        microusc_error_handler operation;
+        void *stored_var;
+        int size;
+    } error_handler;
+} microusc_system;
 
+<<<<<<< HEAD
 intr_handle_t micro_usc_isr_handler = NULL;
 
 QueueHandle_t __microusc_queue_action = NULL;
+=======
+// can be used custom api
+typedef struct {
+    uint32_t caller_pc;
+    microusc_status status;
+} MiscrouscBackTrack_t;
+
+#define microusc_quick_context(des, val) \
+    portENTER_CRITICAL(&microusc_system.critical_lock); \
+    des = val; \
+    portEXIT_CRITICAL(&microusc_system.critical_lock);
+>>>>>>> GP
 
 TaskHandle_t microusc_task_handler;
 
@@ -92,8 +158,13 @@ void IRAM_ATTR microusc_software_isr_handler(void *arg)
 
 __deprecated void __system_isr_trigger(void) 
 {
+<<<<<<< HEAD
     printf("Triggering from core %d\n", xPortGetCoreID());
     esp_intr_enable(micro_usc_isr_handler);
+=======
+    //printf("Triggering from core %d\n", xPortGetCoreID());
+    //esp_intr_enable(micro_usc_isr_handler);
+>>>>>>> GP
 }
 
 __deprecated void microusc_system_isr_pin(gpio_num_t pin) 
@@ -120,22 +191,38 @@ __deprecated void microusc_system_isr_pin(gpio_num_t pin)
 
 __always_inline void microusc_set_sleep_mode_timer_wakeup(uint64_t time) 
 {
+<<<<<<< HEAD
     microusc_system_sleep.sleep_time = time;
+=======
+    microusc_quick_context(microusc_system.deep_sleep.sleep_time, time);
+>>>>>>> GP
 }
 
 __always_inline void microusc_set_sleep_mode_timer(bool option) 
 {
+<<<<<<< HEAD
     microusc_system_sleep.sleep_time_enable = option;
+=======
+    microusc_quick_context(microusc_system.deep_sleep.sleep_time_enable, option);
+>>>>>>> GP
 }
 
 __always_inline void microusc_set_wakeup_pin(gpio_num_t pin) 
 {
+<<<<<<< HEAD
     microusc_system_sleep.wakeup_pin = pin;
+=======
+    microusc_quick_context(microusc_system.deep_sleep.wakeup_pin, pin);
+>>>>>>> GP
 }
 
 __always_inline void microusc_set_wakeup_pin_status(bool option)
 {
+<<<<<<< HEAD
     microusc_system_sleep.wakeup_pin_enable = option;
+=======
+    microusc_quick_context(microusc_system.deep_sleep.wakeup_pin_enable, option);
+>>>>>>> GP
 }
 
 void microusc_set_sleepmode_wakeup_default(void) 
@@ -169,8 +256,13 @@ void save_system_rtc_var(void *var, const size_t size, const char key)
             const int offset = RTC_MEMORY_BUFFER_SIZE - rtc_memory.remaining_mem;
             uint8_t *ptr = rtc_memory.buf + offset;
             memcpy(ptr, var, size); // Copy the variable to the RTC memory
+<<<<<<< HEAD
             rtc_memory.remaining_size -= size; // Decrease the remaining size
             rtc_memory.address_key[rtc_memory.address_key_index++] = key; // Save the key            
+=======
+            rtc_memory.remaining_mem -= size; // Decrease the remaining size
+            rtc_memory.mapping[rtc_memory.address_key_index++].key = key; // Save the key            
+>>>>>>> GP
             ESP_LOGI(TAG, "Saved %u bytes to RTC memory", size);
         }
         else{
@@ -182,7 +274,11 @@ void save_system_rtc_var(void *var, const size_t size, const char key)
 
 void *get_system_rtc_var(const char key)
 {
+<<<<<<< HEAD
     uintptr_t address;
+=======
+    uintptr_t address = 0; // 'NULL'
+>>>>>>> GP
     portENTER_CRITICAL(&rtc_memory.lock);
     {
         size_t offset = 0;
@@ -217,6 +313,7 @@ static __always_inline void increment_rtc_cycle(void)
 
 static void microusc_sleep_mode(void)
 {
+<<<<<<< HEAD
     bool sleep_time_enabled = microusc_system_sleep.sleep_time_enable;
     bool wakeup_pin_enable = microusc_system_sleep.wakeup_pin_enable;
 
@@ -230,6 +327,24 @@ static void microusc_sleep_mode(void)
         esp_sleep_enable_ext0_wakeup(microusc_system_sleep.wakeup_pin, 1);
     }
 
+=======
+    portENTER_CRITICAL(&microusc_system.critical_lock);
+    {
+        bool sleep_time_enabled = microusc_system.deep_sleep.sleep_time_enable;
+        bool wakeup_pin_enable = microusc_system.deep_sleep.wakeup_pin_enable;
+        if (!(sleep_time_enabled || wakeup_pin_enable)) {
+            return; // do nothing as timer is completely disabled
+        }
+        
+        if (sleep_time_enabled) {
+            esp_sleep_enable_timer_wakeup(microusc_system.deep_sleep.sleep_time);
+        }
+        if (wakeup_pin_enable) {
+            esp_sleep_enable_ext0_wakeup(microusc_system.deep_sleep.wakeup_pin, 1);
+        }
+    }
+    portEXIT_CRITICAL(&microusc_system.critical_lock);
+>>>>>>> GP
     esp_deep_sleep_start();
 }
 
@@ -237,9 +352,14 @@ void IRAM_ATTR microusc_pause_drivers(void)
 {
     struct usc_driverList *current, *tmp;
     list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
+<<<<<<< HEAD
         struct usc_task_manager_t *task_manager = &current->driver.driver_storage.driver_tasks;
         vTaskSuspend(task_manager->task_handle);
         vTaskSuspend(task_manager->action_handle);
+=======
+        struct usc_driver_t *driver = &current->driver;
+        vTaskSuspend(driver->uart_processor.task);
+        vTaskSuspend(driver->uart_reader.task);
     }
 }
 
@@ -247,12 +367,186 @@ void IRAM_ATTR microusc_resume_drivers(void)
 {
     struct usc_driverList *current, *tmp;
     list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
-        struct usc_task_manager_t *task_manager = &current->driver.driver_storage.driver_tasks;
-        vTaskResume(task_manager->task_handle);
-        vTaskResume(task_manager->action_handle);
+        struct usc_driver_t *driver = &current->driver;
+        vTaskResume(driver->uart_processor.task);
+        vTaskResume(driver->uart_reader.task);
     }
 }
 
+
+static void getBackPCprevious(MiscrouscBackTrack_t *backtrack, const size_t amount) {
+    esp_backtrace_frame_t frame;
+    
+    // Get the starting frame
+    esp_backtrace_get_start(&frame.pc, &frame.sp, &frame.next_pc);
+    // get the one that called this function
+    for (int i = 0; i < amount && frame.next_pc != 0; i++) {
+        esp_backtrace_get_next_frame(&frame);
+    }
+
+    backtrack->caller_pc = (uint32_t)frame.pc;
+}
+
+static void microusc_system_error_handler_default(void *var)
+{
+    ESP_LOGE(TAG, "System error handler called");
+    ESP_LOGE(TAG, "Rebooting system...");
+    // shutdown all drivers function here
+    usc_print_driver_configurations(); // Print the driver configurations
+    microusc_pause_drivers();
+    microusc_system_restart();
+}
+
+void set_microusc_system_error_handler(microusc_error_handler handler, void *var, int size)
+{
+    #ifdef MICROUSC_DEBUG
+    if (handler == NULL) {
+        set_microusc_system_code(USC_SYSTEM_ERROR);
+    }
+    #endif
+    microusc_system.error_handler.operation = handler;
+    microusc_system.error_handler.stored_var = var;
+    microusc_system.error_handler.size = size;
+}
+
+__always_inline void set_microusc_system_error_handler_default(void)
+{
+    set_microusc_system_error_handler(microusc_system_error_handler_default, NULL, 0);
+}
+
+// completely flush the queue to make it fully available
+static void microusc_queue_flush(void)
+{
+    xQueueReset(microusc_system.queue_system.queue_handler);
+}
+
+inline void set_microusc_system_code(microusc_status code)
+{
+    if (eTaskGetState(microusc_system.task.main_task) != eSuspended) {
+        // this only runs if the task is not suspended due to flushing the queue at the meantime
+        MiscrouscBackTrack_t backtrack;
+        backtrack.status = code;
+
+        if (code == USC_SYSTEM_ERROR || code == USC_SYSTEM_PRINT_SUCCUSS) {
+            esp_backtrace_frame_t frame;
+    
+            // Get the starting frame
+            esp_backtrace_get_start(&frame.pc, &frame.sp, &frame.next_pc);
+            // get the one that called this function
+            for (int i = 0; i < 1 && frame.next_pc != 0; i++) {
+                esp_backtrace_get_next_frame(&frame);
+            }
+
+            backtrack.caller_pc = (uint32_t)frame.pc;
+        }
+
+        if (uxQueueSpacesAvailable(microusc_system.queue_system.queue_handler) != 0) {
+            taskENTER_CRITICAL(&microusc_system.critical_lock);
+            {
+                microusc_system.queue_system.count = 0;
+            }
+            taskEXIT_CRITICAL(&microusc_system.critical_lock);
+            xQueueSend(microusc_system.queue_system.queue_handler, &backtrack, 0);
+        }
+        else {
+            ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
+            taskENTER_CRITICAL(&microusc_system.critical_lock);
+            {
+                microusc_system.queue_system.count++;
+                if (microusc_system.queue_system.count == 3) {
+                    microusc_queue_flush();
+                    // don't need to make count to 0 unless for safety
+                }
+            }
+            taskEXIT_CRITICAL(&microusc_system.critical_lock);
+        }
+    }
+}
+
+void print_system_info(void) {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+
+    printf("ESP32 Chip Info:\n");
+    printf("  Model: %s\n", chip_info.model == CHIP_ESP32 ? "ESP32" : "Other");
+    printf("  Cores: %d\n", chip_info.cores);
+    printf("  Features: WiFi%s%s\n", 
+           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+}
+
+static void call_usc_error_handler(uint32_t pc)
+{
+    microusc_error_handler func;
+    void *tmp = 0;
+    ESP_LOGE(TAG, "Called from two levels back: 0x%08" PRIx32, pc);
+    portENTER_CRITICAL(&microusc_system.critical_lock); 
+    {
+        const int var_size = microusc_system.error_handler.size;
+        func = microusc_system.error_handler.operation;
+
+        if (var_size != 0) {
+            tmp = heap_caps_malloc(var_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+            memcpy(tmp, microusc_system.error_handler.stored_var, var_size);
+        }
+    }
+    portEXIT_CRITICAL(&microusc_system.critical_lock);
+    func(tmp);
+
+    if (tmp != NULL) {
+        heap_caps_free(tmp);
+>>>>>>> GP
+    }
+}
+
+/**
+ * @brief Display ESP32 memory usage statistics for DMA and internal memory regions
+ * 
+ * This function queries the ESP-IDF heap capabilities API to retrieve and display
+ * memory usage information for DMA-capable and internal memory regions.
+ * 
+ * @warning If this function crashes with LoadProhibited exception, it indicates
+ *          heap corruption has already occurred earlier in program execution.
+ *          Common causes include:
+ *          - Buffer overflows writing past allocated memory boundaries
+ *          - Use-after-free operations accessing freed memory
+ *          - Double-free operations corrupting heap metadata
+ *          - Memory alignment issues causing improper memory access
+ *          - Stack overflow damaging heap structures
+ * 
+ * @note Function uses local macro MEMORY_TAG for consistent logging output
+ * @note All memory values are retrieved as const to prevent modification
+ */
+static void show_memory_usage(void) 
+{
+    // Local macro for consistent logging tag - scoped only to this function
+    #define MEMORY_TAG "[MEMORY]"
+    
+    // Query DMA capable memory statistics
+    // DMA memory is required for hardware DMA operations and is typically limited
+    const size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
+    const size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
+    
+    // Log DMA memory information
+    ESP_LOGI(MEMORY_TAG, "DMA capable memory:");
+    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_dma);
+    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_dma);
+    
+    // Query internal SRAM memory statistics  
+    // Internal memory is fast SRAM, preferred for performance-critical operations
+    const size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    const size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    
+    // Log internal memory information
+    ESP_LOGI(MEMORY_TAG, "Internal memory:");
+    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_internal);
+    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_internal);
+    
+    // Macro cleanup - undefine to prevent scope leakage
+    #undef MEMORY_TAG
+}
+
+<<<<<<< HEAD
 static void microusc_system_error_handler_default(void)
 {
     ESP_LOGE(TAG, "System error handler called");
@@ -337,12 +631,20 @@ static void show_memory_usage(void)
     
 }
 
+=======
+>>>>>>> GP
 static void microusc_system_task(void *p)
 {
-    microusc_status system_status;
+    MiscrouscBackTrack_t backtrack;
     while (1) {
+<<<<<<< HEAD
         if (xQueueReceive(__microusc_queue_action, &system_status, portMAX_DELAY) == pdPASS) {
             switch(system_status) {
+=======
+        if (xQueueReceive(microusc_system.queue_system.queue_handler, &backtrack, portMAX_DELAY) == pdPASS) {
+            printf("Called microUSC system\n");
+            switch(backtrack.status) {
+>>>>>>> GP
                 case USC_SYSTEM_OFF:
                     microusc_system_restart();
                     break;
@@ -385,7 +687,7 @@ static void microusc_system_task(void *p)
                     break;
                 case USC_SYSTEM_ERROR:
                     builtin_led_system(USC_SYSTEM_ERROR);
-                    __call_usc_error_handler();
+                    call_usc_error_handler(backtrack.caller_pc);
                     break;
                 default:
                     break;
@@ -394,13 +696,30 @@ static void microusc_system_task(void *p)
     }
 }
 
+<<<<<<< HEAD
 // needs to implement gpio isr trigger
 esp_err_t microusc_system_setup(void)
 {
     __microusc_queue_action = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(microusc_status));
     if (__microusc_queue_action == NULL) {
+=======
+__noreturn void microusc_infloop(void)
+{
+    while (1) {
+        // nothing
+    }
+}
+// needs to implement gpio isr trigger
+esp_err_t microusc_system_setup(void)
+{
+    microusc_system.critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+
+    microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(MiscrouscBackTrack_t));
+    if (microusc_system.queue_system.queue_handler == NULL) {
+>>>>>>> GP
         return ESP_ERR_NO_MEM;
     }
+    microusc_system.queue_system.count = 0;
 
     init_builtin_led();
 
@@ -416,11 +735,19 @@ esp_err_t microusc_system_setup(void)
 
     xTaskCreatePinnedToCore(
         microusc_system_task,
+<<<<<<< HEAD
         "microUSB System",
         INTERNAL_TASK_STACK_SIZE,
         NULL,
         MICROUSC_SYSTEM_PRIORITY,
         &microusc_task_handler,
+=======
+        "microUSC System",
+        INTERNAL_TASK_STACK_SIZE,
+        NULL,
+        MICROUSC_SYSTEM_PRIORITY,
+        &microusc_system.task.main_task,
+>>>>>>> GP
         MICROUSC_CORE
     );
 
@@ -436,7 +763,11 @@ static esp_err_t init_memory_handlers(void) {
     xSemaphoreGive(driver_system.lock);
     INIT_LIST_HEAD(&driver_system.driver_list.list);
 
+<<<<<<< HEAD
     return init_hidden_driver_lists();
+=======
+    return init_hidden_driver_lists(4, 256);
+>>>>>>> GP
 }
 
 void init_MicroUSC_system(void) {

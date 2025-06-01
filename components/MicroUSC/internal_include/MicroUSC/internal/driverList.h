@@ -1,0 +1,134 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file initState.h
+ * @brief Driver and task initialization state management for the MicroUSC system on ESP32/ESP8266.
+ *
+ * This header provides core functions and definitions for initializing, configuring, and managing
+ * the state of driver structures and associated tasks within the MicroUSC library. It is designed
+ * for robust embedded system startup, dynamic driver registration, task scheduling, and safe 
+ * hardware interface management on ESP32/ESP8266 platforms[1][2][6].
+ *
+ * The API includes routines for:
+ *   - Setting default driver and task configurations
+ *   - Adding, removing, and freeing driver instances from system-managed lists
+ *   - Managing task state, handlers, and default parameters
+ *   - Deactivating drivers and ensuring safe shutdown or reconfiguration
+ *
+ * Organization and usage:
+ *   - Functions are intended to be called during system initialization or reconfiguration,
+ *     typically at startup or when dynamically managing drivers in a FreeRTOS environment[1][2].
+ *   - The file is part of a modular component structure, supporting clear separation of concerns
+ *     and maintainable C code organization using CMake and ESP-IDF build systems[2][4][5][6].
+ *
+ * @note Proper use of these routines is essential for preventing undefined behavior,
+ *       memory leaks, or hardware conflicts in embedded applications.
+ *       Manual file management and explicit initialization are recommended for clarity and reliability[2][3][4].
+ *
+ * @author Alejandro Ramirez
+ * @date 5/26/2026
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "MicroUSC/system/memory_pool.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "MicroUSC/internal/genList.h"
+#include "MicroUSC/internal/uscdef.h"
+#include "MicroUSC/uscUniversal.h"
+#include "esp_err.h"
+
+#ifdef LIST_HEAD
+#undef LIST_HEAD
+#endif
+
+struct usc_driverList {
+    struct usc_driver_t driver;
+    struct list_head list;
+};
+ 
+ struct usc_driversHandler {
+     struct usc_driverList driver_list;
+     size_t size;
+     size_t max; // need to initial with size already, do not change size
+     SemaphoreHandle_t lock;
+};
+
+extern struct usc_driversHandler driver_system;
+
+extern memory_block_handle_t mem_block_driver_nodes;
+
+/**
+ * @brief Add a driver to the MicroUSC system with a specified FreeRTOS priority.
+ *
+ * Inserts a driver into the system's linked list of active drivers (using list_add_tail()),
+ * assigning its execution priority for task scheduling[1][2]. Ensures thread-safe access
+ * to the driver list in FreeRTOS-based ESP32/ESP8266 projects[2][5].
+ *
+ * @param driver   Pre-initialized usc_driver_t structure (UART, etc.)[4]
+ * @param priority FreeRTOS task priority (0 <= priority <= configMAX_PRIORITIES-1)[2]
+ *
+ * @note Duplicate driver additions are not checked; ensure uniqueness to avoid conflicts[1][4].
+ */
+void addSingleDriver( const char *const driver_name,
+                      const uart_config_t uart_config,
+                      const uart_port_config_t port_config,
+                      const usc_process_t driver_process,
+                      const stack_size_t stack_size
+                    );
+                    
+/**
+ * @brief Remove a single driver from the MicroUSC system.
+ *
+ * Safely unlinks the driver from the active list (using list_del()) and frees
+ * associated resources. Designed for use with ESP32 dynamic driver configurations[1][4][5].
+ *
+ * @param item Pointer to the usc_driverList node containing the driver
+ *
+ * @warning Does not deinitialize hardware interfaces - call driver-specific deinit first[4].
+ */
+void removeSingleDriver(struct usc_driverList *item);
+
+/**
+ * @brief Clear all drivers from the MicroUSC system.
+ *
+ * Iterates through the driver list (using list_for_each_safe()), removes all entries,
+ * and frees all allocated memory. Critical for preventing leaks during system shutdown
+ * or reconfiguration in embedded applications[1][2][5].
+ */
+void freeDriverList(void);
+
+#define WAIT_FOR_RESPONSE            ( pdMS_TO_TICKS( 1000 ) )
+
+esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size);
+
+esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
+
+esp_err_t setUSCtaskSize(stack_size_t size);
+
+/**
+ * @brief Deactivate a driver and disconnect all associated functions.
+ *
+ * This function marks the specified usc_driver_t structure as inactive, disabling its operation
+ * and disconnecting any functions or handlers linked to the driver[1][3][5].
+ * It is typically used during shutdown, reconfiguration, or error handling to ensure
+ * the driver does not participate in further system activity[1][5][7].
+ *
+ * @param driver Pointer to the usc_driver_t structure to deactivate.
+ *
+ * @note After calling this function, the driver should not be used until it is re-initialized.
+ *       This supports safe and robust hardware interface management in ESP32 and embedded systems[1][3][4][5][7].
+ */
+void set_driver_inactive(struct usc_driver_t *driver);
+
+#ifdef __cplusplus
+}
+#endif

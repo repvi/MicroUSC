@@ -1,6 +1,8 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
+#include "MicroUSC/system/kernel.h"
 #include "MicroUSC/synced_driver/USCdriver.h" // make it MicroUSC/USCdriver.h in the future
 #include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/status.h"
 #include "testing_driver.h"
 #include "speed_test.h"
 
@@ -78,26 +80,31 @@ void app_main(void) {
         .port = UART_NUM_2
     };
     */
+    ESP_LOGI("TAG", "CCCCC");
+    multi_heap_info_t info;
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
+    info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
+    ESP_LOGI("TAG", "sssss");
 
     uart_port_config_t pins = {
-        .port = UART_NUM_0,
-        .rx = GPIO_NUM_17,
-        .tx = GPIO_NUM_18
+        .port = UART_NUM_2, // make it to 1
+        .rx = GPIO_NUM_16, // 17
+        .tx = GPIO_NUM_17 // 18
     };
 
     // code should go after here
     
-    usc_data_process_t driver_action = &system_task; // point to the function you created
+    usc_process_t driver_action = &system_task; // point to the function you created
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
     // do not use the same number or it will not be configured
 
     // uncomment the line below to test the speed of the function
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action));
-
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action, 4086));
 
     //usc_print_driver_configurations();
-    //usc_print_overdriver_configurations(); 
+    //usc_print_overdriver_configurations();
     
     /*
     uart_port_config_t pinss = {
@@ -109,15 +116,15 @@ void app_main(void) {
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
     */   
 
+    set_microusc_system_code(USC_SYSTEM_LED_ON);
     set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
     set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
 
-    set_microusc_system_code(USC_SYSTEM_PAUSE);
-    vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_RESUME);
-    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_ERROR);
-    //set_microusc_system_code(USC_SYSTEM_SLEEP);
+    //set_microusc_system_code(USC_SYSTEM_LED_ON);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    //set_microusc_system_code(USC_SYSTEM_LED_OFF);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");
 }
