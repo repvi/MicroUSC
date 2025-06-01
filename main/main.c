@@ -117,8 +117,10 @@ void app_main(void) {
     set_microusc_system_code(USC_SYSTEM_LED_ON);
     set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
     set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
+    
     printf("Pausing system...\n");
     set_microusc_system_code(USC_SYSTEM_PAUSE);
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
     set_microusc_system_code(USC_SYSTEM_LED_OFF);
     vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
     set_microusc_system_code(USC_SYSTEM_RESUME);

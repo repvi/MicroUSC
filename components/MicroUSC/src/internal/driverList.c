@@ -11,14 +11,17 @@
 #define STATIC_SEMAPHORE_SIZE     sizeof( StaticSemaphore_t )
 
 #define PROCESSOR  "processor"
-#define READER "reader"
+#define READER     "reader"
+
 struct usc_driversHandler driver_system = {0};
 
 memory_block_handle_t mem_block_driver_nodes = NULL;
 memory_block_handle_t mem_block_task_processor = NULL;
 
-size_t data_size;
-size_t buff_size;
+struct {
+    size_t data_size;
+    size_t buffer_size;
+} stored_sizes;
 
 __always_inline void ptrOffset(void *ptr, size_t offset) {
     ptr = ( uint8_t * ) ( ( ( uintptr_t )ptr + offset ) );
@@ -107,7 +110,7 @@ static void setUpMemDriver( struct usc_driverList *driverList,
     driver->buffer.memory = ptr;
     ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
 
-    createDataStorageQueueStatic(driver->data, ptr, data_size);
+    createDataStorageQueueStatic(driver->data, ptr, stored_sizes.data_size);
 
 
     create_usc_driver_reader(driver, priority);
@@ -142,7 +145,7 @@ void addSingleDriver( const char *const driver_name,
     }
     driver->driver_name[DRIVER_NAME_SIZE - 1] = '\0';
     driver->port_config = port_config;
-    driver->buffer.size = buff_size;
+    driver->buffer.size = stored_sizes.buffer_size;
     driver->status = NOT_CONNECTED;
 
     driver->priority = getCurrentEmptyDriverIndexAndOccupy(); // retrieve the first empty bit
@@ -186,8 +189,8 @@ esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_
         ESP_LOGE(TAG, "Could not initialize driver list memory pool");
         return ESP_ERR_NO_MEM;
     }
-    buff_size = buffer_size;
-    data_size = d_size;
+    stored_sizes.buffer_size = buffer_size;
+    stored_sizes.data_size = d_size;
     return ESP_OK;
 }
 
