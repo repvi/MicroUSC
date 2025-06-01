@@ -1,3 +1,7 @@
+set(MICROUSC_APPLICATION
+    "application/USCdriver.c"
+)
+
 set(MICROUSC_ESP_CHIP "")
 
 if(IDF_TARGET STREQUAL "esp32")
@@ -12,13 +16,13 @@ endif()
 
 set(MICROUSC_INTERNAL
     "internal/genList.c"
-    "internal/initStart.c"
+    "internal/driverList.c"
+    "internal/system/bit_manip.c"
 )
 
 set(MICROUSC_SYNCED_DRIVER
     "synced_driver/atomic_sys_op.c"
     "synced_driver/esp_uart.c"
-    "synced_driver/USCdriver.c"
 )
 
 set(MICROUSC_SYSTEM
@@ -27,6 +31,7 @@ set(MICROUSC_SYSTEM
     "system/status.c"
 )
 
+list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
 list(TRANSFORM MICROUSC_INTERNAL PREPEND "src/")
 list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
@@ -34,6 +39,7 @@ list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
 
 idf_component_register(
     SRCS 
+        ${MICROUSC_APPLICATION}
         ${MICROUSC_ESP_CHIP}
         ${MICROUSC_INTERNAL}
         ${MICROUSC_SYNCED_DRIVER}
@@ -59,7 +65,16 @@ target_compile_definitions(
         DRIVER_MAX=3
     PRIVATE 
         MICROUSC_DEBUG=y
+<<<<<<< HEAD
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
         MICROUSC_QUEUEHANDLE_SIZE=3
+=======
+        MICROUSC_UART_DEBUG=y
+        MICROUSC_DEBUG_MEMORY_USAGE=y
+        MICROUSC_SYSTEM_PRIORITY=1
+        MICROUSC_CORE=0
+        MICROUSC_QUEUEHANDLE_SIZE=5
+        UART_QUEUE_SIZE=10
+>>>>>>> GP
 )

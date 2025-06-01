@@ -9,12 +9,20 @@
 
 #define TIMEOUT pdMS_TO_TICKS     (100)
 
+<<<<<<< HEAD
 #define BUFFER_SIZE               (64)
 #define UART_QUEUE_SIZE           (10)
 
 #define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
 
 esp_err_t uart_init( uart_port_config_t port_config, 
+=======
+#define BUFFER_SIZE               (256)
+
+#define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
+
+void uart_init( uart_port_config_t port_config, 
+>>>>>>> GP
                      uart_config_t uart_config, 
                      QueueHandle_t *uart_queue, 
                      const size_t queue_size
