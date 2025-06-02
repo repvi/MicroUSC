@@ -13,6 +13,8 @@ idf_component_register(
         nvs_flash
         MicroUSC
         examples
+        bootloader 
+        bootloader_support
 )
 
 #idf_component_get_property(tusb_lib leeebo__tinyusb_src COMPONENT_LIB)

@@ -1,3 +1,5 @@
+set(COMPILE_DEFINITIONS_LIST)
+
 set(MICROUSC_APPLICATION
     "application/USCdriver.c"
 )
@@ -5,7 +7,9 @@ set(MICROUSC_APPLICATION
 set(MICROUSC_ESP_CHIP "")
 
 if(IDF_TARGET STREQUAL "esp32")
+    list(APPEND COMPILE_DEFINITIONS_LIST __ENABLED_ASSEMBLY_LED)
     list(APPEND MICROUSC_ESP_CHIP "chip_specific/esp32/system_attr.c")
+    list(APPEND MICROUSC_ESP_CHIP "chip_specific/esp32/builtin_led.S")
 
 elseif(IDF_TARGET STREQUAL "esp32s3")
     list(APPEND MICROUSC_ESP_CHIP "chip_specific/esp32s3/system_attr.c")
@@ -64,6 +68,7 @@ target_compile_definitions(
     PUBLIC
         DRIVER_MAX=3
     PRIVATE 
+        ${COMPILE_DEFINITIONS_LIST}
         MICROUSC_DEBUG=y
         MICROUSC_UART_DEBUG=y
         MICROUSC_DEBUG_MEMORY_USAGE=y

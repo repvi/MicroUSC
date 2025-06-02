@@ -3,7 +3,8 @@
 #include "MicroUSC/USCdriver.h"
 #include "testing_driver.h"
 #include "speed_test.h"
-
+//#include "xt_asm_utils.h"
+//#include "xtensa/config/tie-asm.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -16,12 +17,12 @@
 
 // 115200 baud rate
 
-// xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
-// xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
+// xtensa-esp-elf-objdump -D build/MicroUSC.elf > disassembly.tx
+// xtensa-esp-elf-objdump -t build/MicroUSC.elf > symbols.txt
 
 // idf.py -D CMAKE_VERBOSE_MAKEFILE=ON build
 // xtensa-esp32-elf-gcc -S -o output.S example.c     
-// xtensa-esp32-elf-objdump -t build/ESP32_USC_DRIVERS.elf | findstr "example_function"
+// xtensa-esp32-elf-objdump -t build/MicroUSC.elf | findstr "example_function"
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {
@@ -48,7 +49,7 @@ IRAM_ATTR void normal_function(void) {
 DRAM_ATTR uint32_t cache_disabled_buffer[64];
 */
 
-// xtensa-esp-elf-addr2line -e build/ESP32_USC_DRIVERS.elf 0x400d679c
+// xtensa-esp-elf-addr2line -e build/MicroUSC.elf 0x400d679c
 
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();

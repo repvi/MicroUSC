@@ -7,13 +7,13 @@
 
 #define turn_on_builtin_led() REG_SET_BIT(GPIO_OUT_REG, BIT(BUILTIN_LED));
 #define turn_off_builtin_led() REG_CLR_BIT(GPIO_OUT_REG, BIT(BUILTIN_LED));
-void init_builtin_led(void) 
-{
-    REG_WRITE(GPIO_FUNC0_OUT_SEL_CFG_REG + BUILTIN_LED * 4, 256); // 256 = Direct GPIO control
+
+/*
+ REG_WRITE(GPIO_FUNC0_OUT_SEL_CFG_REG + BUILTIN_LED * 4, 256); // 256 = Direct GPIO control
     // Enable GPIO as an output
     REG_SET_BIT(GPIO_ENABLE_REG, BIT(BUILTIN_LED));
     turn_off_builtin_led(); // make sure it is off by default
-}
+*/
 
 __unused void builtin_led_set(bool state) 
 {

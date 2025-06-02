@@ -31,8 +31,8 @@ PING = {.value = PING_VAL},
 SEND_KEY = {.value = SEND_KEY_VAL}, 
 SERIAL_KEY = {.value = SERIAL_KEY_VAL};
 
-#define PASSWORD_PING_DELAY pdMS_TO_TICKS(2000) // 2 seconds delay
-#define SERIAL_INPUT_DELAY pdMS_TO_TICKS(3000) // 3 second delay
+#define PASSWORD_PING_DELAY pdMS_TO_TICKS(50) // 50 miliseconds delay
+#define SERIAL_INPUT_DELAY pdMS_TO_TICKS(10) // 10 milisecond delay
 
 #define SERIAL_RECIEVE_DELAY() vTaskDelay(pdMS_TO_TICKS(SERIAL_REQUEST_DELAY_MS)) // Wait for response
 
