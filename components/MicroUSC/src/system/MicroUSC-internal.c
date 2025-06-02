@@ -40,9 +40,10 @@
 #define INTERNAL_TASK_STACK_SIZE (4096) // Stack size for the system task, increase the size in the future for development
 
 #define WDT_TIMER_WAIT 3
+
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 
-RTC_NOINIT_ATTR unsigned int __system_reboot_count; // only accessed by the system
+RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
 RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
 
 struct rtc_map {
@@ -230,14 +231,14 @@ void *get_system_rtc_var(const char key)
 
 static void set_rtc_cycle(void)
 {
-    if (checksum != calculate_checksum(__system_reboot_count)) {
-        __system_reboot_count = 0; // Reset only on corruption detection
+    if (checksum != calculate_checksum(system_reboot_count)) {
+        system_reboot_count = 0; // Reset only on corruption detection
     } 
     else {
-        __system_reboot_count++; // Safe increment
+        system_reboot_count++; // Safe increment
     }
     
-    checksum = calculate_checksum(__system_reboot_count); // Update valid checksum
+    checksum = calculate_checksum(system_reboot_count); // Update valid checksum
 }
 
 static __always_inline void increment_rtc_cycle(void)
@@ -287,7 +288,8 @@ void IRAM_ATTR microusc_resume_drivers(void)
 }
 
 
-static void getBackPCprevious(MiscrouscBackTrack_t *backtrack, const size_t amount) {
+static void getBackPCprevious(MiscrouscBackTrack_t *backtrack, const size_t amount) 
+{
     esp_backtrace_frame_t frame;
     
     // Get the starting frame
@@ -307,6 +309,7 @@ static void microusc_system_error_handler_default(void *var)
     // shutdown all drivers function here
     usc_print_driver_configurations(); // Print the driver configurations
     microusc_pause_drivers();
+    fflush(stdout); // make sure everything gets printed out
     microusc_system_restart();
 }
 
@@ -537,8 +540,8 @@ esp_err_t microusc_system_setup(void)
 
     set_rtc_cycle(); // Set the RTC cycle variable
 
-    if (__system_reboot_count != 0) {
-        ESP_LOGW(TAG, "System fail count: %u", __system_reboot_count);
+    if (system_reboot_count != 0) {
+        ESP_LOGW(TAG, "System fail count: %u", system_reboot_count);
         vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
     }
 

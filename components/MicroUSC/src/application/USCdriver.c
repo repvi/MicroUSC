@@ -130,10 +130,6 @@ esp_err_t usc_driver_init( const char *const driver_name,
  * @return
  *   - ESP_OK: Data was written successfully.
  *   - ESP_FAIL or error code: Transmission failed (see implementation for details).
- *
- * @note This function is typically used in ESP32/ESP8266 embedded systems to abstract serial or
- *       peripheral communication, supporting robust driver and system configuration.
- *       Proper driver initialization must be performed before calling this function.
  */
 static esp_err_t usc_driver_write( const struct usc_driver_t *driver,
                                    const char *data,
@@ -192,7 +188,7 @@ usc_status_t handle_serial_key(struct usc_driver_t *driver, const UBaseType_t i)
     if (key != NULL) {
         ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[0], key[1], key[2], key[3]);
         uint32_t parsed_data = parse_data(key);
-        ESP_LOGI(TAG, "Parsed value: %u", parsed_data);
+        ESP_LOGI(TAG, "Parsed value: %lu", parsed_data);
 
         switch (parsed_data) {
             case SERIAL_KEY_VAL:
@@ -225,7 +221,7 @@ static usc_status_t process_data(struct usc_driver_t *driver, const UBaseType_t 
     if (temp_data != NULL) {
         uint32_t data = parse_data(temp_data);
         dataStorageQueue_add(driver->data, data); // Add the data to the queue
-        ESP_LOGI(TAG, "Stored: %u", data);
+        ESP_LOGI(TAG, "Stored: %lu", data);
         return DATA_RECEIVED;
     }
     return DATA_RECEIVE_ERROR; // doesn't need system interface
@@ -281,16 +277,28 @@ void usc_driver_read_task(void *pvParameters)
             driver->status = process_data(driver, index); // Read and process incoming data
 
             ESP_LOGI(TASK_TAG, "Task %d is running", index); // Debugging line to check task name and priority
-            xSemaphoreGive(sync_signal); // Release the mutex lock
             if (*active == false) {
                 break;
             }
+            xSemaphoreGive(sync_signal); // Release the mutex lock
             vTaskDelay(LOOP_DELAY_MS); // 10ms delay
         }
     }
+    xSemaphoreGive(sync_signal); // Release the mutex lock
 
     ESP_LOGI(TASK_TAG, "Task %s is terminating...\n", driver->driver_name); // Debugging line to check task name and priority
     //ESP_LOGI("TASK", "Task %s terminated", config->driver_name);
     vTaskDelay(LOOP_DELAY_MS); // 10ms delay
     vTaskDelete(NULL); // Delete the task
+}
+
+uint32_t usc_driver_get_data(uscDriverHandler driver)
+{
+    uint32_t data = 0;
+    vTaskDelay(3 * LOOP_DELAY_MS);
+    if (xSemaphoreTake(driver->sync_signal, portMAX_DELAY) == pdTRUE) {
+        data = dataStorageQueue_top(driver->data);
+        xSemaphoreGive(driver->sync_signal);
+    }
+    return data;
 }
