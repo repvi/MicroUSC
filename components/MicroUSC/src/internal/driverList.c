@@ -1,4 +1,4 @@
-#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/manager.h"
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/USCdriver.h"

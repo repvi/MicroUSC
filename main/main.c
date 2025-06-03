@@ -1,5 +1,5 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
-#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/manager.h"
 #include "MicroUSC/USCdriver.h"
 #include "testing_driver.h"
 #include "speed_test.h"
@@ -50,6 +50,12 @@ DRAM_ATTR uint32_t cache_disabled_buffer[64];
 */
 
 // xtensa-esp-elf-addr2line -e build/MicroUSC.elf 0x400d679c
+
+
+// example for merge / commit issue
+// git fetch origin
+// git rebase origin/GP
+// git push origin GP
 
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();

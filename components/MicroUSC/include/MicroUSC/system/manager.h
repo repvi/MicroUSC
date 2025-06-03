@@ -5,7 +5,7 @@
  */
 
 /**
- * @file MicroUSC-internal.h
+ * @file manager.h
  * @brief Internal system and power management API for MicroUSC on ESP32/ESP8266.
  *
  * This header provides internal function declarations for system-level configuration,

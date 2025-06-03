@@ -1,4 +1,4 @@
-#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/USCdriver.h"
 #include "MicroUSC/synced_driver/esp_uart.h"

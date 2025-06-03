@@ -1,6 +1,6 @@
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/chip_specific/system_attr.h"
-#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/internal/driverList.h"
