@@ -16,6 +16,8 @@ struct DataStorageQueue {
 
 #define DATAQUEUE_SIZE ( sizeof( struct DataStorageQueue ) )
 
+#define DATAQUEUE_SIZE ( sizeof( struct DataStorageQueue ) )
+
 typedef struct DataStorageQueue *SerialDataQueueHandler;
 
 size_t getDataStorageQueueSize(void) 
@@ -27,8 +29,10 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
 {
     const size_t alloc_size = serial_data_size * sizeof(uint32_t);
     SerialDataQueueHandler var = (SerialDataQueueHandler)heap_caps_malloc(DATAQUEUE_SIZE + alloc_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    SerialDataQueueHandler var = (SerialDataQueueHandler)heap_caps_malloc(DATAQUEUE_SIZE + alloc_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     if (var != NULL) {
+        var->serial_data = (uint32_t *)((uint8_t *)var + DATAQUEUE_SIZE);
         var->serial_data = (uint32_t *)((uint8_t *)var + DATAQUEUE_SIZE);
         if (var->serial_data == NULL) {
             heap_caps_free(var);

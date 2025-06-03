@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 /* FreeRTOS dependencies */
+/* FreeRTOS dependencies */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <freertos/semphr.h>
@@ -68,6 +69,11 @@ extern "C" {
     #define HOT            __attribute__((hot)) // Performance-critical paths
     #define COLD           __attribute__((cold)) // Cold code paths
     #define ALWAYS_INLINE  __attribute__((always_inline))
+    #define RUN_FIRST      __attribute__((constructor, used, noinline)) // Early initialization
+    #define MALLOC         __attribute__((malloc)) // Memory allocator hint
+    #define HOT            __attribute__((hot)) // Performance-critical paths
+    #define COLD           __attribute__((cold)) // Cold code paths
+    #define ALWAYS_INLINE  __attribute__((always_inline))
 
     #define UNUSED         __attribute__((unused))
     #define DEPRECATED     __attribute__((deprecated))
@@ -75,15 +81,18 @@ extern "C" {
 
     #define OPT0         __attribute__((optimize("O0")))
     #define OPT1         __attribute__((optimize("O1"))) 
+    #define OPT1         __attribute__((optimize("O1"))) 
     #define OPT2         __attribute__((optimize("O2")))
     #define OPT3         __attribute__((optimize("O3")))
 
     #define ESP32_ALIGNMENT  __attribute__((aligned(ESP32_ARCHITECTURE_ALIGNMENT_VAR)))
 
     #define __init __attribute__((constructor))
+    #define __init __attribute__((constructor))
     #define __noreturn __attribute__((noreturn))
     #define __deprecated __attribute__((deprecated))
 #else
+    /* Fallbacks for non-GCC compilers */
     /* Fallbacks for non-GCC compilers */
     #define RUN_FIRST
     #define MALLOC 
@@ -92,10 +101,13 @@ extern "C" {
     #define ALWAYS_INLINE
 
     #define __init
+    #define __init
     #define __noreturn
     #define __deprecated
 #endif
+///@}
 
+/* Constant optimization helper */
 /* Constant optimization helper */
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
@@ -116,11 +128,15 @@ extern "C" {
 #define INSIDE_SCOPE(x, max) (0 <= (x) && (x) < (max))
 #define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
 #define developer_input(x) (x)
+///@}
 
+/* Baud rate safety check */
 /* Baud rate safety check */
 #ifdef CONFIG_ESP_CONSOLE_UART_BAUDRATE
     #define CONFIGURED_BAUDRATE CONFIG_ESP_CONSOLE_UART_BAUDRATE
+    #define CONFIGURED_BAUDRATE CONFIG_ESP_CONSOLE_UART_BAUDRATE
 #else
+    #define CONFIGURED_BAUDRATE (-1)
     #define CONFIGURED_BAUDRATE (-1)
 #endif
 ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, 

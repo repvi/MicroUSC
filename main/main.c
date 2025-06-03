@@ -61,6 +61,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
     init_MicroUSC_system();
+    init_MicroUSC_system();
 
     uart_config_t setting = STANDARD_UART_CONFIG; // only for debugging
     /*
@@ -80,10 +81,14 @@ void app_main(void) {
         .port = UART_NUM_2, // make it to 1
         .rx = GPIO_NUM_16, // 17
         .tx = GPIO_NUM_17 // 18
+        .port = UART_NUM_2, // make it to 1
+        .rx = GPIO_NUM_16, // 17
+        .tx = GPIO_NUM_17 // 18
     };
 
     // code should go after here
     
+    usc_process_t driver_action = &system_task; // point to the function you created
     usc_process_t driver_action = &system_task; // point to the function you created
     // function will configure driver_example
     // 0 is for the driver type, for now you can only use 0 and 1.
@@ -102,6 +107,7 @@ void app_main(void) {
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
     */   
 
+    set_microusc_system_code(USC_SYSTEM_LED_ON);
     set_microusc_system_code(USC_SYSTEM_LED_ON);
     set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
     set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);

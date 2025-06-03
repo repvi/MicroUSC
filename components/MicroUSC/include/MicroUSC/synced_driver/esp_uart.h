@@ -29,6 +29,37 @@
  */
 
 #pragma once
+/*
+ * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file esp_uart.h
+ * @brief UART driver abstraction layer for ESP32/ESP8266 embedded systems
+ *
+ * Provides a high-level API for configuring and managing UART peripherals on ESP32/ESP8266,
+ * integrating FreeRTOS queues for interrupt-driven communication. Designed for robust serial
+ * I/O in real-time embedded applications[1][4][7].
+ *
+ * Features:
+ * - UART port initialization with GPIO pin mapping
+ * - Thread-safe data reception via FreeRTOS queues[2][6]
+ * - Timeout handling for real-time systems[5][8]
+ * - Hardware resource cleanup and validation[3][9]
+ *
+ * Usage:
+ * 1. Initialize UART with uart_init()
+ * 2. Read data using uart_read() with queue-based event handling
+ * 3. Deinitialize configurations with uart_port_config_deinit() during shutdown
+ *
+ * @note Part of the MicroUSC system codebase for ESP32/ESP8266 development[6][7]
+ * @author Alejandro Ramirez
+ * @date May 26, 2025
+ */
+
+#pragma once
 
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -97,6 +128,24 @@ void uart_init( uart_port_config_t port_config,
  *       via uart_init() first[4][7]. Suitable for interrupt-driven designs when
  *       combined with proper ISR configuration[6].
  */
+/**
+ * @brief Read data from a UART port using FreeRTOS queues with timeout.
+ *
+ * This function reads up to `len` bytes from the specified UART port into the provided buffer,
+ * utilizing FreeRTOS queue-based event handling for real-time data reception[4][6]. Designed for
+ * ESP32/ESP8266 embedded systems with strict timing requirements[2][5].
+ *
+ * @param uart UART port number (e.g., UART_NUM_0)
+ * @param buf Pre-allocated buffer for storing received data
+ * @param len Maximum number of bytes to read
+ * @param uart_queue FreeRTOS queue handle created during uart_init()
+ * @param delay Maximum ticks to wait for data (use portMAX_DELAY for blocking)
+ * @return uint8_t* - Pointer to buffer with received data, NULL on timeout/error
+ *
+ * @note Buffer must be allocated before calling[2][7]. Queue must be initialized
+ *       via uart_init() first[4][7]. Suitable for interrupt-driven designs when
+ *       combined with proper ISR configuration[6].
+ */
 uint8_t *uart_read( uart_port_t uart,
                     uint8_t *buf,
                     const size_t len, 
@@ -104,6 +153,21 @@ uint8_t *uart_read( uart_port_t uart,
                     const TickType_t delay
                   );
 
+/**
+ * @brief Deinitialize a UART port configuration structure.
+ *
+ * This function resets the fields of a uart_port_config_t structure to indicate that
+ * it is no longer associated with any valid UART port or GPIO pins. It sets the port
+ * to UART_NUM_MAX (an invalid port) and both RX and TX pins to GPIO_NUM_NC (not connected).
+ *
+ * Typical use: Call this function to safely mark a UART port configuration as unused
+ * or before reconfiguring it for a different port or pin assignment in embedded systems[4][6].
+ *
+ * @param uart_config Pointer to the uart_port_config_t structure to be deinitialized.
+ *
+ * @note This helps prevent accidental reuse of stale or invalid UART configurations,
+ *       supporting robust system and hardware interface management in ESP32 applications[4][6][8].
+ */
 /**
  * @brief Deinitialize a UART port configuration structure.
  *

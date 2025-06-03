@@ -22,6 +22,8 @@ set(MICROUSC_INTERNAL
     "internal/genList.c"
     "internal/driverList.c"
     "internal/system/bit_manip.c"
+    "internal/driverList.c"
+    "internal/system/bit_manip.c"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -36,6 +38,7 @@ set(MICROUSC_SYSTEM
 )
 
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
+list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
 list(TRANSFORM MICROUSC_INTERNAL PREPEND "src/")
 list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
@@ -43,6 +46,7 @@ list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
 
 idf_component_register(
     SRCS 
+        ${MICROUSC_APPLICATION}
         ${MICROUSC_APPLICATION}
         ${MICROUSC_ESP_CHIP}
         ${MICROUSC_INTERNAL}

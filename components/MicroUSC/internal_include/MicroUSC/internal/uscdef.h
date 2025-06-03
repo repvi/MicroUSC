@@ -39,6 +39,8 @@ extern "C" {
 #include "MicroUSC/synced_driver/atomic_sys_op.h"
 
 /* Forward declarations */
+
+/* Forward declarations */
 struct usc_stored_config_t;
 struct usc_task_manager_t;
 
@@ -48,11 +50,15 @@ struct usc_task_manager_t;
  */
 #define literate_bytes(var, type, len) \
     for (type* begin = (var), *end = (var) + (len); begin < end; begin++)
+    for (type* begin = (var), *end = (var) + (len); begin < end; begin++)
 
 #define define_iteration(var, type, name, len) \
     for (type* (name) = (var), *end = (var) + (len); (name) < end; (name)++)
+    for (type* (name) = (var), *end = (var) + (len); (name) < end; (name)++)
 
 #define define_iteration_with_semaphore(var, type, name, len) \
+    for (type* (name) = (var), *end = (var) + (len); (name) < end; \
+        xSemaphoreGive((name)->sync_signal), (name)++) \
     for (type* (name) = (var), *end = (var) + (len); (name) < end; \
         xSemaphoreGive((name)->sync_signal), (name)++) \
     if (xSemaphoreTake((name)->sync_signal, portMAX_DELAY) == pdTRUE) \
@@ -129,6 +135,13 @@ struct usc_driver_t {
  * struct usc_config_t cfg = INIT_USC_CONFIG_DEFAULT;
  */
 #define INIT_USC_CONFIG_DEFAULT { \
+    .baud_rate = 0, \
+    .data = {0}, \
+    .driver_name = "", \
+    .has_access = false, \
+    .status = NOT_CONNECTED, \
+    .uart_config = {0} \
+}
     .baud_rate = 0, \
     .data = {0}, \
     .driver_name = "", \
