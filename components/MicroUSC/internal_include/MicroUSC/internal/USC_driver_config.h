@@ -17,15 +17,6 @@
  * - Safety assertions
  *
  * Key components:
-<<<<<<< HEAD
- * 1. Version macros (CURRENT_VERSION_*) for semantic versioning[5][7]
- * 2. Compiler abstraction layer for GCC/clang attributes (RUN_FIRST, HOT, COLD etc.)[6]
- * 3. Serial protocol constants (SERIAL_KEY, REQUEST_KEY)[1][5]
- * 4. FreeRTOS task configuration (stack sizes, priorities, core affinity)[4][5]
- * 5. Architecture-specific alignment requirements[1][6]
- *
- * @note Designed for ESP-IDF projects using CMake component structure[2][7]
-=======
  * 1. Version macros (CURRENT_VERSION_*) for semantic versioning
  * 2. Compiler abstraction layer for GCC/clang attributes (RUN_FIRST, HOT, COLD etc.)
  * 3. Serial protocol constants (SERIAL_KEY, REQUEST_KEY)
@@ -33,7 +24,6 @@
  * 5. Architecture-specific alignment requirements
  *
  * @note Designed for ESP-IDF projects using CMake component structure
->>>>>>> GP
  * @author Alejandro Ramirez
  * @date May 26, 2025
  */
@@ -55,14 +45,8 @@ extern "C" {
 
 /**
  * @name Version Configuration
-<<<<<<< HEAD
- * @brief Semantic versioning for MicroUSC driver framework[5][7]
- */
-///@{
-=======
  * @brief Semantic versioning for MicroUSC driver framework
  */
->>>>>>> GP
 #define CURRENT_VERSION_MAJOR             (0)
 #define CURRENT_VERSION_MINOR             (10)
 #define CURRENT_VERSION_PATCH             (3)
@@ -73,18 +57,11 @@ extern "C" {
 #define USC_Version()       to_string(CURRENT_VERSION_MAJOR) "." \
                             to_string(CURRENT_VERSION_MINOR) "." \
                             to_string(CURRENT_VERSION_PATCH)
-///@}
 
 /**
  * @name Compiler Optimization Attributes
-<<<<<<< HEAD
- * @brief GCC/clang-specific code generation controls[6][4]
- */
-///@{
-=======
  * @brief GCC/clang-specific code generation controls
  */
->>>>>>> GP
 #if defined(__GNUC__) || defined(__clang__)
     #define RUN_FIRST      __attribute__((constructor, used, noinline)) // Early initialization
     #define MALLOC         __attribute__((malloc)) // Memory allocator hint
@@ -118,7 +95,6 @@ extern "C" {
     #define __noreturn
     #define __deprecated
 #endif
-///@}
 
 /* Constant optimization helper */
 #define OPTIMIZE_CONSTANT(x) \
@@ -126,38 +102,20 @@ extern "C" {
 
 /**
  * @name Serial Protocol Constants
-<<<<<<< HEAD
- * @brief Security and protocol control values[1][5]
- */    
-///@{
-#define SERIAL_KEY      ( ( uint32_t ) (1234) )
-#define REQUEST_KEY     0x0064
-#define PING            0x0063
-#define SERIAL_REQUEST_SIZE  ( sizeof( uint32_t ) )
-=======
  * @brief Security and protocol control values
  */    
->>>>>>> GP
 #define SERIAL_DATA_SIZE      (126)
-///@}
 
 /* Memory architecture configuration */
 #define ESP32_ARCHITECTURE_ALIGNMENT_VAR ( sizeof( uint32_t ) )
 
 /**
  * @name Range Checking Macros
-<<<<<<< HEAD
- * @brief Input validation helpers[3][6]
- */
-///@{
-=======
  * @brief Input validation helpers
  */
->>>>>>> GP
 #define INSIDE_SCOPE(x, max) (0 <= (x) && (x) < (max))
 #define OUTSIDE_SCOPE(x, max) ((x) < 0 || (max) <= (x))
 #define developer_input(x) (x)
-///@}
 
 /* Baud rate safety check */
 #ifdef CONFIG_ESP_CONSOLE_UART_BAUDRATE
@@ -170,36 +128,22 @@ ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1,
 
 /**
  * @name Task Configuration
-<<<<<<< HEAD
- * @brief FreeRTOS task parameters[4][5]
- */
-///@{
-#define TASK_PRIORITY_START      ( ( UBaseType_t ) ( 10 ) )
-#define TASK_STACK_SIZE          (4096)
-#define TASK_CORE_READER         (1) // Core 0: wireless, Core 1: app logic[1][4]
-#define TASK_CORE_ACTION         (0)
-///@}
-=======
  * @brief FreeRTOS task parameters
  */
 #define TASK_PRIORITY_START      ( ( UBaseType_t ) ( 10 ) )
 #define TASK_STACK_SIZE          (4096) // 8192
 #define TASK_CORE_READER         (1) // Core 0: wireless, Core 1: app logic
 #define TASK_CORE_ACTION         (0)
->>>>>>> GP
 
 /* Timing constants */
 #define DELAY_MILISECOND_50       pdMS_TO_TICKS(50)
 #define SERIAL_REQUEST_DELAY_MS   (30)
 #define SERIAL_KEY_RETRY_DELAY_MS (50)
-#define LOOP_DELAY_MS             (10)
+#define LOOP_DELAY_MS             pdMS_TO_TICKS(10)
 #define SEMAPHORE_DELAY           pdMS_TO_TICKS(3)
 #define SEMAPHORE_WAIT_TIME       pdMS_TO_TICKS(5000)
-<<<<<<< HEAD
-=======
 
 #define NOT_FOUND (( uint32_t ) ( -1 ) )
->>>>>>> GP
 
 #ifdef __cplusplus
 }

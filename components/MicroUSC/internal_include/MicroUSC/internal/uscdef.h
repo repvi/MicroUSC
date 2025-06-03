@@ -10,35 +10,20 @@
  * 
  * Provides fundamental data structures, enums, and iteration macros used throughout
  * the MicroUSC system. Integrates with FreeRTOS for task management and ESP32 UART
-<<<<<<< HEAD
- * hardware interfaces[1][3][4][5].
- *
- * Key components:
- * - Iteration macros for safe data buffer traversal (literate_bytes, define_iteration*)
- * - Driver status enumeration (usc_status_t) for state tracking[3][4]
- * - Configuration structures for UART drivers and task management[1][4][5]
-=======
  * hardware interfaces.
  *
  * Key components:
  * - Iteration macros for safe data buffer traversal (literate_bytes, define_iteration*)
  * - Driver status enumeration (usc_status_t) for state tracking
  * - Configuration structures for UART drivers and task management
->>>>>>> GP
  * - FreeRTOS synchronization primitives (SemaphoreHandle_t, TaskHandle_t)
  *
  * Usage:
  * - Include this header in driver implementation files requiring system types
  * - Use INIT_USC_CONFIG_DEFAULT for safe struct initialization
-<<<<<<< HEAD
- * - Leverage iteration macros for buffer processing with optional semaphore control[5][9]
- *
- * @note Maintains compatibility with ESP-IDF's component structure and CMake builds[4][5]
-=======
  * - Leverage iteration macros for buffer processing with optional semaphore control
  *
  * @note Maintains compatibility with ESP-IDF's component structure and CMake builds
->>>>>>> GP
  * @author Alejandro Ramirez
  * @date May 26, 2025
  */
@@ -59,14 +44,8 @@ struct usc_task_manager_t;
 
 /**
  * @name Buffer Iteration Macros
-<<<<<<< HEAD
- * @brief Safe data traversal patterns with optional semaphore control[5][9]
- */
-///@{
-=======
  * @brief Safe data traversal patterns with optional semaphore control
  */
->>>>>>> GP
 #define literate_bytes(var, type, len) \
     for (type* begin = (var), *end = (var) + (len); begin < end; begin++)
 
@@ -78,10 +57,6 @@ struct usc_task_manager_t;
         xSemaphoreGive((name)->sync_signal), (name)++) \
     if (xSemaphoreTake((name)->sync_signal, portMAX_DELAY) == pdTRUE) \
         for (bool hasSemaphore = true; hasSemaphore; hasSemaphore = false)
-<<<<<<< HEAD
-///@}
-=======
->>>>>>> GP
 
 /* Type aliases */
 typedef char driver_name_t[20];  ///< Driver identifier string
@@ -90,32 +65,15 @@ typedef bool init_safety;        ///< Initialization state flag
 
 /**
  * @name Initialization Constants
-<<<<<<< HEAD
- * @brief Safety markers for driver initialization states[4][8]
- */
-///@{
-=======
  * @brief Safety markers for driver initialization states
  */
->>>>>>> GP
 #define STATIC_INIT_SAFETY  static init_safety
 #define initZERO            false  ///< Uninitialized state
 #define initONE             true   ///< Initialized state
 #define DRIVER_NAME_SIZE    (sizeof(driver_name_t))  ///< Maximum driver name length
-<<<<<<< HEAD
-///@}
-
-/**
- * @brief Driver communication and operational states
- * 
- * Used in usc_config_t.status to track UART driver lifecycle[3][4][5]
- */
-typedef enum {
-=======
 
 typedef enum {
     DRIVER_UNINITALIALIZED,
->>>>>>> GP
     NOT_CONNECTED,         ///< Hardware not detected
     CONNECTED,             ///< Physical layer established
     DISCONNECTED,          ///< Graceful termination
@@ -132,50 +90,6 @@ typedef enum {
 } usc_status_t;
 
 /**
-<<<<<<< HEAD
- * @brief UART driver configuration bundle
- * 
- * Contains hardware parameters and data buffers for serial communication[3][6]
- */
-struct usc_config_t {
-    uart_port_config_t uart_config;  ///< ESP32 UART port/pin assignments
-    SerialDataQueueHandler data;     ///< RX/TX buffer management
-    driver_name_t driver_name;       ///< Human-readable identifier
-    usc_status_t status;             ///< Current state machine position
-    uint32_t baud_rate;              ///< Link speed (bits/sec)
-    bool has_access;                 ///< Security clearance flag
-};
-
-/**
- * @brief FreeRTOS task control structure
- * 
- * Manages driver-related tasks in ESP32 dual-core environment[5][8]
- */
-struct usc_task_manager_t {
-    TaskHandle_t task_handle;    ///< UART control task (Core 1)
-    TaskHandle_t action_handle;  ///< Data processing task (Core 0)
-    bool active;                 ///< Task lifecycle flag
-};
-
-/**
- * @brief Base driver configuration container
- */
-struct usc_driver_base_t {
-    struct usc_config_t driver_setting;  ///< Hardware interface parameters
-    struct usc_task_manager_t driver_tasks; ///< Task scheduling controls
-    UBaseType_t priority;                ///< FreeRTOS task priority[5]
-};
-
-/**
- * @brief Complete driver instance definition
- * 
- * Used in linked list management via genList.h utilities[4][9]
- */
-struct usc_driver_t {
-    struct usc_driver_base_t driver_storage; ///< Configuration and tasks
-    UBaseType_t priority;                    ///< Execution precedence
-    SemaphoreHandle_t sync_signal;           ///< Thread synchronization
-=======
  * @brief Complete driver instance definition
  * 
  * Used in linked list management via genList.h utilities
@@ -206,7 +120,6 @@ struct usc_driver_t {
     usc_status_t status;                     ///< Current state machine position
     UBaseType_t priority;                    ///< Execution precedence
     bool has_access;                         ///< Security clearance flag
->>>>>>> GP
 };
 
 /**

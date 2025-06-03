@@ -1,9 +1,11 @@
+#include "MicroUSC/USCdriver.h"
 #include "testing_driver.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "string.h"
 #include "stddef.h"
 #include "stdint.h"
+#include <inttypes.h>
 
 /* n = 0 -> default value 
    n = 1 -> turn off esp32
@@ -18,19 +20,19 @@
    n = 10 -> overdriver status
 */
 
-uint32_t getData(void) {
-    return 1;
-}
-
 void system_task(void *p) {
+    uscDriverHandler driver = (uscDriverHandler)p;
     uint32_t data = 0;
 
     while (1) {
-        data = getData();
+        data = usc_driver_get_data(driver);
+
+        if (data != 0) {
+            ESP_LOGI("driver task", "Got data: %lu", data);
+        }
         
         switch(data) {
             case 1: 
-                
                 break;
             case 2:
                 break;

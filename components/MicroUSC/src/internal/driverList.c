@@ -1,4 +1,4 @@
-#include "MicroUSC/system/MicroUSC-internal.h"
+#include "MicroUSC/system/manager.h"
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/USCdriver.h"
@@ -23,8 +23,8 @@ struct {
     size_t buffer_size;
 } stored_sizes;
 
-__always_inline void ptrOffset(void *ptr, size_t offset) {
-    ptr = ( uint8_t * ) ( ( ( uintptr_t )ptr + offset ) );
+__always_inline void* ptrOffset(void *ptr, size_t offset) {
+    return (void *)((uint8_t *)ptr + offset);
 }
 
 //defined in "MicroUSC/USCdriver.h"
@@ -53,7 +53,7 @@ static void create_usc_driver_reader( struct usc_driver_t *driver,
 
     driver->uart_reader.task = xTaskCreateStaticPinnedToCore(
         usc_driver_read_task,                                // Task function
-        task_name,                                 // Task name
+        task_name,                                           // Task name
         TASK_STACK_SIZE,                                     // Stack size
         (void *)driver,                                      // Task parameters
         DRIVER_TASK_Priority_START,                          // Increment priority for next task
@@ -81,7 +81,7 @@ static void create_usc_driver_processor( struct usc_driver_t *driver,
         driver_process,                                        // Task function
         task_name,                                             // Task name
         driver->uart_processor.stack_size,                     // Stack size
-        (void *)i,                                             // Task parameters
+        (void *)driver,
         (OFFSET),                                              // Based on index
         driver->uart_processor.stack,    // Task handle
         &driver->uart_processor.task_buffer,
@@ -105,12 +105,12 @@ static void setUpMemDriver( struct usc_driverList *driverList,
     }
     #endif
     xSemaphoreGive(driver->sync_signal); // create the section
-    ptrOffset(ptr, STATIC_SEMAPHORE_SIZE); // move to the free memory after the semaphore
+    ptr = ptrOffset(ptr, STATIC_SEMAPHORE_SIZE); // move to the free memory after the semaphore
 
     driver->buffer.memory = ptr;
-    ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
+    ptr = ptrOffset(ptr, driver->buffer.size); // make the array the size of the buffer
 
-    createDataStorageQueueStatic(driver->data, ptr, stored_sizes.data_size);
+    createDataStorageQueueStatic(&driver->data, ptr, stored_sizes.data_size);
 
 
     create_usc_driver_reader(driver, priority);
@@ -183,7 +183,8 @@ void freeDriverList(void)
 
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size)
 {
-    const size_t total = sizeof(struct usc_driverList) + (sizeof(StaticSemaphore_t)) + TASK_STACK_SIZE + buffer_size + d_size + sizeof(DataStorageQueueStatic);
+    const size_t total = sizeof(struct usc_driverList) + (sizeof(StaticSemaphore_t)) + TASK_STACK_SIZE + buffer_size
+    + getDataStorageQueueSize() + ( d_size * sizeof(uint32_t) );
     mem_block_driver_nodes = (memory_block_handle_t)memory_handler_malloc(total, DRIVER_MAX);
     if (mem_block_driver_nodes == NULL) {
         ESP_LOGE(TAG, "Could not initialize driver list memory pool");
@@ -208,11 +209,4 @@ esp_err_t setUSCtaskSize(stack_size_t size) {
 __always_inline esp_err_t init_hidden_driver_lists(const size_t buffer_size, const size_t data_size)
 {
     return init_driver_list_memory_pool(buffer_size, data_size);
-}
-
-void set_driver_inactive(struct usc_driver_t *driver)
-{
-    xSemaphoreGive(driver->sync_signal);            /* Unlock the queue */
-    // implement here
-    xSemaphoreGive(driver->sync_signal);    /* Unlock the queue */
 }

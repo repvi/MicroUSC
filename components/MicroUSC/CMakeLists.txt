@@ -1,3 +1,5 @@
+set(COMPILE_DEFINITIONS_LIST)
+
 set(MICROUSC_APPLICATION
     "application/USCdriver.c"
 )
@@ -5,7 +7,9 @@ set(MICROUSC_APPLICATION
 set(MICROUSC_ESP_CHIP "")
 
 if(IDF_TARGET STREQUAL "esp32")
+    list(APPEND COMPILE_DEFINITIONS_LIST BUILTIN_LED_ASSEMBLY)
     list(APPEND MICROUSC_ESP_CHIP "chip_specific/esp32/system_attr.c")
+    list(APPEND MICROUSC_ESP_CHIP "chip_specific/esp32/builtin_led.S")
 
 elseif(IDF_TARGET STREQUAL "esp32s3")
     list(APPEND MICROUSC_ESP_CHIP "chip_specific/esp32s3/system_attr.c")
@@ -27,7 +31,7 @@ set(MICROUSC_SYNCED_DRIVER
 
 set(MICROUSC_SYSTEM
     "system/memory_pool.c"
-    "system/MicroUSC-internal.c"
+    "system/manager.c"
     "system/status.c"
 )
 
@@ -64,17 +68,12 @@ target_compile_definitions(
     PUBLIC
         DRIVER_MAX=3
     PRIVATE 
-        MICROUSC_DEBUG=y
-<<<<<<< HEAD
-        MICROUSC_SYSTEM_PRIORITY=1
-        MICROUSC_CORE=0
-        MICROUSC_QUEUEHANDLE_SIZE=3
-=======
-        MICROUSC_UART_DEBUG=y
-        MICROUSC_DEBUG_MEMORY_USAGE=y
+        ${COMPILE_DEFINITIONS_LIST}
+        MICROUSC_DEBUG
+        MICROUSC_UART_DEBUG
+        MICROUSC_DEBUG_MEMORY_USAGE
         MICROUSC_SYSTEM_PRIORITY=1
         MICROUSC_CORE=0
         MICROUSC_QUEUEHANDLE_SIZE=5
         UART_QUEUE_SIZE=10
->>>>>>> GP
 )

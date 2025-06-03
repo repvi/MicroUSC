@@ -1,11 +1,10 @@
 #include "nvs_flash.h" // doesn't need to be included, recommended to have
-#include "MicroUSC/system/kernel.h"
-#include "MicroUSC/synced_driver/USCdriver.h" // make it MicroUSC/USCdriver.h in the future
-#include "MicroUSC/system/MicroUSC-internal.h"
-#include "MicroUSC/system/status.h"
+#include "MicroUSC/system/manager.h"
+#include "MicroUSC/USCdriver.h"
 #include "testing_driver.h"
 #include "speed_test.h"
-
+//#include "xt_asm_utils.h"
+//#include "xtensa/config/tie-asm.h"
 // git log
 // git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
 // git commit -m "Change details"
@@ -18,12 +17,12 @@
 
 // 115200 baud rate
 
-// xtensa-esp-elf-objdump -D build/ESP32_USC_DRIVERS.elf > disassembly.tx
-// xtensa-esp-elf-objdump -t build/ESP32_USC_DRIVERS.elf > symbols.txt
+// xtensa-esp-elf-objdump -D build/MicroUSC.elf > disassembly.tx
+// xtensa-esp-elf-objdump -t build/MicroUSC.elf > symbols.txt
 
 // idf.py -D CMAKE_VERBOSE_MAKEFILE=ON build
 // xtensa-esp32-elf-gcc -S -o output.S example.c     
-// xtensa-esp32-elf-objdump -t build/ESP32_USC_DRIVERS.elf | findstr "example_function"
+// xtensa-esp32-elf-objdump -t build/MicroUSC.elf | findstr "example_function"
 /*
 // Function that runs from IRAM (faster but limited space)
 void IRAM_ATTR critical_timing_function(void) {
@@ -41,26 +40,17 @@ RTC_SLOW_ATTR uint8_t slow_memory_buffer[512];
 // Data in RTC fast memory (persists in light sleep, faster access)
 RTC_FAST_ATTR uint8_t fast_memory_buffer[128];
 
-// Function that should be executed from flash (saves IRAM)
-IRAM_ATTR void normal_function(void) {
-    // Non-time-critical code
-}
-
 // Data that must be accessible during cache disabled periods
 DRAM_ATTR uint32_t cache_disabled_buffer[64];
 */
 
-/*
-uart_config_t uart_config = {
-    .baud_rate = 115200,
-    .data_bits = UART_DATA_8_BITS,
-    .parity = UART_PARITY_DISABLE,
-    .stop_bits = UART_STOP_BITS_1,
-    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-};
-*/
+// xtensa-esp-elf-addr2line -e build/MicroUSC.elf 0x400d679c
 
-// xtensa-esp-elf-addr2line -e build/ESP32_USC_DRIVERS.elf 0x400d679c
+
+// example for merge / commit issue
+// git fetch origin
+// git rebase origin/GP
+// git push origin GP
 
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
@@ -80,12 +70,11 @@ void app_main(void) {
         .port = UART_NUM_2
     };
     */
-    ESP_LOGI("TAG", "CCCCC");
+   
     multi_heap_info_t info;
     heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
     printf("Heap Free: %d, Largest Free Block: %d, Allocated Blocks: %d\n",
     info.total_free_bytes, info.largest_free_block, info.allocated_blocks);
-    ESP_LOGI("TAG", "sssss");
 
     uart_port_config_t pins = {
         .port = UART_NUM_2, // make it to 1
@@ -102,9 +91,6 @@ void app_main(void) {
 
     // uncomment the line below to test the speed of the function
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action, 4086));
-
-    //usc_print_driver_configurations();
-    //usc_print_overdriver_configurations();
     
     /*
     uart_port_config_t pinss = {
@@ -119,12 +105,16 @@ void app_main(void) {
     set_microusc_system_code(USC_SYSTEM_LED_ON);
     set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
     set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
-
-    //set_microusc_system_code(USC_SYSTEM_LED_ON);
-    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //set_microusc_system_code(USC_SYSTEM_LED_OFF);
-    //vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_SLEEP);
+    
+    //printf("Pausing system...\n");
+    //set_microusc_system_code(USC_SYSTEM_PAUSE);
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    set_microusc_system_code(USC_SYSTEM_LED_OFF);
+    //vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    //set_microusc_system_code(USC_SYSTEM_RESUME);
+    //vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    //set_microusc_system_code(USC_SYSTEM_ERROR);
+    //set_microusc_system_code(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");
 }
