@@ -40,11 +40,6 @@ RTC_SLOW_ATTR uint8_t slow_memory_buffer[512];
 // Data in RTC fast memory (persists in light sleep, faster access)
 RTC_FAST_ATTR uint8_t fast_memory_buffer[128];
 
-// Function that should be executed from flash (saves IRAM)
-IRAM_ATTR void normal_function(void) {
-    // Non-time-critical code
-}
-
 // Data that must be accessible during cache disabled periods
 DRAM_ATTR uint32_t cache_disabled_buffer[64];
 */
@@ -96,9 +91,6 @@ void app_main(void) {
 
     // uncomment the line below to test the speed of the function
     CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action, 4086));
-
-    //usc_print_driver_configurations();
-    //usc_print_overdriver_configurations();
     
     /*
     uart_port_config_t pinss = {

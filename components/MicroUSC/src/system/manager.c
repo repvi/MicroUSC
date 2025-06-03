@@ -536,8 +536,10 @@ esp_err_t microusc_system_setup(void)
     }
     microusc_system.queue_system.count = 0;
 
+    #ifndef BUILTIN_LED_ASSEMBLY
     init_builtin_led();
-
+    #endif
+    
     set_rtc_cycle(); // Set the RTC cycle variable
 
     if (system_reboot_count != 0) {

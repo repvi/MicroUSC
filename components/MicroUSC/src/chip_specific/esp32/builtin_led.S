@@ -1,5 +1,3 @@
-#ifdef __ENABLED_ASSEMBLY_LED
-
 #include "soc/gpio_reg.h"
 
 #define BUILTIN_LED   2
@@ -14,11 +12,11 @@ init_builtin_led:
     entry   sp, 16
     
     movi    a2, GPIO_ENABLE_REG
-    movi    a3, (1 << BUILTIN_LED)
+    movi.n  a3, (1 << BUILTIN_LED)
     s32i    a3, a2, 0
 
     movi    a2, GPIO_OUT_REG
-    movi    a3, 0
+    movi.n  a3, 0
     s32i    a3, a2, 0
     
     movi    a2, GPIO_FUNC0_OUT_SEL_CFG_REG + (BUILTIN_LED * 4)
@@ -36,7 +34,7 @@ turn_on_builtin_led:
     entry   sp, 16
 
     movi    a2, GPIO_OUT_REG
-    movi    a3, (1 << BUILTIN_LED)
+    movi.n  a3, (1 << BUILTIN_LED)
     l32i    a4, a2, 0
     or      a4, a4, a3
     s32i    a4, a2, 0   
@@ -61,4 +59,9 @@ turn_off_builtin_led:
     .size turn_off_builtin_led, .-turn_off_builtin_led
     .align 4
 
-#endif
+/* constructors */
+/* this code does not work as intneded (contructor)
+.section .init_array, "aw", @init_array
+.align 4
+.long init_builtin_led
+*/

@@ -1,4 +1,5 @@
 #include "MicroUSC/chip_specific/system_attr.h"
+#include "MicroUSC/internal/USC_driver_config.h"
 #include "driver/gpio.h"
 #include "soc/gpio_reg.h"
 #include "soc/io_mux_reg.h"
@@ -15,9 +16,14 @@
     turn_off_builtin_led(); // make sure it is off by default
 */
 
-__unused void builtin_led_set(bool state) 
+void builtin_led_set(bool state)
 {
     //gpio_set_level(GPIO_NUM_2, state);
+}
+
+__init void init_builtin_led_wrapper(void)
+{
+    init_builtin_led();
 }
 
 void builtin_led_system(microusc_status status)
