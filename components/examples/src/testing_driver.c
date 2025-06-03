@@ -7,19 +7,6 @@
 #include "stdint.h"
 #include <inttypes.h>
 
-/* n = 0 -> default value 
-   n = 1 -> turn off esp32
-   n = 2 -> sleep mode
-   n = 3 -> pause port data
-   n = 4 -> connect to wifi
-   n = 5 -> connect to bluetooth
-   n = 6 -> turn on built-in LED on esp32
-   n = 7 -> memory usage 
-   n = 8 -> system specs
-   n = 9 -> driver status
-   n = 10 -> overdriver status
-*/
-
 void system_task(void *p) {
     uscDriverHandler driver = (uscDriverHandler)p;
     uint32_t data = 0;
@@ -29,6 +16,12 @@ void system_task(void *p) {
 
         if (data != 0) {
             ESP_LOGI("driver task", "Got data: %lu", data);
+            if (data == 0x64) {
+                usc_send_data(driver, 1234); // send password
+            }
+            else {
+                usc_send_data(driver, data + 1); // increment by 1
+            }
         }
         
         switch(data) {
@@ -51,6 +44,8 @@ void system_task(void *p) {
             case 9:
                 break;
             case 10:
+                break;
+            default:
                 break;
         }
 

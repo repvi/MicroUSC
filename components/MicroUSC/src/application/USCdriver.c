@@ -165,6 +165,16 @@ static __always_inline esp_err_t usc_driver_send_password(struct usc_driver_t *d
     return usc_driver_write(driver, (const char *)SEND_KEY.bytes, sizeof(SEND_KEY));
 }
 
+__always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
+{
+    union uint32_4_uint8_t bytes_4;
+    bytes_4.value = data;
+    xSemaphoreTake(driver->sync_signal, portMAX_DELAY);
+    esp_err_t c = usc_driver_write(driver, (const char *)bytes_4.bytes, sizeof(bytes_4));
+    xSemaphoreGive(driver->sync_signal);
+    return c;
+}
+
 // Combine 4 bytes in order into 32-bit value, reverses the value that it has recieved
 static __always_inline uint32_t parse_data(const uint8_t *const data) 
 {
@@ -278,13 +288,13 @@ void usc_driver_read_task(void *pvParameters)
 
             ESP_LOGI(TASK_TAG, "Task %d is running", index); // Debugging line to check task name and priority
             if (*active == false) {
+                xSemaphoreGive(sync_signal); // Release the mutex lock
                 break;
             }
             xSemaphoreGive(sync_signal); // Release the mutex lock
             vTaskDelay(LOOP_DELAY_MS); // 10ms delay
         }
     }
-    xSemaphoreGive(sync_signal); // Release the mutex lock
 
     ESP_LOGI(TASK_TAG, "Task %s is terminating...\n", driver->driver_name); // Debugging line to check task name and priority
     //ESP_LOGI("TASK", "Task %s terminated", config->driver_name);

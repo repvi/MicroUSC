@@ -115,6 +115,8 @@ esp_err_t usc_driver_init(const char *const driver_name,
  */
 uint32_t usc_driver_get_data(uscDriverHandler driver);
 
+esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data);
+
 #ifdef __cplusplus
 }
 #endif

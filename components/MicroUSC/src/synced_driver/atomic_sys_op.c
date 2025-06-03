@@ -16,11 +16,9 @@ struct DataStorageQueue {
 
 #define DATAQUEUE_SIZE ( sizeof( struct DataStorageQueue ) )
 
-#define DATAQUEUE_SIZE ( sizeof( struct DataStorageQueue ) )
-
 typedef struct DataStorageQueue *SerialDataQueueHandler;
 
-size_t getDataStorageQueueSize(void) 
+size_t getDataStorageQueueSize(void)
 {
     return sizeof(struct DataStorageQueue);
 }
@@ -29,10 +27,8 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
 {
     const size_t alloc_size = serial_data_size * sizeof(uint32_t);
     SerialDataQueueHandler var = (SerialDataQueueHandler)heap_caps_malloc(DATAQUEUE_SIZE + alloc_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-    SerialDataQueueHandler var = (SerialDataQueueHandler)heap_caps_malloc(DATAQUEUE_SIZE + alloc_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
 
     if (var != NULL) {
-        var->serial_data = (uint32_t *)((uint8_t *)var + DATAQUEUE_SIZE);
         var->serial_data = (uint32_t *)((uint8_t *)var + DATAQUEUE_SIZE);
         if (var->serial_data == NULL) {
             heap_caps_free(var);
@@ -46,15 +42,14 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
     return var;
 }
 
-void createDataStorageQueueStatic(SerialDataQueueHandler *var, void *mem, const size_t serial_data_size) 
+void createDataStorageQueueStatic(DataStorageQueueStatic *var, const size_t serial_data_size) 
 {
-    *var = (SerialDataQueueHandler)mem;
-    (*var)->serial_data = ( uint32_t * ) ( ( uint8_t * )mem + sizeof( struct DataStorageQueue ) );
-    memset((*var)->serial_data, 0, serial_data_size * sizeof(uint32_t));
-    (*var)->head = 0;
-    (*var)->tail = 0;
-    (*var)->size = serial_data_size;
-    ESP_LOGI("ATOMIC", "size: %u", (*var)->size);
+    SerialDataQueueHandler var = (SerialDataQueueHandler)mem;
+    var->serial_data = ( uint32_t * ) ( ( uint8_t * )mem + sizeof( struct DataStorageQueue ) );
+    memset((var->serial_data, 0, serial_data_size * sizeof(uint32_t));
+    var->head = 0;
+    var->tail = 0;
+    var->size = serial_data_size;
 }
 
 void destroyDataStorageQueue(SerialDataQueueHandler queue) 
@@ -65,7 +60,7 @@ void destroyDataStorageQueue(SerialDataQueueHandler queue)
 
 static __always_inline size_t moveNext(const size_t current, const size_t size) 
 {
-    return  ( ( current + 1 ) < size ) * ( current + 1 );
+    return  ( -( ( current + 1 ) < size ) ) & ( current + 1 );
 }
 
 void dataStorageQueue_add(SerialDataQueueHandler queue, const uint32_t data)
@@ -82,7 +77,8 @@ uint32_t dataStorageQueue_top(SerialDataQueueHandler queue)
 {
     const size_t head = queue->head; // get the current index
     if (head >= queue->size) {
-        ESP_LOGE("ATOMIC", "Bigger index");
+        ESP_LOGE("ATOMIC", "Bigger index: %u", head);
+        return 0;
     }
     const uint32_t data = queue->serial_data[head]; // get the data from the queue
     if (data != 0) {

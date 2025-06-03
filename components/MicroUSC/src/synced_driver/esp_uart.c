@@ -9,14 +9,6 @@
 
 #define TIMEOUT pdMS_TO_TICKS     (100)
 
-<<<<<<< HEAD
-#define BUFFER_SIZE               (64)
-#define UART_QUEUE_SIZE           (10)
-
-#define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
-
-#define TIMEOUT pdMS_TO_TICKS     (100)
-
 #define BUFFER_SIZE               (256)
 
 #define xQueCreateSet(x) xQueueCreate(x, sizeof(uart_event_t))
@@ -29,9 +21,6 @@ void uart_init( uart_port_config_t port_config,
     ESP_ERROR_CHECK(uart_param_config(port_config.port, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(port_config.port, port_config.tx, port_config.rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_driver_install(port_config.port, BUFFER_SIZE * 2, 0, queue_size, uart_queue, 0));
-    ESP_ERROR_CHECK(uart_param_config(port_config.port, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(port_config.port, port_config.tx, port_config.rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    ESP_ERROR_CHECK(uart_driver_install(port_config.port, BUFFER_SIZE * 2, 0, queue_size, uart_queue, 0));
 }
 
 uint8_t *uart_read( uart_port_t uart, 
@@ -41,8 +30,6 @@ uint8_t *uart_read( uart_port_t uart,
                     const TickType_t delay
 ) {
     if (buf == NULL) {
-        ESP_LOGE(TAG, "Buffer is not initialized");
-        return NULL;
         ESP_LOGE(TAG, "Buffer is not initialized");
         return NULL;
     }

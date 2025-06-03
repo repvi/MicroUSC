@@ -67,11 +67,6 @@
 extern "C" {
 #endif
 
-
-typedef struct {
-    char memory[sizeof(uint32_t *) + (3 * sizeof(size_t))];
-} DataStorageQueueStatic;
-
 /* --- Opaque Handle Types --- */
 typedef struct DataStorageQueue DataStorageQueue;
 typedef DataStorageQueue *SerialDataQueueHandler;
