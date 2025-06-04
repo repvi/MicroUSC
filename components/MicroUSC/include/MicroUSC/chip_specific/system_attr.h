@@ -45,7 +45,7 @@ extern "C" {
  * Configures the GPIO pin connected to the onboard LED for output mode.
  * Should be called once during system initialization[3][5][6].
  */
-void init_builtin_led(void);
+extern void init_builtin_led(void);
 
 /**
  * @brief Set the state of the onboard LED.

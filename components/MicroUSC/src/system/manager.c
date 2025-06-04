@@ -336,7 +336,7 @@ static void microusc_queue_flush(void)
     xQueueReset(microusc_system.queue_system.queue_handler);
 }
 
-inline void set_microusc_system_code(microusc_status code)
+void set_microusc_system_code(microusc_status code)
 {
     if (eTaskGetState(microusc_system.task.main_task) != eSuspended) {
         // this only runs if the task is not suspended due to flushing the queue at the meantime

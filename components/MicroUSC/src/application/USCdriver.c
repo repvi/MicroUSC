@@ -180,7 +180,7 @@ __always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
 static __always_inline uint32_t parse_data(const uint8_t *const data) 
 {
     union uint32_4_uint8_t rx;
-    memcpy(rx.bytes, data, 4);
+    memcpy(rx.bytes, data, sizeof(union uint32_4_uint8_t);
     return rx.value;
 }
 
@@ -231,9 +231,11 @@ static usc_status_t process_data(struct usc_driver_t *driver, const UBaseType_t 
     uint8_t *temp_data = uart_read(driver->port_config.port, driver->buffer.memory, driver->buffer.size, uart_queue[i], SERIAL_INPUT_DELAY);
     if (temp_data != NULL) {
         uint32_t data = parse_data(temp_data);
-        dataStorageQueue_add(driver->data, data); // Add the data to the queue
-        ESP_LOGI(TAG, "Stored: %lu", data);
-        return DATA_RECEIVED;
+        if (data != 0) {
+            dataStorageQueue_add(driver->data, data); // Add the data to the queue
+            ESP_LOGI(TAG, "Stored: %lu", data);
+            return DATA_RECEIVED;
+        }
     }
     return DATA_RECEIVE_ERROR; // doesn't need system interface
 }

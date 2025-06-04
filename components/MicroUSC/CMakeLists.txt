@@ -42,6 +42,8 @@ list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
 list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
 
 idf_component_register(
+    COMPILE_OPTIONS "-mtext-section-literals"
+
     SRCS 
         ${MICROUSC_APPLICATION}
         ${MICROUSC_ESP_CHIP}
@@ -54,7 +56,7 @@ idf_component_register(
 
     PRIV_INCLUDE_DIRS
         "internal_include"
-
+    
     REQUIRES
         driver
         freertos
@@ -77,3 +79,5 @@ target_compile_definitions(
         MICROUSC_QUEUEHANDLE_SIZE=5
         UART_QUEUE_SIZE=10
 )
+
+# add_compile_options(-mtext-section-literals)

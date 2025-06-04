@@ -31,25 +31,11 @@ void system_task(void *p) {
                 break;
             case 3: 
                 break;
-            case 4:
-                break;
-            case 5:
-                break;
-            case 6:
-                break;
-            case 7:
-                break;
-            case 8:
-                break;
-            case 9:
-                break;
-            case 10:
-                break;
             default:
                 break;
         }
 
-        vTaskDelay(portTICK_PERIOD_MS); // delay for one second
+        vTaskDelay(pdMS_TO_TICKS(20)); // delay for one second
         // this is used to delay the task for a certain amount of time
         // it is used to prevent the task from running too fast and consuming too much CPU time
         // Used to reset the timer for the task

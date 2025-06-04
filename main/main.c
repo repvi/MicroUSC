@@ -17,7 +17,7 @@
 
 // 115200 baud rate
 
-// xtensa-esp-elf-objdump -D build/MicroUSC.elf > disassembly.tx
+// xtensa-esp-elf-objdump -D build/MicroUSC.elf > disassembly.txt
 // xtensa-esp-elf-objdump -t build/MicroUSC.elf > symbols.txt
 
 // idf.py -D CMAKE_VERBOSE_MAKEFILE=ON build
@@ -46,20 +46,12 @@ DRAM_ATTR uint32_t cache_disabled_buffer[64];
 
 // xtensa-esp-elf-addr2line -e build/MicroUSC.elf 0x400d679c
 
-
 // example for merge / commit issue
 // git fetch origin
 // git rebase origin/GP
 // git push origin GP
 
 void app_main(void) {
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
     init_MicroUSC_system();
 
     uart_config_t setting = STANDARD_UART_CONFIG; // only for debugging
