@@ -14,10 +14,10 @@
 #define TAG                "[USC DRIVER]"
 #define TASK_TAG           "[DRIVER READER]"
 
-#define REQUEST_KEY_VAL ( uint32_t ) ( 0x64 )
-#define PING_VAL        ( uint32_t ) ( 0x63 )
-#define SEND_KEY_VAL    ( uint32_t ) ( 1234 )
-#define SERIAL_KEY_VAL  ( uint32_t ) ( 1234 )
+#define REQUEST_KEY_VAL ( uint32_t ) ( 0x64 ) // send data to request for password (idle)
+#define PING_VAL        ( uint32_t ) ( 0x63 ) // ping to the other device, (NOT USED)
+#define SEND_KEY_VAL    ( uint32_t ) ( 1234 ) // send the other device's password
+#define SERIAL_KEY_VAL  ( uint32_t ) ( 1234 ) // the internal password for this device
 
 #define BYTE_TYPE  uint32_t
 union uint32_4_uint8_t {
@@ -37,8 +37,6 @@ SERIAL_KEY = {.value = SERIAL_KEY_VAL};
 #define SERIAL_RECIEVE_DELAY() vTaskDelay(pdMS_TO_TICKS(SERIAL_REQUEST_DELAY_MS)) // Wait for response
 
 #define SERIAL_DATA_STORAGE_CAPACITY  256
-
-QueueHandle_t uart_queue[DRIVER_MAX] = {NULL}; // Queue for UART data
 
 #define buf_SIZE ( sizeof( uint32_t ) + 1 )
 
@@ -67,7 +65,7 @@ static void check_valid_uart_config( const uart_config_t *uart_config,
     vTaskDelay(LOOP_DELAY_MS); // 10ms delay
 
     // Initialize UAR
-    uart_init(*port_config, *uart_config, &uart_queue[i], UART_QUEUE_SIZE);
+    uart_init(*port_config, *uart_config);
 }
 
 struct usc_driver_t *getLastDriver(void) {
@@ -180,7 +178,7 @@ __always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
 static __always_inline uint32_t parse_data(const uint8_t *const data) 
 {
     union uint32_4_uint8_t rx;
-    memcpy(rx.bytes, data, sizeof(union uint32_4_uint8_t);
+    memcpy(rx.bytes, data, sizeof(union uint32_4_uint8_t));
     return rx.value;
 }
 
@@ -195,7 +193,11 @@ usc_status_t handle_serial_key(struct usc_driver_t *driver, const UBaseType_t i)
     SERIAL_RECIEVE_DELAY();
 
     // 1 is added for the NULL terminator which is junk
-    uint8_t *key = uart_read(driver->port_config.port, driver->buffer.memory, driver->buffer.size, uart_queue[i], PASSWORD_PING_DELAY);
+    uint8_t *key = uart_read( driver->port_config.port, 
+                              driver->buffer.memory, 
+                              driver->buffer.size, 
+                              PASSWORD_PING_DELAY
+                            );
     if (key != NULL) {
         ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[0], key[1], key[2], key[3]);
         uint32_t parsed_data = parse_data(key);
@@ -228,7 +230,11 @@ static __always_inline void maintain_connection(struct usc_driver_t *driver)
 // needs to be finished
 static usc_status_t process_data(struct usc_driver_t *driver, const UBaseType_t i)
 {
-    uint8_t *temp_data = uart_read(driver->port_config.port, driver->buffer.memory, driver->buffer.size, uart_queue[i], SERIAL_INPUT_DELAY);
+    uint8_t *temp_data = uart_read( driver->port_config.port, 
+                                    driver->buffer.memory, 
+                                    driver->buffer.size, 
+                                    SERIAL_INPUT_DELAY
+                                  );
     if (temp_data != NULL) {
         uint32_t data = parse_data(temp_data);
         if (data != 0) {
@@ -252,12 +258,6 @@ void usc_driver_read_task(void *pvParameters)
     ESP_LOGI(TASK_TAG, "Priority %u\n", (index + TASK_PRIORITY_START)); // Debugging line to check task name and priority`
     ESP_LOGI(TASK_TAG, "Task status: %d\n", *active);
     vTaskDelay(LOOP_DELAY_MS); // 10ms delay
-
-    #ifdef MICROUSC_UART_DEBUG
-    if (uart_queue[index] == NULL) {
-        ESP_LOGE(TAG, "Uart queue is null, [%u]", index);
-    }
-    #endif
     
     //#if (NEEDS_SERIAL_KEY == 1)
     while (1) {
@@ -308,9 +308,10 @@ void usc_driver_read_task(void *pvParameters)
 uint32_t usc_driver_get_data(uscDriverHandler driver)
 {
     uint32_t data = 0;
-    vTaskDelay(3 * LOOP_DELAY_MS);
     if (xSemaphoreTake(driver->sync_signal, portMAX_DELAY) == pdTRUE) {
-        data = dataStorageQueue_top(driver->data);
+        if (driver->has_access) {
+            data = dataStorageQueue_top(driver->data);
+        }
         xSemaphoreGive(driver->sync_signal);
     }
     return data;

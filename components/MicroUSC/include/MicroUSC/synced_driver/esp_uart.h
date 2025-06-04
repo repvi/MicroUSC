@@ -93,7 +93,6 @@ typedef struct {
  * 
  * @param port_config Contains UART port number (e.g., UART_NUM_0) and TX/RX/RTS/CTS pins
  * @param uart_config Baud rate, data bits, parity, stop bits, and flow control settings
- * @param uart_queue Output parameter for FreeRTOS queue handle (stores UART events)
  * @param queue_size Number of events the queue can hold (min 1 for interrupt operation)
  * @return 
  * - ESP_OK: UART initialized successfully
@@ -105,10 +104,8 @@ typedef struct {
  *       Use IRAM_ATTR for ISR handlers if UART used in interrupt context[2][6].
  */
 void uart_init( uart_port_config_t port_config, 
-                     uart_config_t uart_config, 
-                     QueueHandle_t *uart_queue, 
-                     const size_t queue_size
-                   );
+                uart_config_t uart_config, 
+              );
 
 /**
  * @brief Read data from a UART port using FreeRTOS queues with timeout.
@@ -120,7 +117,6 @@ void uart_init( uart_port_config_t port_config,
  * @param uart UART port number (e.g., UART_NUM_0)
  * @param buf Pre-allocated buffer for storing received data
  * @param len Maximum number of bytes to read
- * @param uart_queue FreeRTOS queue handle created during uart_init()
  * @param delay Maximum ticks to wait for data (use portMAX_DELAY for blocking)
  * @return uint8_t* - Pointer to buffer with received data, NULL on timeout/error
  *
@@ -138,7 +134,6 @@ void uart_init( uart_port_config_t port_config,
  * @param uart UART port number (e.g., UART_NUM_0)
  * @param buf Pre-allocated buffer for storing received data
  * @param len Maximum number of bytes to read
- * @param uart_queue FreeRTOS queue handle created during uart_init()
  * @param delay Maximum ticks to wait for data (use portMAX_DELAY for blocking)
  * @return uint8_t* - Pointer to buffer with received data, NULL on timeout/error
  *
@@ -149,7 +144,6 @@ void uart_init( uart_port_config_t port_config,
 uint8_t *uart_read( uart_port_t uart,
                     uint8_t *buf,
                     const size_t len, 
-                    QueueHandle_t uart_queue,
                     const TickType_t delay
                   );
 

@@ -78,6 +78,7 @@ target_compile_definitions(
         MICROUSC_CORE=0
         MICROUSC_QUEUEHANDLE_SIZE=5
         UART_QUEUE_SIZE=10
+        BUFFER_SIZE=256
 )
 
 # add_compile_options(-mtext-section-literals)
