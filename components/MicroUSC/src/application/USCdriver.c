@@ -167,6 +167,7 @@ static __always_inline esp_err_t usc_driver_send_password(struct usc_driver_t *d
 
 __always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
 {
+    vTaskDelay(pdTICKS_TO_MS(100));
     union uint32_4_uint8_t bytes_4;
     bytes_4.value = data;
     xSemaphoreTake(driver->sync_signal, portMAX_DELAY);

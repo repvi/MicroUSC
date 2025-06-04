@@ -18,7 +18,7 @@ struct DataStorageQueue {
 
 typedef struct DataStorageQueue *SerialDataQueueHandler;
 
-size_t getDataStorageQueueSize(void)
+__always_inline size_t getDataStorageQueueSize(void)
 {
     return sizeof(struct DataStorageQueue);
 }
@@ -42,21 +42,24 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
     return var;
 }
 
-void createDataStorageQueueStatic(DataStorageQueueStatic *var, const size_t serial_data_size) 
-{
-    SerialDataQueueHandler var = (SerialDataQueueHandler)mem;
-    var->serial_data = ( uint32_t * ) ( ( uint8_t * )mem + sizeof( struct DataStorageQueue ) );
-    memset((var->serial_data, 0, serial_data_size * sizeof(uint32_t));
+SerialDataQueueHandler createDataStorageQueueStatic(void *buffer, const size_t serial_data_size) {
+    // Cast the buffer to the queue handler type
+    SerialDataQueueHandler var = (SerialDataQueueHandler)buffer;
+
+    // Calculate the serial_data array position after the struct
+    var->serial_data = (uint32_t*)((uint8_t*)buffer + sizeof(struct DataStorageQueue));
+
+    // Initialize the data array to zero (fixed memset syntax)
+    memset(var->serial_data, 0, serial_data_size * sizeof(uint32_t));
+
+    // Initialize queue metadata
     var->head = 0;
     var->tail = 0;
     var->size = serial_data_size;
+
+    return var;
 }
 
-void destroyDataStorageQueue(SerialDataQueueHandler queue) 
-{
-    heap_caps_free(queue->serial_data);
-    heap_caps_free(queue);
-}
 
 static __always_inline size_t moveNext(const size_t current, const size_t size) 
 {
@@ -94,4 +97,11 @@ void dataStorageQueue_clean(SerialDataQueueHandler queue)
     memset(queue->serial_data, 0, queue->size * sizeof(uint32_t));
     queue->head = 0;
     queue->tail = 0;
+}
+
+
+void destroyDataStorageQueue(SerialDataQueueHandler queue) 
+{
+    heap_caps_free(queue->serial_data);
+    heap_caps_free(queue);
 }

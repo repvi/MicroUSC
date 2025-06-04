@@ -85,15 +85,7 @@ size_t getDataStorageQueueSize(void);
  */
 SerialDataQueueHandler createDataStorageQueue(const size_t len);
 
-void createDataStorageQueueStatic(SerialDataQueueHandler *var, void *mem, const size_t serial_data_size);
-
-/**
- * @brief Destroy queue and release resources
- * @param queue Valid queue handle from createDataStorageQueue()
- *
- * @note Frees both queue structure and data buffer
- */
-void destroyDataStorageQueue(SerialDataQueueHandler queue);
+SerialDataQueueHandler createDataStorageQueueStatic(void *buffer, const size_t serial_data_size);
 
 /**
  * @brief Add data to queue (thread-safe)
@@ -121,6 +113,14 @@ uint32_t dataStorageQueue_top(SerialDataQueueHandler queue);
  * @note Does not deallocate memory - queue remains usable
  */
 void dataStorageQueue_clean(SerialDataQueueHandler queue);
+
+/**
+ * @brief Destroy queue and release resources
+ * @param queue Valid queue handle from createDataStorageQueue()
+ *
+ * @note Frees both queue structure and data buffer
+ */
+void destroyDataStorageQueue(SerialDataQueueHandler queue);
 
 #ifdef __cplusplus
 }

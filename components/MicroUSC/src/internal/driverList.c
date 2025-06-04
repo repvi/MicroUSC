@@ -112,10 +112,6 @@ static void setUpMemDriver( struct usc_driverList *driverList,
     driver->buffer.memory = ptr;
     ptr = ptrOffset(ptr, driver->buffer.size);
 
-    // Align for DataStorageQueue struct
-    createDataStorageQueueStatic(&driver->data, ptr, stored_sizes.data_size);
-
-
     create_usc_driver_reader(driver, priority);
     create_usc_driver_processor(driver, driver_processor, priority);
 }
@@ -130,9 +126,18 @@ void addSingleDriver( const char *const driver_name,
     struct usc_driverList *new = (struct usc_driverList *)memory_pool_alloc(mem_block_driver_nodes);
     struct usc_driver_t *driver = &new->driver; // point to the first byte of the allocated memory
 
+    const size_t serial_data_storage_size = 256;
+    void* tmp_buffer = heap_caps_malloc(getDataStorageQueueSize() + ( serial_data_storage_size * sizeof(uint32_t) ), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    driver->data = createDataStorageQueueStatic(tmp_buffer, serial_data_storage_size);
+
     driver->uart_reader.active = true;
     if (mem_block_task_processor == NULL) { // has not been statically initialized
+        ESP_LOGI(TAG, "Allocating stack of size %u", stack_size);
         driver->uart_processor.stack = (StackType_t *)heap_caps_malloc(stack_size, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+        if (driver->uart_processor.stack == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate for stack of the reader task");
+            return;
+        }
         driver->uart_processor.stack_size = stack_size;
     } else {
         driver->uart_processor.stack = (StackType_t *)memory_pool_alloc(mem_block_task_processor);
@@ -155,6 +160,7 @@ void addSingleDriver( const char *const driver_name,
     driver->has_access = false;
 
     setUpMemDriver(new, driver_process, driver->priority);
+
 
     ESP_LOGI(TAG, "Completeted initializing driver");
 
@@ -184,9 +190,9 @@ void freeDriverList(void)
     driver_system.size = 0;
 }
 
-esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size)
+esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t data_size)
 {
-     size_t total = 0;
+    size_t total = 0;
 
     total += sizeof(struct usc_driverList);
 
@@ -196,22 +202,17 @@ esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_
     total += ALIGNOF(uint32_t) - 1;
     total += buffer_size;
 
-    total += ALIGNOF(DataStorageQueueStatic) - 1;
-    total += sizeof(DataStorageQueueStatic);
-
-    total += ALIGNOF(uint32_t) - 1;
-    total += d_size * sizeof(uint32_t);
-
     // Optionally, add a small safety margin
-    total += 32;
+    total += 16;
 
     mem_block_driver_nodes = (memory_block_handle_t)memory_handler_malloc(total, DRIVER_MAX);
     if (mem_block_driver_nodes == NULL) {
         ESP_LOGE(TAG, "Could not initialize driver list memory pool");
         return ESP_ERR_NO_MEM;
     }
+
     stored_sizes.buffer_size = buffer_size;
-    stored_sizes.data_size = d_size;
+    stored_sizes.data_size = data_size;
     return ESP_OK;
 }
 

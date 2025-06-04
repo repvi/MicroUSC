@@ -114,7 +114,7 @@ void freeDriverList(void);
 
 #define WAIT_FOR_RESPONSE            ( pdMS_TO_TICKS( 1000 ) )
 
-esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t d_size);
+esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t data_size);
 
 esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
 
