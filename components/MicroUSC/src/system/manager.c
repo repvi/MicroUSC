@@ -563,7 +563,8 @@ esp_err_t microusc_system_setup(void)
     return ESP_OK;
 }
 
-static esp_err_t init_memory_handlers(void) {
+static esp_err_t init_memory_handlers(void)
+{
     driver_system.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)
     if (driver_system.lock == NULL) {
         ESP_LOGE(TAG, "Could not initialize main driver lock");
@@ -572,10 +573,11 @@ static esp_err_t init_memory_handlers(void) {
     xSemaphoreGive(driver_system.lock);
     INIT_LIST_HEAD(&driver_system.driver_list.list);
 
-    return init_hidden_driver_lists(4, 256);
+    return init_hidden_driver_lists(SEND_BUFFER_SIZE, 256);
 }
 
-void init_MicroUSC_system(void) {
+void init_MicroUSC_system(void) 
+{
     ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_configuration_storage());
     ESP_ERROR_CHECK(microusc_system_setup()); // system task will run on core 0, mandatory

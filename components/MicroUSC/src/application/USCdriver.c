@@ -148,28 +148,37 @@ static esp_err_t usc_driver_write( const struct usc_driver_t *driver,
     return (uart_write_bytes(driver->port_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
 }
 
+static __always_inline esp_err_t usc_driver_send_helper( const struct usc_driver_t *driver,
+                                                         const char *data,
+                                                         const size_t len
+) {
+    memcpy((driver->buffer.memory + 1), data, len);
+    return usc_driver_write(driver, (const char *)driver->buffer.memory, driver->buffer.size);
+}
+
 static __always_inline esp_err_t usc_driver_request_password(struct usc_driver_t *driver) 
 {
-    return usc_driver_write(driver, (const char *)REQUEST_KEY.bytes, sizeof(REQUEST_KEY));
+    return usc_driver_send_helper(driver, (const char *)REQUEST_KEY.bytes, sizeof(REQUEST_KEY));
 }
 
 static __always_inline esp_err_t usc_driver_ping(struct usc_driver_t *driver)
 {
-    return usc_driver_write(driver, (const char *)PING.bytes, sizeof(PING));
+    return usc_driver_send_helper(driver, (const char *)PING.bytes, sizeof(PING));
 }
 
 static __always_inline esp_err_t usc_driver_send_password(struct usc_driver_t *driver) 
 {
-    return usc_driver_write(driver, (const char *)SEND_KEY.bytes, sizeof(SEND_KEY));
+    return usc_driver_send_helper(driver, (const char *)SEND_KEY.bytes, sizeof(SEND_KEY));
 }
 
 __always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
 {
     vTaskDelay(pdTICKS_TO_MS(100));
-    union uint32_4_uint8_t bytes_4;
+    union uint32_4_uint8_t bytes_4; // for safety
     bytes_4.value = data;
+
     xSemaphoreTake(driver->sync_signal, portMAX_DELAY);
-    esp_err_t c = usc_driver_write(driver, (const char *)bytes_4.bytes, sizeof(bytes_4));
+    esp_err_t c = usc_driver_send_helper(driver, (const char *)bytes_4.bytes, sizeof(bytes_4));
     xSemaphoreGive(driver->sync_signal);
     return c;
 }
@@ -178,7 +187,7 @@ __always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
 static __always_inline uint32_t parse_data(const uint8_t *const data) 
 {
     union uint32_4_uint8_t rx;
-    memcpy(rx.bytes, data, sizeof(union uint32_4_uint8_t));
+    memcpy(rx.bytes, (data + 1), sizeof(rx));
     return rx.value;
 }
 
@@ -199,7 +208,7 @@ usc_status_t handle_serial_key(struct usc_driver_t *driver, const UBaseType_t i)
                               PASSWORD_PING_DELAY
                             );
     if (key != NULL) {
-        ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[0], key[1], key[2], key[3]);
+        ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[1], key[2], key[3], key[4]);
         uint32_t parsed_data = parse_data(key);
         ESP_LOGI(TAG, "Parsed value: %lu", parsed_data);
 
@@ -300,7 +309,6 @@ void usc_driver_read_task(void *pvParameters)
     }
 
     ESP_LOGI(TASK_TAG, "Task %s is terminating...\n", driver->driver_name); // Debugging line to check task name and priority
-    //ESP_LOGI("TASK", "Task %s terminated", config->driver_name);
     vTaskDelay(LOOP_DELAY_MS); // 10ms delay
     vTaskDelete(NULL); // Delete the task
 }

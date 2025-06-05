@@ -110,6 +110,7 @@ static void setUpMemDriver( struct usc_driverList *driverList,
 
     // Align for buffer (uint32_t array)
     driver->buffer.memory = ptr;
+    memset(driver->buffer.memory, 0xFF, driver->buffer.size);
     ptr = ptrOffset(ptr, driver->buffer.size);
 
     create_usc_driver_reader(driver, priority);

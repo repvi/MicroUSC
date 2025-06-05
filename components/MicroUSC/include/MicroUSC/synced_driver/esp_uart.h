@@ -104,9 +104,16 @@ typedef struct {
  *       Use IRAM_ATTR for ISR handlers if UART used in interrupt context[2][6].
  */
 void uart_init( uart_port_config_t port_config, 
-                uart_config_t uart_config, 
+                uart_config_t uart_config
               );
 
+
+
+uint8_t *uart_offset_repair( uart_port_t uart, 
+                             uint8_t *buf,
+                             const size_t len, 
+                             const TickType_t delay
+                           );
 /**
  * @brief Read data from a UART port using FreeRTOS queues with timeout.
  *
