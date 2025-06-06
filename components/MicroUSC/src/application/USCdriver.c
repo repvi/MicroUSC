@@ -173,7 +173,6 @@ static __always_inline esp_err_t usc_driver_send_password(struct usc_driver_t *d
 
 __always_inline esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data)
 {
-    vTaskDelay(pdTICKS_TO_MS(100));
     union uint32_4_uint8_t bytes_4; // for safety
     bytes_4.value = data;
 
@@ -282,6 +281,7 @@ void usc_driver_read_task(void *pvParameters)
                 }
             }
 
+            // driver_isr_trigger(driver);
             xSemaphoreGive(sync_signal); // finish this part
 
             if (!needs_check) { // break if a condition is different
@@ -293,19 +293,17 @@ void usc_driver_read_task(void *pvParameters)
     }
     //#endif
 
-    while (1) {
+   while (1) {
         if (xSemaphoreTake(sync_signal, portMAX_DELAY) == pdTRUE) {
-            // maintain_connection(config); // Ping the driver to check connection
-            driver->status = process_data(driver, index); // Read and process incoming data
-
-            ESP_LOGI(TASK_TAG, "Task %d is running", index); // Debugging line to check task name and priority
-            if (*active == false) {
-                xSemaphoreGive(sync_signal); // Release the mutex lock
-                break;
-            }
-            xSemaphoreGive(sync_signal); // Release the mutex lock
-            vTaskDelay(LOOP_DELAY_MS); // 10ms delay
+            driver->status = process_data(driver, index);
+            ESP_LOGI(TASK_TAG, "Task %d is running", index);
+            bool should_exit = (*active == false);
+            driver_isr_trigger(driver);
+            taskYIELD(); // Yield to allow other tasks to run
+            // xSemaphoreGive(sync_signal);
+            if (should_exit) break;
         }
+        vTaskDelay(LOOP_DELAY_MS); // Delay outside the critical section
     }
 
     ESP_LOGI(TASK_TAG, "Task %s is terminating...\n", driver->driver_name); // Debugging line to check task name and priority

@@ -72,6 +72,8 @@ extern struct usc_driversHandler driver_system;
 
 extern memory_block_handle_t mem_block_driver_nodes;
 
+void driver_isr_trigger(struct usc_driver_t *driver);
+
 /**
  * @brief Add a driver to the MicroUSC system with a specified FreeRTOS priority.
  *

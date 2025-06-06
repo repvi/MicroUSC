@@ -37,7 +37,8 @@ extern "C" {
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
 #include "MicroUSC/synced_driver/atomic_sys_op.h"
-
+#include "esp_system.h"
+#include "esp_intr_alloc.h"
 /* Forward declarations */
 
 /* Forward declarations */
@@ -89,7 +90,7 @@ typedef enum {
  * @brief Complete driver instance definition
  * 
  * Used in linked list management via genList.h utilities
- */
+ */ 
 struct usc_driver_t {
     struct {
         TaskHandle_t task;

@@ -573,7 +573,7 @@ static esp_err_t init_memory_handlers(void)
     xSemaphoreGive(driver_system.lock);
     INIT_LIST_HEAD(&driver_system.driver_list.list);
 
-    return init_hidden_driver_lists(SEND_BUFFER_SIZE, 256);
+    return init_hidden_driver_lists(6 /* was SEND_BUFFER_SIZE */, 256);
 }
 
 void init_MicroUSC_system(void) 

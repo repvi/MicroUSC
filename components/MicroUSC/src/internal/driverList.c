@@ -97,6 +97,18 @@ static void create_usc_driver_processor( struct usc_driver_t *driver,
     );
 }
 
+static void IRAM_ATTR driver_quick_semaphore_give_fast(SemaphoreHandle_t signal) 
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(signal, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);  // Ensures immediate task execution
+}
+
+__always_inline void driver_isr_trigger(struct usc_driver_t *driver) 
+{
+    driver_quick_semaphore_give_fast(driver->sync_signal);
+}
+
 static void setUpMemDriver( struct usc_driverList *driverList, 
                             const usc_process_t driver_processor,
                             const UBaseType_t priority
@@ -104,7 +116,7 @@ static void setUpMemDriver( struct usc_driverList *driverList,
     struct usc_driver_t *driver = &driverList->driver;
     uint8_t *ptr = (uint8_t *)driverList + DRIVERLIST_SIZE;
 
-    driver->sync_signal = xSemaphoreCreateBinaryStatic((StaticSemaphore_t *)ptr);
+    driver->sync_signal = xSemaphoreCreateBinaryStatic((StaticSemaphore_t *)ptr); // xSemaphoreCreateBinaryStatic
     xSemaphoreGive(driver->sync_signal);
     ptr = ptrOffset(ptr, STATIC_SEMAPHORE_SIZE);
 
@@ -161,7 +173,6 @@ void addSingleDriver( const char *const driver_name,
     driver->has_access = false;
 
     setUpMemDriver(new, driver_process, driver->priority);
-
 
     ESP_LOGI(TAG, "Completeted initializing driver");
 
