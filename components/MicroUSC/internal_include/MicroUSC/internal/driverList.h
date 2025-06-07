@@ -116,10 +116,42 @@ void freeDriverList(void);
 
 #define WAIT_FOR_RESPONSE            ( pdMS_TO_TICKS( 1000 ) )
 
+
+/**
+ * @brief Initializes the memory pool for driver list nodes and their associated buffers.
+ *
+ * This function allocates a contiguous memory pool large enough to hold all driver list nodes,
+ * their semaphores, and buffer memory, with proper alignment for each region. The pool is used
+ * to efficiently manage memory for all drivers in the system, reducing fragmentation and
+ * improving allocation speed.
+ *
+ * @param buffer_size The size (in bytes) of the buffer to allocate for each driver's buffer.memory.
+ * @param data_size   The size (in bytes) of the data buffer (not currently used in this function, but stored for later use).
+ * @return ESP_OK on success, ESP_ERR_NO_MEM if allocation fails.
+ *
+ * Example usage:
+ *     init_driver_list_memory_pool(128, 256); // Allocates pool for DRIVER_MAX nodes, each with 128-byte buffer
+ */
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t data_size);
 
+/*
+ * Wrapper for init_driver_list_memory_pool function
+ */
 esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
 
+/**
+ * @brief Initializes a static memory pool for driver task stacks.
+ *
+ * This function allocates a memory pool large enough to hold the stack for each driver task,
+ * with each stack having the specified size. The pool is used to provide stack memory for
+ * driver processor tasks, improving memory efficiency and allowing for static allocation.
+ *
+ * @param size The size (in bytes) of each task stack to allocate for every driver.
+ * @return ESP_OK on success, ESP_ERR_NO_MEM if allocation fails.
+ *
+ * Example usage:
+ *     setUSCtaskSize(2048); // Allocates a pool for DRIVER_MAX stacks, each 2048 bytes
+ */
 esp_err_t setUSCtaskSize(stack_size_t size);
 
 #ifdef __cplusplus

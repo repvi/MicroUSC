@@ -30,6 +30,7 @@
    n = 10 -> driver status
 */
 #define TAG "[MICROUSC KERNEL]"
+#define MEMORY_TAG "[MEMORY]"
 
 #define RTC_MEMORY_BUFFER_SIZE (256) // Size of the memory buffer
 #define RTC_MEMORY_STORAGE_KEY_SIZE (32) // Size of the key for the memory storage
@@ -338,17 +339,16 @@ static void microusc_queue_flush(void)
 
 void set_microusc_system_code(microusc_status code)
 {
+    /* this only runs if the task is not suspended due to flushing the queue at the meantime */
     if (eTaskGetState(microusc_system.task.main_task) != eSuspended) {
-        // this only runs if the task is not suspended due to flushing the queue at the meantime
         MiscrouscBackTrack_t backtrack;
         backtrack.status = code;
 
         if (code == USC_SYSTEM_ERROR || code == USC_SYSTEM_PRINT_SUCCUSS) {
             esp_backtrace_frame_t frame;
     
-            // Get the starting frame
             esp_backtrace_get_start(&frame.pc, &frame.sp, &frame.next_pc);
-            // get the one that called this function
+
             for (int i = 0; i < 1 && frame.next_pc != 0; i++) {
                 esp_backtrace_get_next_frame(&frame);
             }
@@ -371,7 +371,6 @@ void set_microusc_system_code(microusc_status code)
                 microusc_system.queue_system.count++;
                 if (microusc_system.queue_system.count == 3) {
                     microusc_queue_flush();
-                    // don't need to make count to 0 unless for safety
                 }
             }
             taskEXIT_CRITICAL(&microusc_system.critical_lock);
@@ -434,9 +433,7 @@ static void call_usc_error_handler(uint32_t pc)
  */
 static void show_memory_usage(void) 
 {
-    // Local macro for consistent logging tag - scoped only to this function
-    #define MEMORY_TAG "[MEMORY]"
-    
+    // Local macro for consistent logging tag - scoped only to this function    
     // Query DMA capable memory statistics
     // DMA memory is required for hardware DMA operations and is typically limited
     const size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
@@ -456,9 +453,6 @@ static void show_memory_usage(void)
     ESP_LOGI(MEMORY_TAG, "Internal memory:");
     ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_internal);
     ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_internal);
-    
-    // Macro cleanup - undefine to prevent scope leakage
-    #undef MEMORY_TAG
 }
 
 static void microusc_system_task(void *p)
@@ -540,15 +534,15 @@ esp_err_t microusc_system_setup(void)
     init_builtin_led();
     #endif
     
-    set_rtc_cycle(); // Set the RTC cycle variable
+    set_rtc_cycle();
 
     if (system_reboot_count != 0) {
         ESP_LOGW(TAG, "System fail count: %u", system_reboot_count);
-        vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second) experimental
+        vTaskDelay(1000 / portTICK_PERIOD_MS); /* Wait for the system to be ready (1 second) experimental */
     }
 
     microusc_set_sleepmode_wakeup_default();
-    set_microusc_system_error_handler_default(); // Set the default error handler
+    set_microusc_system_error_handler_default(); /* Set the default error handler */
 
     xTaskCreatePinnedToCore(
         microusc_system_task,
@@ -565,7 +559,7 @@ esp_err_t microusc_system_setup(void)
 
 static esp_err_t init_memory_handlers(void)
 {
-    driver_system.lock = xSemaphoreCreateBinary(); // initialize the mux (mandatory)
+    driver_system.lock = xSemaphoreCreateBinary(); /* initialize the mux (mandatory) */
     if (driver_system.lock == NULL) {
         ESP_LOGE(TAG, "Could not initialize main driver lock");
         return ESP_FAIL;
@@ -580,6 +574,6 @@ void init_MicroUSC_system(void)
 {
     ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_configuration_storage());
-    ESP_ERROR_CHECK(microusc_system_setup()); // system task will run on core 0, mandatory
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
+    ESP_ERROR_CHECK(microusc_system_setup()); /* system task will run on core 0, mandatory */
+    vTaskDelay(1000 / portTICK_PERIOD_MS); /* Wait for the system to be ready (1 second) */
 }

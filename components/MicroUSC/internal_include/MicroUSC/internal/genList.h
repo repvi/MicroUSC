@@ -6,16 +6,16 @@
  * modeled after the Linux kernel’s list implementation. It enables efficient insertion and removal
  * of elements at both the head and tail of the list, as well as deletion of arbitrary entries.
  * These utilities are used internally by the MicroUSC system for managing dynamic data structures,
- * such as driver configurations and runtime lists[2][4].
+ * such as driver configurations and runtime lists.
  *
  * Usage:
- *   - Include this header in modules that require dynamic list management[1].
+ *   - Include this header in modules that require dynamic list management.
  *   - Use list_add() and list_add_tail() to insert elements at the head or tail.
  *   - Use list_del() to remove elements from the list.
  *
  * @note All list operations assume the list_head structures are properly initialized before use.
  *       These routines are designed for modular, component-based embedded C projects and support
- *       manual file management and CMake-based dependency organization[1][3][4][5].
+ *       manual file management and CMake-based dependency organization.
  */
 
 #pragma once

@@ -23,7 +23,7 @@
  * - Call usc_driver_init() first to configure and install the UART driver.
  * - Use usc_driver_write() for data transmission, usc_driver_request_password() for authentication,
  *   and usc_driver_ping() for connectivity checks.
- * - All functions require prior system and kernel initialization (see init_tiny_kernel()).
+ * - All functions require prior system and kernel initialization (see init_MicroUSC_system()).
  *
  * @author Alejandro Ramirez
  * @date May 26, 2025
@@ -42,7 +42,7 @@ extern "C" {
 
 /* --- Core Configuration --- */
 
-/** Default UART configuration using SDKCONFIG baud rate */
+/* Default UART configuration using SDKCONFIG baud rate */
 #define STANDARD_UART_CONFIG { \
         .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE, \
         .data_bits = UART_DATA_8_BITS, \
@@ -54,18 +54,10 @@ extern "C" {
 
 /* --- Type Definitions --- */
 
-// Forward declarations
+/* Forward declarations */
 typedef void (*usc_process_t)(void *);
 
 typedef struct usc_driver_t *uscDriverHandler;
-
-// esp_err_t init_usc_bit_manip(usc_bit_manip *bit_manip);
-
-// esp_err_t init_configuration_storage(void);
-
-//void usc_driver_clean_data(usc_driver_t *driver);
-
-//uint32_t usc_driver_get_data(const int i);
 
 /**
  * @brief Initialize a UART-based driver for the ESP32.

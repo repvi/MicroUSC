@@ -43,13 +43,13 @@ SerialDataQueueHandler createDataStorageQueue(const size_t serial_data_size)
 }
 
 SerialDataQueueHandler createDataStorageQueueStatic(void *buffer, const size_t serial_data_size) {
-    // Cast the buffer to the queue handler type
+    /* Cast the buffer to the queue handler type */
     SerialDataQueueHandler var = (SerialDataQueueHandler)buffer;
 
-    // Calculate the serial_data array position after the struct
+    /* Calculate the serial_data array position after the struct */
     var->serial_data = (uint32_t*)((uint8_t*)buffer + sizeof(struct DataStorageQueue));
 
-    // Initialize the data array to zero (fixed memset syntax)
+    /* Initialize the data array to zero (fixed memset syntax) */
     memset(var->serial_data, 0, serial_data_size * sizeof(uint32_t));
 
     // Initialize queue metadata
@@ -59,7 +59,6 @@ SerialDataQueueHandler createDataStorageQueueStatic(void *buffer, const size_t s
 
     return var;
 }
-
 
 static __always_inline size_t moveNext(const size_t current, const size_t size) 
 {

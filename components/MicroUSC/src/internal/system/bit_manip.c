@@ -11,19 +11,29 @@ struct usc_bit_manip {
 
 struct usc_bit_manip priority_storage;
 
+/**
+ * @brief Initializes the bit manipulation structure for driver priorities.
+ *
+ * Sets all driver bits to 0 (no drivers active) and initializes the critical section lock.
+ *
+ * @param bit_manip Pointer to the usc_bit_manip structure to initialize.
+ * @return ESP_OK on success.
+ */
 static esp_err_t init_usc_bit_manip(struct usc_bit_manip *bit_manip)
 {
+    /* Set all driver bits to 0 (no drivers active) */
     bit_manip->active_driver_bits = 0;
+    /* Initialize the critical section lock to unlocked */
     bit_manip->critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
     return ESP_OK;
 }
 
 esp_err_t init_configuration_storage(void)
 {
-    // Initialize USC bit manipulation priority storage system
-    // This must succeed before proceeding with buffer allocation
+    /* Initialize USC bit manipulation priority storage system */
     if (init_usc_bit_manip(&priority_storage) != ESP_OK) {
-        return ESP_ERR_NO_MEM;  // Priority storage initialization failed
+        /* Priority storage initialization failed */
+        return ESP_ERR_NO_MEM;
     }
 
     return ESP_OK;
@@ -33,16 +43,20 @@ esp_err_t init_configuration_storage(void)
 UBaseType_t getCurrentEmptyDriverIndex(void)
 {
     UBaseType_t driver_bits;
+    /* Enter critical section to safely read active_driver_bits */
     portENTER_CRITICAL(&priority_storage.critical_lock);
     {
         driver_bits = priority_storage.active_driver_bits;
     }
     portEXIT_CRITICAL(&priority_storage.critical_lock);
+
+    /* Scan each bit to find the first unset (available) bit */
     UBaseType_t v;
-    for (UBaseType_t i = 0; i < DRIVER_MAX; i++) { // there can be alternate code for this function, could have performance difference between the two possibly
+    for (UBaseType_t i = 0; i < DRIVER_MAX; i++) {
         v = BIT(i);
         if ((v & driver_bits) == 0) {
-            return i; // returns empty bit
+            /* Return the index of the first available bit */
+            return i;
         }
     }
     return NOT_FOUND;
@@ -50,15 +64,18 @@ UBaseType_t getCurrentEmptyDriverIndex(void)
 
 UBaseType_t getCurrentEmptyDriverIndexAndOccupy(void)
 {
+    /* Find the first available driver bit */
     const UBaseType_t v = getCurrentEmptyDriverIndex();
     if (v != NOT_FOUND) {
         UBaseType_t occupied_bits;
+        /* Enter critical section to set the bit as occupied */
         portENTER_CRITICAL(&priority_storage.critical_lock);
         {
-            priority_storage.active_driver_bits |= BIT(v); // bit is now occupied
+            priority_storage.active_driver_bits |= BIT(v); /* Mark bit as occupied */
             occupied_bits = priority_storage.active_driver_bits;
         }
         portEXIT_CRITICAL(&priority_storage.critical_lock);
+        /* Log the new bitmask */
         ESP_LOGI(TAG, "Bit is now: %u", occupied_bits);
     }
     return v;

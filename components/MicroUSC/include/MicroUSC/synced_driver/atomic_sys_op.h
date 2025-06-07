@@ -27,35 +27,6 @@
  * @date May 26, 2025
  */
 
-/*
- * SPDX-FileCopyrightText: 2025 Alejandro Ramirez
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
-/**
- * @file atomic_sys_op.h
- * @brief Atomic data queue operations for ESP32/ESP8266 embedded systems
- *
- * Provides thread-safe data storage queues using FreeRTOS spinlocks for atomic access.
- * Designed for interrupt-safe data sharing between tasks and ISRs in MicroUSC drivers.
- *
- * Features:
- * - Atomic operations: Uses `portMUX_TYPE` spinlocks for critical sections
- * - Fixed-size queues: Preallocated buffers prevent heap fragmentation
- * - ISR-safe: Suitable for use in interrupt handlers when configured properly
- *
- * Usage:
- * 1. Create queue with `createDataStorageQueue()`
- * 2. Add/retrieve data using atomic operations
- * 3. Destroy with `destroyDataStorageQueue()` during cleanup
- *
- * @note The DataStorageQueue struct implementation is hidden in the .c file for encapsulation.
- *
- * @author Alejandro Ramirez
- * @date May 26, 2025
- */
-
 #pragma once
 
 #include <stdint.h>
