@@ -1,55 +1,7 @@
-#include "nvs_flash.h" // doesn't need to be included, recommended to have
 #include "MicroUSC/system/manager.h"
 #include "MicroUSC/USCdriver.h"
 #include "testing_driver.h"
 #include "speed_test.h"
-//#include "xt_asm_utils.h"
-//#include "xtensa/config/tie-asm.h"
-// git log
-// git checkout [c50cad7fbea3ae70313ac72c68d59a8db20e8dc8]
-// git commit -m "Change details"
-// git branch 
-// git checkout -b [name of branch]
-// git push origin [name of branch]
-// git pull origin master
-// git status
-// git switch [name of branch]           switches to another branch
-
-// 115200 baud rate
-
-// xtensa-esp-elf-objdump -D build/MicroUSC.elf > disassembly.txt
-// xtensa-esp-elf-objdump -t build/MicroUSC.elf > symbols.txt
-
-// idf.py -D CMAKE_VERBOSE_MAKEFILE=ON build
-// xtensa-esp32-elf-gcc -S -o output.S example.c     
-// xtensa-esp32-elf-objdump -t build/MicroUSC.elf | findstr "example_function"
-/*
-// Function that runs from IRAM (faster but limited space)
-void IRAM_ATTR critical_timing_function(void) {
-    // Time-critical code here
-}
-
-// shell:RecycleBinFolder
-
-// Data that persists across deep sleep
-RTC_DATA_ATTR uint32_t boot_count = 0;
-
-// Data in RTC slow memory (persists in deep sleep, slower access)
-RTC_SLOW_ATTR uint8_t slow_memory_buffer[512];
-
-// Data in RTC fast memory (persists in light sleep, faster access)
-RTC_FAST_ATTR uint8_t fast_memory_buffer[128];
-
-// Data that must be accessible during cache disabled periods
-DRAM_ATTR uint32_t cache_disabled_buffer[64];
-*/
-
-// xtensa-esp-elf-addr2line -e build/MicroUSC.elf 0x400d679c
-
-// example for merge / commit issue
-// git fetch origin
-// git rebase origin/GP
-// git push origin GP
 
 void app_main(void) {
     init_MicroUSC_system();
