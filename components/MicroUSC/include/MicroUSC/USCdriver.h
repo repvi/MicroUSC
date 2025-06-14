@@ -20,7 +20,7 @@
  * - Integration with ESP-IDF's UART driver, FreeRTOS queues, and MicroUSC system configuration
  *
  * Usage:
- * - Call usc_driver_init() first to configure and install the UART driver.
+ * - Call usc_driver_install() first to configure and install the UART driver.
  * - Use usc_driver_write() for data transmission, usc_driver_request_password() for authentication,
  *   and usc_driver_ping() for connectivity checks.
  * - All functions require prior system and kernel initialization (see init_MicroUSC_system()).
@@ -31,6 +31,7 @@
 
 #pragma once
 
+#include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
 #include "MicroUSC/uscUniversal.h"
@@ -82,11 +83,12 @@ typedef struct usc_driver_t *uscDriverHandler;
  * - Ensure correct stack size based on UART traffic for optimal performance.
  * - The driver must be **properly deinitialized** using `usc_driver_deinit()` when no longer needed.
  */
-esp_err_t usc_driver_init(const char *const driver_name,
-                          const uart_config_t uart_config, 
-                          const uart_port_config_t port_config, 
-                          const usc_process_t driver_process,
-                          const stack_size_t stack_size);
+esp_err_t usc_driver_install( const char *const driver_name,
+                              const uart_config_t uart_config, 
+                              const uart_port_config_t port_config, 
+                              const usc_process_t driver_process,
+                              const stack_size_t stack_size
+                            );
 
 /**
  * @brief Retrieve UART data from the driver.

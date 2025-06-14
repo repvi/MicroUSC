@@ -1,4 +1,3 @@
-#include "MicroUSC/system/manager.h"
 #include "MicroUSC/USCdriver.h"
 #include "testing_driver.h"
 #include "speed_test.h"
@@ -25,11 +24,9 @@ void app_main(void) {
     
     usc_process_t driver_action = &system_task; // point to the function you created
     // function will configure driver_example
-    // 0 is for the driver type, for now you can only use 0 and 1.
-    // do not use the same number or it will not be configured
 
     // uncomment the line below to test the speed of the function
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("first driver", setting, pins, driver_action, 4086));
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_install("first driver", setting, pins, driver_action, 4086));
     
     /*
     uart_port_config_t pinss = {
@@ -38,22 +35,22 @@ void app_main(void) {
         .port = UART_NUM_1
     };
 
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_init("second driver", setting, pinss, driver_action));
+    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_install("second driver", setting, pinss, driver_action));
     */
 
-    set_microusc_system_code(USC_SYSTEM_LED_ON);
-    set_microusc_system_code(USC_SYSTEM_SPECIFICATIONS);
-    set_microusc_system_code(USC_SYSTEM_DRIVER_STATUS);
+    send_microusc_system_status(USC_SYSTEM_LED_ON);
+    send_microusc_system_status(USC_SYSTEM_SPECIFICATIONS);
+    send_microusc_system_status(USC_SYSTEM_DRIVER_STATUS);
     
-    //printf("Pausing system...\n");
-    //set_microusc_system_code(USC_SYSTEM_PAUSE);
+    printf("Pausing system...\n");
+    send_microusc_system_status(USC_SYSTEM_PAUSE);
     vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    set_microusc_system_code(USC_SYSTEM_LED_OFF);
+    send_microusc_system_status(USC_SYSTEM_LED_OFF);
     //vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //set_microusc_system_code(USC_SYSTEM_RESUME);
+    //send_microusc_system_status(USC_SYSTEM_RESUME);
     //vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //set_microusc_system_code(USC_SYSTEM_ERROR);
-    //set_microusc_system_code(USC_SYSTEM_SLEEP);
+    //send_microusc_system_status(USC_SYSTEM_ERROR);
+    //send_microusc_system_status(USC_SYSTEM_SLEEP);
 
     printf("End of program\n");
 }

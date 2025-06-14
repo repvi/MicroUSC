@@ -58,6 +58,21 @@ extern "C" {
 typedef void(*microusc_error_handler)(void *);
 
 /**
+ * @brief Configure a GPIO pin as an interrupt source for the MicroUSC system and register an ISR.
+ *
+ * This function determines the GPIO pin from the provided gpio_config_t's pin_bit_mask,
+ * removes any existing ISR handler for that pin, configures the pin with the given settings,
+ * and attaches the specified ISR handler. It also sets the status code that will be triggered
+ * when the ISR is called.
+ *
+ * Typical usage: Call this during system initialization to set up a wakeup or event pin.
+ *
+ * @param io_config      GPIO configuration structure specifying the pin and settings.
+ * @param trigger_status The MicroUSC status code to associate with this ISR event.
+ */
+void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status);
+
+/**
  * @brief Set the timer duration for sleep mode wakeup.
  *
  * This function configures the timer duration (in microseconds) for the timer-based wakeup source.
@@ -226,10 +241,10 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
  *       microusc_status enum or macro set.
  *
  * @example
- *   set_microusc_system_code(USC_SYSTEM_SUCCESS);
- *   set_microusc_system_code(USC_SYSTEM_ERROR);
+ *   send_microusc_system_status(USC_SYSTEM_SUCCESS);
+ *   send_microusc_system_status(USC_SYSTEM_ERROR);
  */
-void set_microusc_system_code(microusc_status code);
+void send_microusc_system_status(microusc_status code);
 
 /**
  * @brief Set the default system error handler for the microcontroller.
@@ -271,7 +286,7 @@ void set_microusc_system_error_handler_default(void);
  * - This function is intended for use in embedded ESP32 applications and should be called whenever a system state change is required.
  * - Ensure thread safety if this function is called from multiple tasks or ISRs.
  */
-void set_microusc_system_code(microusc_status code);
+void send_microusc_system_status(microusc_status code);
 
 
 void microusc_infloop(void);

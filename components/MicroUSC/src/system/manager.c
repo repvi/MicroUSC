@@ -75,6 +75,12 @@ struct sleep_config_t {
     bool sleep_time_enable;
 } microusc_system_sleep;
 
+// can be used custom api
+typedef struct {
+    uint32_t caller_pc;
+    microusc_status status;
+} MiscrouscBackTrack_t;
+
 struct {
     struct {
         StackType_t stack[TASK_STACK_SIZE];
@@ -92,7 +98,6 @@ struct {
         size_t count;
     } queue_system;
     portMUX_TYPE critical_lock;
-    intr_handle_t isr_handler;
     struct {
         microusc_error_handler operation;
         void *stored_var;
@@ -100,54 +105,45 @@ struct {
     } error_handler;
 } microusc_system;
 
-// can be used custom api
-typedef struct {
-    uint32_t caller_pc;
-    microusc_status status;
-} MiscrouscBackTrack_t;
-
 #define microusc_quick_context(des, val) \
     portENTER_CRITICAL(&microusc_system.critical_lock); \
     des = val; \
     portEXIT_CRITICAL(&microusc_system.critical_lock);
 
+/* Function is only accessed in this C file */
 void IRAM_ATTR microusc_software_isr_handler(void *arg)
 {
-    /*
-    ESP_LOGI(TAG, "Called the isr");
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xSemaphoreGiveFromISR(__microusc_lock, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    //esp_intr_disable(micro_usc_isr_handler);
-    */
+    MiscrouscBackTrack_t current;
+    current.status = *(microusc_status *)arg;
+    xQueueSendFromISR(microusc_system.queue_system.queue_handler, &current, NULL);
 }
 
-__deprecated void __system_isr_trigger(void) 
+/* Add on the next version */
+__deprecated void microusc_system_isr_trigger(void) 
 {
-    //printf("Triggering from core %d\n", xPortGetCoreID());
-    //esp_intr_enable(micro_usc_isr_handler);
+    /* TODO */
 }
 
-__deprecated void microusc_system_isr_pin(gpio_num_t pin) 
+void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status)
 {
-    static gpio_num_t previous_isr_pin = GPIO_NUM_NC;
-    if (previous_isr_pin != GPIO_NUM_NC) { 
-        gpio_isr_handler_remove(pin); // completely gets removed, maybe change in the future
-                
-        if (pin != GPIO_NUM_NC) {
-            gpio_config_t io_conf = {
-                .pin_bit_mask = (1ULL << pin),  // Example: GPIO0
-                .mode = GPIO_MODE_INPUT,
-                .pull_up_en = GPIO_PULLUP_ENABLE,
-                .intr_type = GPIO_INTR_NEGEDGE  // Or your desired edge
-            };
-            
-            gpio_config(&io_conf);
-            gpio_isr_handler_add(pin, microusc_software_isr_handler, NULL);
-        }
+    int bit_mask = io_config.pin_bit_mask;
+    int gpio_pin = 1;
+
+    /* Determine the GPIO pin number from the bit mask */
+    if (bit_mask == 0) return;
+    while (bit_mask > 1) {
+        bit_mask >>= 1;
+        gpio_pin++;
     }
 
-    previous_isr_pin = pin;
+    /* Remove any existing ISR handler for this pin */
+    gpio_isr_handler_remove(gpio_pin);
+
+    /* Configure the GPIO pin with the provided settings */
+    gpio_config(&io_config);
+
+    /* Add the new ISR handler for this pin */
+    gpio_isr_handler_add((gpio_num_t)gpio_pin, microusc_software_isr_handler, &gpio_pin);
 }
 
 __always_inline void microusc_set_sleep_mode_timer_wakeup(uint64_t time) 
@@ -288,7 +284,6 @@ void IRAM_ATTR microusc_resume_drivers(void)
     }
 }
 
-
 static void getBackPCprevious(MiscrouscBackTrack_t *backtrack, const size_t amount) 
 {
     esp_backtrace_frame_t frame;
@@ -318,7 +313,7 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
 {
     #ifdef MICROUSC_DEBUG
     if (handler == NULL) {
-        set_microusc_system_code(USC_SYSTEM_ERROR);
+        send_microusc_system_status(USC_SYSTEM_ERROR);
     }
     #endif
     microusc_system.error_handler.operation = handler;
@@ -332,12 +327,12 @@ __always_inline void set_microusc_system_error_handler_default(void)
 }
 
 // completely flush the queue to make it fully available
-static void microusc_queue_flush(void)
+__always_inline static void microusc_queue_flush(void)
 {
     xQueueReset(microusc_system.queue_system.queue_handler);
 }
 
-void set_microusc_system_code(microusc_status code)
+void send_microusc_system_status(microusc_status code)
 {
     /* this only runs if the task is not suspended due to flushing the queue at the meantime */
     if (eTaskGetState(microusc_system.task.main_task) != eSuspended) {
@@ -345,15 +340,7 @@ void set_microusc_system_code(microusc_status code)
         backtrack.status = code;
 
         if (code == USC_SYSTEM_ERROR || code == USC_SYSTEM_PRINT_SUCCUSS) {
-            esp_backtrace_frame_t frame;
-    
-            esp_backtrace_get_start(&frame.pc, &frame.sp, &frame.next_pc);
-
-            for (int i = 0; i < 1 && frame.next_pc != 0; i++) {
-                esp_backtrace_get_next_frame(&frame);
-            }
-
-            backtrack.caller_pc = (uint32_t)frame.pc;
+            getBackPCprevious(&backtrack, 1);
         }
 
         if (uxQueueSpacesAvailable(microusc_system.queue_system.queue_handler) != 0) {
@@ -522,6 +509,8 @@ __noreturn void microusc_infloop(void)
 // needs to implement gpio isr trigger
 esp_err_t microusc_system_setup(void)
 {
+    gpio_install_isr_service(0);
+
     microusc_system.critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
 
     microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(MiscrouscBackTrack_t));
@@ -530,7 +519,7 @@ esp_err_t microusc_system_setup(void)
     }
     microusc_system.queue_system.count = 0;
 
-    #ifndef BUILTIN_LED_ASSEMBLY
+    #ifdef BUILTIN_LED_ASSEMBLY
     init_builtin_led();
     #endif
     
@@ -567,7 +556,7 @@ static esp_err_t init_memory_handlers(void)
     xSemaphoreGive(driver_system.lock);
     INIT_LIST_HEAD(&driver_system.driver_list.list);
 
-    return init_hidden_driver_lists(6 /* was SEND_BUFFER_SIZE */, 256);
+    return init_hidden_driver_lists(sizeof(uint32_t) + 2 /* was SEND_BUFFER_SIZE */, 256);
 }
 
 void init_MicroUSC_system(void) 
