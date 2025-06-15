@@ -35,11 +35,16 @@ set(MICROUSC_SYSTEM
     "system/status.c"
 )
 
+set(MICROUSC_WIRELESS
+    "wireless/wifi.c"
+)
+
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
 list(TRANSFORM MICROUSC_INTERNAL PREPEND "src/")
 list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
 list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
+list(TRANSFORM MICROUSC_WIRELESS PREPEND "src/")
 
 idf_component_register(
     COMPILE_OPTIONS "-mtext-section-literals"
@@ -50,6 +55,7 @@ idf_component_register(
         ${MICROUSC_INTERNAL}
         ${MICROUSC_SYNCED_DRIVER}
         ${MICROUSC_SYSTEM}
+        ${MICROUSC_WIRELESS}
 
     INCLUDE_DIRS
         "include"
@@ -63,6 +69,15 @@ idf_component_register(
         esp_system
         debug
         led_strip
+
+    PRIV_REQUIRES
+        esp_wifi
+        esp_event
+        nvs_flash
+        mqtt
+        esp_http_client
+        esp_https_ota
+        driver
 )
 
 target_compile_definitions(

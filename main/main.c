@@ -26,7 +26,7 @@ void app_main(void) {
     // function will configure driver_example
 
     // uncomment the line below to test the speed of the function
-    CHECK_FUNCTION_SPEED_WITH_DEBUG(usc_driver_install("first driver", setting, pins, driver_action, 4086));
+    usc_driver_install("first driver", setting, pins, driver_action, 4086);
     
     /*
     uart_port_config_t pinss = {
