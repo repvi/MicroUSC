@@ -37,6 +37,7 @@ set(MICROUSC_SYSTEM
 
 set(MICROUSC_WIRELESS
     "wireless/wifi.c"
+    "wireless/mqtt.c"
 )
 
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
@@ -84,6 +85,7 @@ target_compile_definitions(
     ${COMPONENT_LIB}
     PUBLIC
         DRIVER_MAX=3
+
     PRIVATE 
         ${COMPILE_DEFINITIONS_LIST}
         MICROUSC_DEBUG

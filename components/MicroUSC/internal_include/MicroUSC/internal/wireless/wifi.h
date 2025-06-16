@@ -4,7 +4,6 @@
 extern "C" {
 #endif
 
-
 /**
  * @brief Initialize WiFi in station mode with provided SSID and password.
  *

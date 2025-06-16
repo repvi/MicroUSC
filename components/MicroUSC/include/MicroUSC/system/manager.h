@@ -221,6 +221,9 @@ void *get_system_rtc_var(const char key);
  */
 void set_microusc_system_error_handler(microusc_error_handler handler, void *var, int size);
 
+/* completely flush the queue to make it fully available */
+void microusc_queue_flush(void);
+
 /**
  * @brief Set the current system status code for the microUSC subsystem.
  *
@@ -290,25 +293,6 @@ void send_microusc_system_status(microusc_status code);
 
 
 void microusc_infloop(void);
-
-/**
- * @brief Initialize the MicroUSC system components and resources.
- *
- * This function performs one-time initialization of critical system components
- * required for MicroUSC operation, including hardware interfaces and internal
- * data structures. It must be called exactly once during system startup.
- *
- * @return 
- * - ESP_OK: Initialization successful
- * - Other error codes: Initialization failed (specific error depends on implementation)
- *
- * @note Calling this function multiple times may cause resource leaks, 
- *       hardware conflicts, or undefined behavior due to duplicate initialization.
- *       Ensure it is only called once during the application lifecycle, typically
- *       in app_main() before entering the main execution loop.
- */
-esp_err_t microusc_system_setup(void);
-
 
 /**
  * @brief Initialize the Tiny Kernel core for the MicroUSC library.

@@ -27,10 +27,6 @@
 
 #pragma once
 
-#include "freertos/FreeRTOS.h"
-
-#include "freertos/FreeRTOS.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

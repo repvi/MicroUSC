@@ -1,4 +1,8 @@
 #include "MicroUSC/internal/system/bit_manip.h"
+#include "MicroUSC/internal/system/wireless_service.h"
+#include "MicroUSC/internal/system/service_def.h"
+#include "MicroUSC/internal/wireless/wifi.h"
+#include "MicroUSC/internal/wireless/mqtt.h"
 #include "MicroUSC/chip_specific/system_attr.h"
 #include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/status.h"
@@ -75,12 +79,6 @@ struct sleep_config_t {
     bool sleep_time_enable;
 } microusc_system_sleep;
 
-// can be used custom api
-typedef struct {
-    uint32_t caller_pc;
-    microusc_status status;
-} MiscrouscBackTrack_t;
-
 struct {
     struct {
         StackType_t stack[TASK_STACK_SIZE];
@@ -97,12 +95,12 @@ struct {
         QueueHandle_t queue_handler;
         size_t count;
     } queue_system;
-    portMUX_TYPE critical_lock;
     struct {
         microusc_error_handler operation;
         void *stored_var;
         int size;
     } error_handler;
+    portMUX_TYPE critical_lock;
 } microusc_system;
 
 #define microusc_quick_context(des, val) \
@@ -326,8 +324,7 @@ __always_inline void set_microusc_system_error_handler_default(void)
     set_microusc_system_error_handler(microusc_system_error_handler_default, NULL, 0);
 }
 
-// completely flush the queue to make it fully available
-__always_inline static void microusc_queue_flush(void)
+__always_inline void microusc_queue_flush(void)
 {
     xQueueReset(microusc_system.queue_system.queue_handler);
 }
@@ -336,11 +333,11 @@ void send_microusc_system_status(microusc_status code)
 {
     /* this only runs if the task is not suspended due to flushing the queue at the meantime */
     if (eTaskGetState(microusc_system.task.main_task) != eSuspended) {
-        MiscrouscBackTrack_t backtrack;
-        backtrack.status = code;
+        union MicrouscSystemData_t sys_data;
+        sys_data.backtrack.status = code;
 
         if (code == USC_SYSTEM_ERROR || code == USC_SYSTEM_PRINT_SUCCUSS) {
-            getBackPCprevious(&backtrack, 1);
+            getBackPCprevious(&sys_data.backtrack, 1);
         }
 
         if (uxQueueSpacesAvailable(microusc_system.queue_system.queue_handler) != 0) {
@@ -349,10 +346,10 @@ void send_microusc_system_status(microusc_status code)
                 microusc_system.queue_system.count = 0;
             }
             taskEXIT_CRITICAL(&microusc_system.critical_lock);
-            xQueueSend(microusc_system.queue_system.queue_handler, &backtrack, 0);
+            xQueueSend(microusc_system.queue_system.queue_handler, &sys_data.backtrack, 0);
         }
         else {
-            ESP_LOGE(TAG, "MicroUSC system queuehandler has overflowed");
+            ESP_LOGW(TAG, "MicroUSC system queuehandler has overflowed");
             taskENTER_CRITICAL(&microusc_system.critical_lock);
             {
                 microusc_system.queue_system.count++;
@@ -444,7 +441,7 @@ static void show_memory_usage(void)
 
 static void microusc_system_task(void *p)
 {
-    MiscrouscBackTrack_t backtrack;
+    union MicrouscSystemData_t sys_data;
     while (1) {
         if (xQueueReceive(microusc_system.queue_system.queue_handler, &backtrack, portMAX_DELAY) == pdPASS) {
             printf("Called microUSC system\n");
@@ -507,13 +504,30 @@ __noreturn void microusc_infloop(void)
     }
 }
 // needs to implement gpio isr trigger
-esp_err_t microusc_system_setup(void)
+
+/**
+ * @brief Initialize the MicroUSC system components and resources.
+ *
+ * This function performs one-time initialization of critical system components
+ * required for MicroUSC operation, including hardware interfaces and internal
+ * data structures. It must be called exactly once during system startup.
+ *
+ * @return 
+ * - ESP_OK: Initialization successful
+ * - Other error codes: Initialization failed (specific error depends on implementation)
+ *
+ * @note Calling this function multiple times may cause resource leaks, 
+ *       hardware conflicts, or undefined behavior due to duplicate initialization.
+ *       Ensure it is only called once during the application lifecycle, typically
+ *       in app_main() before entering the main execution loop.
+ */
+static esp_err_t microusc_system_setup(void)
 {
     gpio_install_isr_service(0);
 
     microusc_system.critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
 
-    microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(MiscrouscBackTrack_t));
+    microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(union MicrouscSystemData_t));
     if (microusc_system.queue_system.queue_handler == NULL) {
         return ESP_ERR_NO_MEM;
     }

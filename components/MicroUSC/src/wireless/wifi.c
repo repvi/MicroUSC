@@ -8,8 +8,12 @@
 #include "nvs_flash.h"
 #include "esp_http_client.h"
 #include "string.h"
+#include "esp_log.h"
 
 #define TAG "[WIFI]"
+
+#define WIFI_ON   true
+#define WIFI_OFF  false
 
 #define NVS_WIFI_PASSWORD  "WiFl_$<Ss"
 #define WIFI_CONNECTED_BIT BIT0
@@ -19,6 +23,8 @@
 
 char *hidden_ssid;
 char *hidden_password;
+
+bool wifi_sys = WIFI_OFF; /* do something with it */
 
 EventGroupHandle_t wifi_event_group;
 
@@ -59,8 +65,8 @@ void wifi_init_sta(char *const ssid, char *const password)
 
     /* Configure WiFi with provided SSID and password */
     wifi_config_t wifi_config;
-    strncpy(wifi_config.sta.ssid, ssid, SSID_SIZE);
-    strncpy(wifi_config.sta.password, password, PASSWORD_SIZE);
+    memcpy(wifi_config.sta.ssid, ssid, SSID_SIZE);
+    memcpy(wifi_config.sta.password, password, PASSWORD_SIZE);
 
     /* Set WiFi mode to station and apply configuration */
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -69,6 +75,8 @@ void wifi_init_sta(char *const ssid, char *const password)
     
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", ssid, password);
+
+    wifi_sys = WIFI_ON;
 }
 
 static void init_nvs(void) 
@@ -81,7 +89,8 @@ static void init_nvs(void)
     // ESP_ERROR_CHECK(err);
 }
 
-static void store_wifi_information_nvs(const char* str, const char *section) {
+static void store_wifi_information_nvs(const char* str, const char *section) 
+{
     nvs_handle_t handle;
     ESP_ERROR_CHECK(nvs_open(section, NVS_READWRITE, &handle));
     ESP_ERROR_CHECK(nvs_set_str(handle, "wifi_pass", str));
@@ -89,7 +98,8 @@ static void store_wifi_information_nvs(const char* str, const char *section) {
     nvs_close(handle);
 }
 
-static void read_wifi_information_nvs(char* out_buffer, const char *section, size_t buffer_size) {
+static void read_wifi_information_nvs(char* out_buffer, const char *section, size_t buffer_size) 
+{
     nvs_handle_t handle;
     ESP_ERROR_CHECK(nvs_open(section, NVS_READONLY, &handle));
     size_t required_size = buffer_size;
@@ -103,10 +113,10 @@ static void read_wifi_information_nvs(char* out_buffer, const char *section, siz
 static void set_password_nvs(char *const ssid, char *const password, char *const section) 
 {
     init_nvs();
-    store_wifi_information_nvs(ssid, section;
-    store_wifi_information_nvs(password, section):
-    read_wifi_information_nvs(hidden_ssid, section, strlen(ssid)):
-    read_wifi_information_nvs(hidden_password, section, strlen(password));
+    store_wifi_information_nvs(ssid, section);
+    store_wifi_information_nvs(password, section);
+    //read_wifi_information_nvs(hidden_ssid, section, strlen(ssid)):
+    //read_wifi_information_nvs(hidden_password, section, strlen(password));
 }
 
 void wifi_init_sta_get_passowrd_on_flash(char *const ssid, char *const password, char *const section) 
@@ -133,8 +143,8 @@ void wifi_init_sta_get_passowrd_on_flash(char *const ssid, char *const password,
 
     /* Configure WiFi with provided SSID and password */
     wifi_config_t wifi_config;
-    strncpy(wifi_config.sta.ssid, ssid, SSID_SIZE);
-    strncpy(wifi_config.sta.password, password, PASSWORD_SIZE);
+    memcpy(wifi_config.sta.ssid, ssid, SSID_SIZE);
+    memcpy(wifi_config.sta.password, password, PASSWORD_SIZE);
 
     /* Set WiFi mode to station and apply configuration */
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -143,4 +153,6 @@ void wifi_init_sta_get_passowrd_on_flash(char *const ssid, char *const password,
     
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", ssid, password);
+
+    wifi_sys = WIFI_ON;
 }
