@@ -18,8 +18,8 @@
 #define NVS_WIFI_PASSWORD  "WiFl_$<Ss"
 #define WIFI_CONNECTED_BIT BIT0
 
-#define SSID_SIZE      sizeof(wifi_config.sta.ssid)
-#define PASSWORD_SIZE  sizeof(wifi_config.sta.password)
+#define SSID_SIZE        sizeof(wifi_config.sta.ssid)
+#define PASSWORD_SIZE    sizeof(wifi_config.sta.password)
 
 char *hidden_ssid;
 char *hidden_password;
@@ -44,7 +44,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-void wifi_init_sta(char *const ssid, char *const password) 
+void wifi_init_sta(char *const ssid, char *const password)
 {
     /* Create an event group for WiFi events */
     wifi_event_group = xEventGroupCreate();

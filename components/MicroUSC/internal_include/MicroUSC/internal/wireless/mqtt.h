@@ -13,7 +13,9 @@
 #define MQTT_ENABLED   true
 #define MQTT_DISABLED  false
 
-void send_to_mqtt_service(char *const section, char *const data);
+#define HOME_DIR(label) "home/"label
+
+int send_to_mqtt_service(char *const section, char *const data);
 
 /**
  * @brief MQTT event handler for ESP-IDF MQTT client.
@@ -33,4 +35,4 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
 
 #define microusc_system_start_mqtt(url) init_mqtt(url)
 
-void init_mqtt(char *const url);
+esp_err_t init_mqtt(char *const url);

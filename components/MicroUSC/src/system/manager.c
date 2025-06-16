@@ -47,6 +47,23 @@
 
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 
+#define SYS_DIR HOME_DIR("sys")
+
+#define microusc_system_operation(status, func, section, data) do { \
+    builtin_led_system(status); \
+    func();  \
+    send_to_mqtt_service(section, data); \
+} while(0)
+
+#define microusc_system_operation_quick(func, section, data) do { \
+    func(); \
+    send_to_mqtt_service(section, data); \
+} while(0)
+
+#define microusc_system_mqtt_main(status, func, data) microusc_system_operation(status, func, SYS_DIR, data)
+
+#define microusc_system_mqtt_main_fast(func, data) microusc_system_operation_quick(func, SYS_DIR, data)
+
 RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
 RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
 
@@ -292,7 +309,7 @@ static void getBackPCprevious(MiscrouscBackTrack_t *backtrack, const size_t amou
         esp_backtrace_get_next_frame(&frame);
     }
 
-    backtrack->caller_pc = (uint32_t)frame.pc;
+    backtrack->type.caller_pc = (uint32_t)frame.pc;
 }
 
 static void microusc_system_error_handler_default(void *var)
@@ -336,7 +353,7 @@ void send_microusc_system_status(microusc_status code)
         data.status = code;
 
         if (code == USC_SYSTEM_ERROR || code == USC_SYSTEM_PRINT_SUCCUSS) {
-            getBackPCprevious(&data.type.caller_pc, 1);
+            getBackPCprevious(&data, 1);
         }
 
         if (uxQueueSpacesAvailable(microusc_system.queue_system.queue_handler) != 0) {
@@ -453,10 +470,18 @@ static void microusc_system_task(void *p)
                     microusc_sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
-                    builtin_led_system(USC_SYSTEM_PAUSE);
-                    microusc_pause_drivers();
+                    microusc_system_operation( sys_data.status, 
+                                               microusc_pause_drivers, 
+                                               HOME_DIR("sys"), 
+                                               "pause"
+                                             );
                     break;
                 case USC_SYSTEM_RESUME:
+                    microusc_system_operation_quick( sys_data.status,
+                                                     microusc_resume_drivers,
+                                                     HOME_DIR("sys"),
+                                                     "normal"
+                                                   );
                     builtin_led_system(USC_SYSTEM_SUCCESS); // turns off the built-in led
                     microusc_resume_drivers();
                     break;

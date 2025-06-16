@@ -6,8 +6,12 @@
 
 #define BUILTIN_LED GPIO_NUM_2
 
-#define turn_on_builtin_led() REG_SET_BIT(GPIO_OUT_REG, BIT(BUILTIN_LED));
-#define turn_off_builtin_led() REG_CLR_BIT(GPIO_OUT_REG, BIT(BUILTIN_LED));
+/* Defined in asssembly file */
+extern void turn_on_builtin_led(void);
+extern void turn_off_builtin_led(void);
+
+// #define turn_on_builtin_led() REG_SET_BIT(GPIO_OUT_REG, BIT(BUILTIN_LED));
+// #define turn_off_builtin_led() REG_CLR_BIT(GPIO_OUT_REG, BIT(BUILTIN_LED));
 
 /*
  REG_WRITE(GPIO_FUNC0_OUT_SEL_CFG_REG + BUILTIN_LED * 4, 256); // 256 = Direct GPIO control
@@ -28,15 +32,10 @@ __init void init_builtin_led_wrapper(void)
 
 void builtin_led_system(microusc_status status)
 {
-    switch (status) {
-        case USC_SYSTEM_LED_ON:
-            turn_on_builtin_led();
-            break;
-        case USC_SYSTEM_LED_OFF:
-            turn_off_builtin_led();
-            break;
-        default:
-            turn_off_builtin_led();
-            break;
+    if (status != USC_SYSTEM_LED_ON) {
+        turn_off_builtin_led();
+    }
+    else {
+        turn_on_builtin_led();
     }
 }
