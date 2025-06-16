@@ -1,12 +1,13 @@
 #pragma once
 
+#include "MicroUSC/system/uscsystemdef.h"
+#include "stddef.h"
+#include "stdint.h"
 // can be used custom api
 typedef struct {
-    uint32_t caller_pc;
+    union {
+        uint32_t caller_pc;
+        char *data;
+    } type;
     microusc_status status;
 } MiscrouscBackTrack_t;
-
-union MicrouscSystemData_t {
-    MiscrouscBackTrack_t backtrack;
-    char *data;
-};

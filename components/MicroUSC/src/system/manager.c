@@ -1,5 +1,4 @@
 #include "MicroUSC/internal/system/bit_manip.h"
-#include "MicroUSC/internal/system/wireless_service.h"
 #include "MicroUSC/internal/system/service_def.h"
 #include "MicroUSC/internal/wireless/wifi.h"
 #include "MicroUSC/internal/wireless/mqtt.h"
@@ -333,11 +332,11 @@ void send_microusc_system_status(microusc_status code)
 {
     /* this only runs if the task is not suspended due to flushing the queue at the meantime */
     if (eTaskGetState(microusc_system.task.main_task) != eSuspended) {
-        union MicrouscSystemData_t sys_data;
-        sys_data.backtrack.status = code;
+        MiscrouscBackTrack_t data;
+        data.status = code;
 
         if (code == USC_SYSTEM_ERROR || code == USC_SYSTEM_PRINT_SUCCUSS) {
-            getBackPCprevious(&sys_data.backtrack, 1);
+            getBackPCprevious(&data.type.caller_pc, 1);
         }
 
         if (uxQueueSpacesAvailable(microusc_system.queue_system.queue_handler) != 0) {
@@ -346,7 +345,7 @@ void send_microusc_system_status(microusc_status code)
                 microusc_system.queue_system.count = 0;
             }
             taskEXIT_CRITICAL(&microusc_system.critical_lock);
-            xQueueSend(microusc_system.queue_system.queue_handler, &sys_data.backtrack, 0);
+            xQueueSend(microusc_system.queue_system.queue_handler, &data, 0);
         }
         else {
             ESP_LOGW(TAG, "MicroUSC system queuehandler has overflowed");
@@ -441,11 +440,11 @@ static void show_memory_usage(void)
 
 static void microusc_system_task(void *p)
 {
-    union MicrouscSystemData_t sys_data;
+    MiscrouscBackTrack_t sys_data;
     while (1) {
-        if (xQueueReceive(microusc_system.queue_system.queue_handler, &backtrack, portMAX_DELAY) == pdPASS) {
+        if (xQueueReceive(microusc_system.queue_system.queue_handler, &sys_data, portMAX_DELAY) == pdPASS) {
             printf("Called microUSC system\n");
-            switch(backtrack.status) {
+            switch(sys_data.status) {
                 case USC_SYSTEM_OFF:
                     microusc_system_restart();
                     break;
@@ -488,7 +487,7 @@ static void microusc_system_task(void *p)
                     break;
                 case USC_SYSTEM_ERROR:
                     builtin_led_system(USC_SYSTEM_ERROR);
-                    call_usc_error_handler(backtrack.caller_pc);
+                    call_usc_error_handler(sys_data.type.caller_pc);
                     break;
                 default:
                     break;
@@ -527,7 +526,7 @@ static esp_err_t microusc_system_setup(void)
 
     microusc_system.critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
 
-    microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(union MicrouscSystemData_t));
+    microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(MiscrouscBackTrack_t));
     if (microusc_system.queue_system.queue_handler == NULL) {
         return ESP_ERR_NO_MEM;
     }

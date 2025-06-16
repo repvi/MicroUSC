@@ -13,9 +13,7 @@
 #define MQTT_ENABLED   true
 #define MQTT_DISABLED  false
 
-extern bool mqtt_connect;
-
-#define send_to_mqtt_service(client, section, data, len, QoS, flag) esp_mqtt_client_publish(client, section, data, len, QoS, flag)
+void send_to_mqtt_service(char *const section, char *const data);
 
 /**
  * @brief MQTT event handler for ESP-IDF MQTT client.

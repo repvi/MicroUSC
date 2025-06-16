@@ -45,7 +45,7 @@ typedef enum {
     USC_SYSTEM_SPECIFICATIONS,    ///< Query system specifications
     USC_SYSTEM_DRIVER_STATUS,     ///< Query driver status
     USC_SYSTEM_ERROR,             ///< System error state
-    USC_SYSTEM_PRINT_SUCCUSS
+    USC_SYSTEM_PRINT_SUCCUSS,
 } microusc_status;
 
 #ifdef __cplusplus
