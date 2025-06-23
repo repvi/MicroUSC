@@ -6,7 +6,9 @@
 
 #define TAG "[MQTT SERVICE]"
 
-#define CONNECTION_MQTT_SEND_INFO  "connection"
+#define MQTT_TOPIC(x) "prot/"x
+#define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device/info")
+#define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 #define NO_NAME "No name"
 
 typedef struct {
@@ -18,8 +20,6 @@ typedef struct {
 mqtt_handler_t mqtt_service;
 
 #define CJSON_POOL_SIZE 512
-
-#define MQTT_TOPIC(x) "prot/"x
 
 char *const device_name = NULL;
 char *last_updated = ( __DATE__ );
@@ -88,7 +88,7 @@ static int send_connection_info(void) {
     char json_buffer[128];
     bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
     if (success) {
-        return esp_mqtt_client_publish(mqtt_service.client, MQTT_PROTOCOL_TYPE("connection"), json_buffer, 0, 1, 0);
+        return esp_mqtt_client_publish(mqtt_service.client, CONNECTION_MQTT_SEND_INFO, json_buffer, 0, 1, 0);
     }
     else {
         return -2;
