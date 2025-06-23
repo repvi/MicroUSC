@@ -79,6 +79,7 @@ idf_component_register(
         esp_http_client
         esp_https_ota
         driver
+        json
 )
 
 target_compile_definitions(

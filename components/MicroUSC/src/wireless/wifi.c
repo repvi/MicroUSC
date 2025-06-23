@@ -48,7 +48,7 @@ void wifi_init_sta(char *const ssid, char *const password)
 {
     /* Create an event group for WiFi events */
     wifi_event_group = xEventGroupCreate();
-
+    nvs_flash_init();
     /* Initialize the TCP/IP network interface and event loop */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -57,6 +57,9 @@ void wifi_init_sta(char *const ssid, char *const password)
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
     assert(sta_netif);
 
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
     /* Register WiFi and IP event handlers */
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
@@ -64,9 +67,12 @@ void wifi_init_sta(char *const ssid, char *const password)
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_got_ip);
 
     /* Configure WiFi with provided SSID and password */
-    wifi_config_t wifi_config;
-    memcpy(wifi_config.sta.ssid, ssid, SSID_SIZE);
-    memcpy(wifi_config.sta.password, password, PASSWORD_SIZE);
+    wifi_config_t wifi_config = {0};
+    strncpy((char *)wifi_config.sta.ssid, ssid, SSID_SIZE);
+    wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
+
+    strncpy((char *)wifi_config.sta.password, password, PASSWORD_SIZE);
+    wifi_config.sta.password[sizeof(wifi_config.sta.password) - 1] = '\0';
 
     /* Set WiFi mode to station and apply configuration */
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));

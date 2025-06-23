@@ -15,6 +15,7 @@ idf_component_register(
         examples
         bootloader 
         bootloader_support
+        esp_wifi
 )
 
 #idf_component_get_property(tusb_lib leeebo__tinyusb_src COMPONENT_LIB)

@@ -50,14 +50,14 @@
 #define SYS_DIR HOME_DIR("sys")
 
 #define microusc_system_operation(status, func, section, data) do { \
-    builtin_led_system(status); \
-    func();  \
     send_to_mqtt_service(section, data); \
+    builtin_led_system(status); \
+    func;  \
 } while(0)
 
 #define microusc_system_operation_quick(func, section, data) do { \
-    func(); \
     send_to_mqtt_service(section, data); \
+    func; \
 } while(0)
 
 #define microusc_system_mqtt_main(status, func, data) microusc_system_operation(status, func, SYS_DIR, data)
@@ -119,11 +119,16 @@ struct {
     portMUX_TYPE critical_lock;
 } microusc_system;
 
-#define microusc_quick_context(des, val) \
+#define microusc_quick_context(des, val) do { \
     portENTER_CRITICAL(&microusc_system.critical_lock); \
     des = val; \
-    portEXIT_CRITICAL(&microusc_system.critical_lock);
+    portEXIT_CRITICAL(&microusc_system.critical_lock); \
+} while(0)
 
+void microusc_start_wifi(char *const ssid, char *const password)
+{
+    wifi_init_sta(ssid, password);
+}
 /* Function is only accessed in this C file */
 void IRAM_ATTR microusc_software_isr_handler(void *arg)
 {
@@ -340,6 +345,11 @@ __always_inline void set_microusc_system_error_handler_default(void)
     set_microusc_system_error_handler(microusc_system_error_handler_default, NULL, 0);
 }
 
+esp_err_t microusc_system_start_mqtt_service(char *const url)
+{
+    return init_mqtt(url);
+}
+
 __always_inline void microusc_queue_flush(void)
 {
     xQueueReset(microusc_system.queue_system.queue_handler);
@@ -470,20 +480,10 @@ static void microusc_system_task(void *p)
                     microusc_sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
-                    microusc_system_operation( sys_data.status, 
-                                               microusc_pause_drivers, 
-                                               HOME_DIR("sys"), 
-                                               "pause"
-                                             );
+                    microusc_system_mqtt_main(sys_data.status, microusc_pause_drivers(), "pause");
                     break;
                 case USC_SYSTEM_RESUME:
-                    microusc_system_operation_quick( sys_data.status,
-                                                     microusc_resume_drivers,
-                                                     HOME_DIR("sys"),
-                                                     "normal"
-                                                   );
-                    builtin_led_system(USC_SYSTEM_SUCCESS); // turns off the built-in led
-                    microusc_resume_drivers();
+                    microusc_system_mqtt_main(USC_SYSTEM_SUCCESS, microusc_resume_drivers(), "normal");
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);
@@ -511,8 +511,7 @@ static void microusc_system_task(void *p)
                     usc_print_driver_configurations();
                     break;
                 case USC_SYSTEM_ERROR:
-                    builtin_led_system(USC_SYSTEM_ERROR);
-                    call_usc_error_handler(sys_data.type.caller_pc);
+                    microusc_system_mqtt_main_fast(call_usc_error_handler(sys_data.type.caller_pc), "error");
                     break;
                 default:
                     break;

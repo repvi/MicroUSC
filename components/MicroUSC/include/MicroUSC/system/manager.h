@@ -57,6 +57,8 @@ extern "C" {
 
 typedef void(*microusc_error_handler)(void *);
 
+void microusc_start_wifi(char *const ssid, char *const password);
+
 /**
  * @brief Configure a GPIO pin as an interrupt source for the MicroUSC system and register an ISR.
  *
@@ -220,6 +222,8 @@ void *get_system_rtc_var(const char key);
  * - To restore the default error handler, use set_microusc_system_error_handler_default().
  */
 void set_microusc_system_error_handler(microusc_error_handler handler, void *var, int size);
+
+esp_err_t microusc_system_start_mqtt_service(char *const url);
 
 /* completely flush the queue to make it fully available */
 void microusc_queue_flush(void);

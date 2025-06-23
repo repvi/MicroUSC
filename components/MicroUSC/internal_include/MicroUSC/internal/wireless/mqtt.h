@@ -33,6 +33,4 @@ int send_to_mqtt_service(char *const section, char *const data);
  */
 void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data);
 
-#define microusc_system_start_mqtt(url) init_mqtt(url)
-
 esp_err_t init_mqtt(char *const url);

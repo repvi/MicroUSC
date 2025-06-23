@@ -1,8 +1,12 @@
 #include "MicroUSC/internal/wireless/mqtt.h"
+#include "MicroUSC/internal/wireless/wifi.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "cJSON.h"
 
 #define TAG "[MQTT SERVICE]"
+
+#define CONNECTION_MQTT_SEND_INFO  "connection"
 
 typedef struct {
     bool connect;
@@ -12,11 +16,79 @@ typedef struct {
 
 mqtt_handler_t mqtt_service;
 
-// esp_mqtt_client_publish(client, "my/topic", "Hello from ESP32!", 0, 1, 0)
+#define CJSON_POOL_SIZE 512
+
+char *device_name = NULL;
+char *last_updated = ( __DATE__ );
+char* sensor_type = "uart";
+
+uint8_t cjson_pool[CJSON_POOL_SIZE];
+size_t cjson_pool_offset = 0;
+
+void *my_pool_malloc(size_t sz) {
+    if (cjson_pool_offset + sz > CJSON_POOL_SIZE) {
+        return NULL; // Out of memory!
+    }
+    void *ptr = &cjson_pool[cjson_pool_offset];
+    cjson_pool_offset += sz;
+    return ptr;
+}
+
+void my_pool_free(void *ptr) {
+    // No-op: can't free individual blocks in bump allocator
+    (void)ptr;
+}
+
+void cjson_pool_reset(void) {
+    cjson_pool_offset = 0;
+}
+
+void setup_cjson_pool(void) {
+    cJSON_Hooks hooks = {
+        .malloc_fn = my_pool_malloc,
+        .free_fn = my_pool_free
+    };
+    cJSON_InitHooks(&hooks);
+}
 
 int send_to_mqtt_service(char *const section, char *const data)
 {
-    return esp_mqtt_client_publish(mqtt_service.client, section, data, 0, 1, 0);
+    cjson_pool_reset(); // Reset pool before building new JSON tree
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, section, data);
+    
+    char json_buffer[128];
+    bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
+    if (success) {
+        return esp_mqtt_client_publish(mqtt_service.client, section, json_buffer, 0, 1, 0);
+    }
+    else {
+        return -2;
+    }
+}
+
+static int send_connection_info(void) {
+    cjson_pool_reset(); // Reset pool before building new JSON tree
+
+    cJSON *root = cJSON_CreateObject();
+    if (device_name == NULL) {
+        device_name = heap_caps_malloc();
+    }
+    cJSON_AddStringToObject(root, "device_name", device_name);
+    cJSON_AddStringToObject(root, "device_model", CONFIG_IDF_TARGET);
+    cJSON_AddStringToObject(root, "last_updated", last_updated);
+    cJSON_AddStringToObject(root, "status", "connected");
+    cJSON_AddStringToObject(root, "sensor_type", sensor_type);
+    
+    char json_buffer[128];
+    bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
+    if (success) {
+        return esp_mqtt_client_publish(mqtt_service.client, section, json_buffer, 0, 1, 0);
+    }
+    else {
+        return -2;
+    }
 }
 
 void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data) 
@@ -33,6 +105,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
             esp_mqtt_client_subscribe(mqtt_service.client, HOME_DIR("sensor"), 0);
             esp_mqtt_client_subscribe(mqtt_service.client, HOME_DIR("led"), 0); // Subscribe to LED control topic
+            send_connection_info();
             break;
         case MQTT_EVENT_DISCONNECTED: {
             esp_err_t err = esp_mqtt_client_reconnect(mqtt_service.client);
@@ -67,11 +140,12 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
             ESP_LOGI(TAG, "Other event id:%d", event->event_id);
             break;
     }
+    xSemaphoreGive(mqtt_service.mutex);
 }
 
 esp_err_t init_mqtt(char *const url)
 {
-    mqtt_service.mutex = vSemaphoreCreateBinary();
+    vSemaphoreCreateBinary(mqtt_service.mutex);
     if (mqtt_service.mutex == NULL) {
         ESP_LOGE(TAG, "Could not intialize semaphore for mqtt service");
         return ESP_FAIL;
