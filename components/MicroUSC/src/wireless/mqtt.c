@@ -76,7 +76,7 @@ static int send_connection_info(void) {
     }
 }
 
-static void turnoff_led(void *data, int data_len) 
+static void turnoff_led(char *data, int data_len) 
 {
     if (strncmp(event->topic, MQTT_TOPIC("sys"), event->topic_len) == 0) {
         if (strncmp(event->data, "on", event->data_len) == 0) {
@@ -87,10 +87,10 @@ static void turnoff_led(void *data, int data_len)
     } 
 }
 
-static void ota_handle(void *data, int data_len) 
+static void ota_handle(char *data, int data_len) 
 {
-    if (strncmp(event->topic, MQTT_TOPIC("ota"), event->topic_len) == 0) {
-        if (strncmp(event->data, "update", event->data_len) == 0) {
+    if (strncmp(data, MQTT_TOPIC("ota"), data_len) == 0) {
+        if (strncmp(data, "update", data_len) == 0) {
             /* Example: Start OTA update task */
             // xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
         }
@@ -118,8 +118,8 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
 
             /* On connection, subscribe to sensor and LED topics */
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            add_esp_mqtt_client_subscribe(MQTT_TOPIC("sys"), 0);
-            add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0);
+            add_esp_mqtt_client_subscribe(MQTT_TOPIC("sys"), 0, turnoff_led);
+            add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0, ota_handle);
             
             int sta = send_connection_info();
             if (sta == -2) {
@@ -175,7 +175,11 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
 
     setup_cjson_pool(); /* Initialize cJSON pool for JSON handling */
 
-    hashmap_init(mqtt_device_map); /* Initialize the hashmap for storing MQTT device subscriptions */
+    mqtt_device_map = hashmap_create(); /* Create a new hashmap for storing MQTT device subscriptions */
+    if (mqtt_device_map == NULL) {
+        ESP_LOGE(TAG, "Failed to create hashmap for MQTT device map");
+        return ESP_FAIL;
+    }
     /* Configure the MQTT client with the broker URI */
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = url,

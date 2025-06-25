@@ -15,7 +15,7 @@
 
 #define HOME_DIR(label) "home/"label
 
-typedef void (*mqtt_event_data_action_t)(void *, int);
+typedef void (*mqtt_event_data_action_t)(char*, int);
 
 int send_to_mqtt_service(char *const section, char *const data);
 

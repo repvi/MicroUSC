@@ -17,7 +17,7 @@ extern "C" {
 
 typedef struct hashmap_t *HashMap;
 
-void hashmap_init(HashMap map);
+HashMap hashmap_create(void);
 
 bool hashmap_put(HashMap map, const char* key, void* value);
 

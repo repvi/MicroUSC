@@ -55,3 +55,25 @@ cJSON *check_cjson(char *const data, size_t data_len)
 {
     return cJSON_ParseWithLength(data, data_len);
 }
+
+char *get_cjson_string(cJSON *item, char *const key) 
+{
+    cJSON *child = cJSON_GetObjectItemCaseSensitive(item, key);
+    if (child && cJSON_IsString(child) && child->valuestring) {
+        return child->valuestring;
+    }
+    else {
+        return NULL; // Return NULL if not a string or not found
+    }
+}
+
+int get_cjson_int(cJSON *item ,char *const key) 
+{
+    cJSON *child = cJSON_GetObjectItemCaseSensitive(item, key);
+    if (child && cJSON_IsNumber(child) && child->valueint) {
+        return child->valueint;
+    }
+    else {
+        return -1; // Return -1 if not a number or not found
+    }
+}

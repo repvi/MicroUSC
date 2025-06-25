@@ -30,6 +30,14 @@ void hashmap_init(HashMap map) {
     map->collisions = 0;
 }
 
+HashMap hashmap_create(void) {
+    HashMap map = (HashMap)malloc(sizeof(struct hashmap_t));
+    if (map) {
+        hashmap_init(map);
+    }
+    return map;
+}
+
 // Linear probing for collision resolution
 static uint16_t find_slot(HashMap map, const char* key, bool* found) {
     uint32_t hash = hash_function(key);
