@@ -22,6 +22,7 @@ set(MICROUSC_INTERNAL
     "internal/genList.c"
     "internal/driverList.c"
     "internal/system/bit_manip.c"
+    "internal/binarytree.c"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -38,6 +39,7 @@ set(MICROUSC_SYSTEM
 set(MICROUSC_WIRELESS
     "wireless/wifi.c"
     "wireless/mqtt.c"
+    "wireless/parsing.c"
 )
 
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")

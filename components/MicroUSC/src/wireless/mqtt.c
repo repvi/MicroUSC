@@ -1,12 +1,12 @@
 #include "MicroUSC/internal/wireless/mqtt.h"
 #include "MicroUSC/internal/wireless/wifi.h"
+#include "MicroUSC/internal/wireless/parsing.h"
 #include "esp_system.h"
 #include "esp_log.h"
-#include "cJSON.h"
 
 #define TAG "[MQTT SERVICE]"
 
-#define MQTT_TOPIC(x) "prot/"x
+#define MQTT_TOPIC(x) x
 #define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device/info")
 #define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 #define NO_NAME "No name"
@@ -19,40 +19,9 @@ typedef struct {
 
 mqtt_handler_t mqtt_service;
 
-#define CJSON_POOL_SIZE 512
-
 char *const device_name = NULL;
 char *last_updated = ( __DATE__ );
 char* sensor_type = "uart";
-
-uint8_t cjson_pool[CJSON_POOL_SIZE];
-size_t cjson_pool_offset = 0;
-
-void *my_pool_malloc(size_t sz) {
-    if (cjson_pool_offset + sz > CJSON_POOL_SIZE) {
-        return NULL; // Out of memory!
-    }
-    void *ptr = &cjson_pool[cjson_pool_offset];
-    cjson_pool_offset += sz;
-    return ptr;
-}
-
-void my_pool_free(void *ptr) {
-    // No-op: can't free individual blocks in bump allocator
-    (void)ptr;
-}
-
-void cjson_pool_reset(void) {
-    cjson_pool_offset = 0;
-}
-
-void setup_cjson_pool(void) {
-    cJSON_Hooks hooks = {
-        .malloc_fn = my_pool_malloc,
-        .free_fn = my_pool_free
-    };
-    cJSON_InitHooks(&hooks);
-}
 
 int send_to_mqtt_service(char *const section, char *const data)
 {
@@ -103,8 +72,9 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
     }
 
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
-    switch (event->event_id) {
+    switch (event->event_id) { 
         case MQTT_EVENT_CONNECTED:
+
             /* On connection, subscribe to sensor and LED topics */
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
             esp_mqtt_client_subscribe(mqtt_service.client, MQTT_TOPIC("sys"), 0);
@@ -123,6 +93,11 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
         }
             break;
         case MQTT_EVENT_DATA:
+            cJSON *root = check_cjson(event->data, event->data_len);
+            if (root == NULL) {
+                xSemaphoreGive(mqtt_service.mutex);
+                return;
+            }
             /* On data, print topic and data, and handle LED/OTA commands */
             // ESP_LOGI(TAG, "MQTT_EVENT_DATA");
             printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
@@ -151,7 +126,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
     xSemaphoreGive(mqtt_service.mutex);
 }
 
-esp_err_t init_mqtt(char *const url)
+esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
 {
     vSemaphoreCreateBinary(mqtt_service.mutex);
     if (mqtt_service.mutex == NULL) {
@@ -160,9 +135,19 @@ esp_err_t init_mqtt(char *const url)
     }
     xSemaphoreGive(mqtt_service.mutex);
 
+    if (buffer_size < 1024) {
+        buffer_size = 1024; /* Set minimum buffer size */
+    }
+
+    if (out_size < 512) {
+        out_size = 512; /* Set minimum output size */
+    }
+
     /* Configure the MQTT client with the broker URI */
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = url
+        .broker.address.uri = url,
+        .buffer.out_size = out_size, /* Set the output buffer size */
+        .buffer.size = buffer_size, /* Set the input buffer size */
     };
 
     /* Initialize the MQTT client */
