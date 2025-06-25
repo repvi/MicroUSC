@@ -2,12 +2,20 @@
 #include "esp_log.h"
 #include "esp_system.h"
 
+/* Pool configuration */
 #define CJSON_POOL_SIZE 512
+#define TAG "[CJSON POOL]"
 
 uint8_t cjson_pool[CJSON_POOL_SIZE];
 size_t cjson_pool_offset = 0;
 
-void *my_pool_malloc(size_t sz) {
+/**
+ * @brief Allocates memory from the pool
+ * @param sz Size to allocate
+ * @return Pointer to allocated memory, or NULL if pool is full
+ */
+static void *my_pool_malloc(size_t sz) 
+{
     if (cjson_pool_offset + sz > CJSON_POOL_SIZE) {
         return NULL; // Out of memory!
     }
@@ -16,16 +24,26 @@ void *my_pool_malloc(size_t sz) {
     return ptr;
 }
 
-void my_pool_free(void *ptr) {
+/**
+ * @brief Placeholder free function for pool allocator
+ * Memory is freed when pool is reset
+ */
+static void my_pool_free(void *ptr) 
+{
     // No-op: can't free individual blocks in bump allocator
     (void)ptr;
 }
 
-void cjson_pool_reset(void) {
+/**
+ * @brief Resets the pool offset to reuse pool memory
+ */
+static void cjson_pool_reset(void) 
+{
     cjson_pool_offset = 0;
 }
 
-void setup_cjson_pool(void) {
+void setup_cjson_pool(void) 
+{
     cJSON_Hooks hooks = {
         .malloc_fn = my_pool_malloc,
         .free_fn = my_pool_free
@@ -33,10 +51,7 @@ void setup_cjson_pool(void) {
     cJSON_InitHooks(&hooks);
 }
 
-cJSON *check_cjson(char *const data, size_t data_len) {
-    cJSON *root = cJSON_ParseWithLength(data, data_len);
-    if (root == NULL) {
-        ESP_LOGE(TAG, "cJSON root is NULL");
-    }
-    return root;
+cJSON *check_cjson(char *const data, size_t data_len) 
+{
+    return cJSON_ParseWithLength(data, data_len);
 }

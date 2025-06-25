@@ -1,6 +1,7 @@
 #include "MicroUSC/internal/wireless/mqtt.h"
 #include "MicroUSC/internal/wireless/wifi.h"
 #include "MicroUSC/internal/wireless/parsing.h"
+#include "MicroUSC/internal/hashmap.h"
 #include "esp_system.h"
 #include "esp_log.h"
 
@@ -19,7 +20,9 @@ typedef struct {
 
 mqtt_handler_t mqtt_service;
 
-char *const device_name = NULL;
+HashMap mqtt_device_map; /* Stores subscription info */
+
+char *device_name = NULL;
 char *last_updated = ( __DATE__ );
 char* sensor_type = "uart";
 
@@ -38,6 +41,15 @@ int send_to_mqtt_service(char *const section, char *const data)
     else {
         return -2;
     }
+}
+
+static void add_esp_mqtt_client_subscribe(
+    const char *topic, 
+    int qos,
+    mqtt_event_data_action_t action
+) {
+    esp_mqtt_client_subscribe(mqtt_service.client, topic, qos);
+    hashmap_put(mqtt_device_map, topic, action);
 }
 
 static int send_connection_info(void) {
@@ -64,6 +76,35 @@ static int send_connection_info(void) {
     }
 }
 
+static void turnoff_led(void *data, int data_len) 
+{
+    if (strncmp(event->topic, MQTT_TOPIC("sys"), event->topic_len) == 0) {
+        if (strncmp(event->data, "on", event->data_len) == 0) {
+            /* Do something */
+        } else if (strncmp(event->data, "off", event->data_len) == 0) {
+            /* Do something */
+        }
+    } 
+}
+
+static void ota_handle(void *data, int data_len) 
+{
+    if (strncmp(event->topic, MQTT_TOPIC("ota"), event->topic_len) == 0) {
+        if (strncmp(event->data, "update", event->data_len) == 0) {
+            /* Example: Start OTA update task */
+            // xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
+        }
+    }
+}
+
+static void handle_mqtt_data_recieved(char *key, char *data, int data_len)
+{
+    mqtt_event_data_action_t action = hashmap_get(mqtt_device_map, key);
+    if (action) {
+        action(data, data_len);
+    }
+}
+
 void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data) 
 {
     if (xSemaphoreTake(mqtt_service.mutex, portMAX_DELAY) == pdFALSE) {
@@ -77,8 +118,8 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
 
             /* On connection, subscribe to sensor and LED topics */
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            esp_mqtt_client_subscribe(mqtt_service.client, MQTT_TOPIC("sys"), 0);
-            esp_mqtt_client_subscribe(mqtt_service.client, MQTT_TOPIC("ota"), 0);
+            add_esp_mqtt_client_subscribe(MQTT_TOPIC("sys"), 0);
+            add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0);
             
             int sta = send_connection_info();
             if (sta == -2) {
@@ -99,24 +140,11 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
                 return;
             }
             /* On data, print topic and data, and handle LED/OTA commands */
-            // ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
             printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
             printf("DATA=%.*s\r\n", event->data_len, event->data);
-            /* Example: LED control */
-            if (strncmp(event->topic, MQTT_TOPIC("sys"), event->topic_len) == 0) {
-                if (strncmp(event->data, "on", event->data_len) == 0) {
-                    /* Do something */
-                } else if (strncmp(event->data, "off", event->data_len) == 0) {
-                    /* Do something */
-                }
-            } 
-            /* Example: OTA update trigger */
-            else if (strncmp(event->topic, MQTT_TOPIC("ota"), event->topic_len) == 0) {
-                if (strncmp(event->data, "update", event->data_len) == 0) {
-                    /* Example: Start OTA update task */
-                    // xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
-                }
-            }
+            
+            handle_mqtt_data_recieved(event->topic, event->data, event->data_len);
             break;
         default:
             /* Log other MQTT events */
@@ -128,6 +156,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
 
 esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
 {
+    /* Create binary semaphore for thread safety */
     vSemaphoreCreateBinary(mqtt_service.mutex);
     if (mqtt_service.mutex == NULL) {
         ESP_LOGE(TAG, "Could not intialize semaphore for mqtt service");
@@ -135,6 +164,7 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
     }
     xSemaphoreGive(mqtt_service.mutex);
 
+    /* Enforce minimum buffer sizes */
     if (buffer_size < 1024) {
         buffer_size = 1024; /* Set minimum buffer size */
     }
@@ -143,6 +173,9 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
         out_size = 512; /* Set minimum output size */
     }
 
+    setup_cjson_pool(); /* Initialize cJSON pool for JSON handling */
+
+    hashmap_init(mqtt_device_map); /* Initialize the hashmap for storing MQTT device subscriptions */
     /* Configure the MQTT client with the broker URI */
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = url,

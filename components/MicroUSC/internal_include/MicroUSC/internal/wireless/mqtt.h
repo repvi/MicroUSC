@@ -15,6 +15,8 @@
 
 #define HOME_DIR(label) "home/"label
 
+typedef void (*mqtt_event_data_action_t)(void *, int);
+
 int send_to_mqtt_service(char *const section, char *const data);
 
 /**
@@ -33,4 +35,20 @@ int send_to_mqtt_service(char *const section, char *const data);
  */
 void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data);
 
-esp_err_t init_mqtt(char *const url);
+/**
+ * @brief Initialize MQTT client service with specified parameters
+ *
+ * @param url          MQTT broker URL
+ * @param buffer_size  Size for receive buffer (minimum 1024 bytes)
+ * @param out_size     Size for output buffer (minimum 512 bytes)
+ *
+ * @return ESP_OK if initialization successful
+ *         ESP_FAIL if semaphore creation fails
+ *         Other ESP errors from MQTT client operations
+ *
+ * Function flow:
+ * 1. Creates and initializes mutex for thread safety
+ * 2. Adjusts buffer sizes to minimums if needed
+ * 3. Configures and starts MQTT client
+ */
+esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size);

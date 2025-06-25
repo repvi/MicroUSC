@@ -345,9 +345,9 @@ __always_inline void set_microusc_system_error_handler_default(void)
     set_microusc_system_error_handler(microusc_system_error_handler_default, NULL, 0);
 }
 
-esp_err_t microusc_system_start_mqtt_service(char *const url)
+esp_err_t microusc_system_start_mqtt_service(char *const url, size_t buffer_size, size_t out_size)
 {
-    return init_mqtt(url);
+    return init_mqtt(url, buffer_size, out_size);
 }
 
 __always_inline void microusc_queue_flush(void)

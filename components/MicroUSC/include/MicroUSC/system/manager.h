@@ -223,7 +223,18 @@ void *get_system_rtc_var(const char key);
  */
 void set_microusc_system_error_handler(microusc_error_handler handler, void *var, int size);
 
-esp_err_t microusc_system_start_mqtt_service(char *const url);
+/**
+ * @brief Starts the MQTT service with the specified broker URL and buffers
+ *
+ * @param url         MQTT broker URL string
+ * @param buffer_size Size for receive buffer
+ * @param out_size   Size for publish buffer
+ *
+ * @return ESP_OK if successful, error code otherwise
+ * 
+ * @note Requires active WiFi connection
+ */
+esp_err_t microusc_system_start_mqtt_service(char *const url, size_t buffer_size, size_t out_size);
 
 /* completely flush the queue to make it fully available */
 void microusc_queue_flush(void);
