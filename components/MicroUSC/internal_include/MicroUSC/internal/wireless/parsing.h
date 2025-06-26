@@ -12,6 +12,12 @@ extern "C" {
 #include "cJSON.h"
 
 /**
+ * @brief Gets the last length of JSON data
+ * @return Last length of JSON data
+ */
+int get_json_last_len(void);
+
+/**
  * @brief Sets up cJSON to use the pool allocator
  */
 void setup_cjson_pool(void);

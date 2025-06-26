@@ -15,9 +15,33 @@
 
 #define HOME_DIR(label) "home/"label
 
-typedef void (*mqtt_event_data_action_t)(char*, int);
+typedef void (*mqtt_event_data_action_t)(esp_mqtt_event_handle_t event);
 
-int send_to_mqtt_service(char *const section, char *const data);
+/**
+ * @brief Send data to MQTT broker as JSON
+ *
+ * Creates and sends a JSON message to the MQTT broker with the format:
+ * {
+ *    "<section>": "<data>"
+ * }
+ *
+ * @param section    Topic section/key for the JSON object
+ * @param data      Data string to be sent as value
+ *
+ * @return          Message ID on success (>0)
+ *                  -2 if JSON creation/printing fails
+ *                  -1 if MQTT publish fails
+ *
+ * @note Uses a static 128-byte buffer for JSON string
+ * @note Resets JSON memory pool before operation
+ * 
+ * Example:
+ * ```
+ * // Sends: {"temperature": "25.5"}
+ * send_to_mqtt_service("temperature", "25.5");
+ * ```
+ */
+int send_to_mqtt_service(char *const topic, char const *const key, const char *const data);
 
 /**
  * @brief MQTT event handler for ESP-IDF MQTT client.

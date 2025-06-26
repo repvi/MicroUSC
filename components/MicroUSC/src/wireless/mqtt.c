@@ -8,9 +8,12 @@
 #define TAG "[MQTT SERVICE]"
 
 #define MQTT_TOPIC(x) x
-#define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device/info")
+#define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device_info")
 #define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 #define NO_NAME "No name"
+
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 typedef struct {
     bool connect;
@@ -26,17 +29,24 @@ char *device_name = NULL;
 char *last_updated = ( __DATE__ );
 char* sensor_type = "uart";
 
-int send_to_mqtt_service(char *const section, char *const data)
+int send_to_mqtt_service(char *const topic, char const *const key, const char *const data, int len)
 {
     cjson_pool_reset(); // Reset pool before building new JSON tree
 
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, section, data);
+    cJSON_AddStringToObject(root, key, data);
     
     char json_buffer[128];
     bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
     if (success) {
-        return esp_mqtt_client_publish(mqtt_service.client, section, json_buffer, 0, 1, 0);
+        if (len == 0) {
+            len = strlen(json_buffer);
+            if (len < 0) {
+                ESP_LOGE(TAG, "Failed to create JSON payload");
+                return -1;
+            }
+        }
+        return esp_mqtt_client_publish(mqtt_service.client, topic, json_buffer, len, 1, 0);
     }
     else {
         return -2;
@@ -53,42 +63,72 @@ static void add_esp_mqtt_client_subscribe(
 }
 
 static int send_connection_info(void) {
-    cjson_pool_reset(); /* Reset pool before building new JSON tree */
-    cJSON *root = cJSON_CreateObject();
     if (device_name == NULL) {
         device_name = (char *)heap_caps_malloc(sizeof(NO_NAME), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
         strncpy(device_name, NO_NAME, sizeof(NO_NAME));
-    }
-
-    cJSON_AddStringToObject(root, "device_name", device_name);
-    cJSON_AddStringToObject(root, "device_model", CONFIG_IDF_TARGET);
-    cJSON_AddStringToObject(root, "last_updated", last_updated);
-    //cJSON_AddStringToObject(root, "status", "connected");
-    cJSON_AddStringToObject(root, "sensor_type", sensor_type);
-    
-    char json_buffer[128];
-    bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
-    if (success) {
-        return esp_mqtt_client_publish(mqtt_service.client, CONNECTION_MQTT_SEND_INFO, json_buffer, 0, 1, 0);
-    }
-    else {
-        return -2;
-    }
-}
-
-static void turnoff_led(char *data, int data_len) 
-{
-    if (strncmp(event->topic, MQTT_TOPIC("sys"), event->topic_len) == 0) {
-        if (strncmp(event->data, "on", event->data_len) == 0) {
-            /* Do something */
-        } else if (strncmp(event->data, "off", event->data_len) == 0) {
-            /* Do something */
+        if (device_name == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate memory for device name");
+            return -1; // Indicate failure
         }
-    } 
+    }
+    
+    int sent_status;
+
+    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_name", device_name, 0);
+    if (sent_status < 0) {
+        ESP_LOGE(TAG, "Failed to send connection info, status: %d", sent_status);
+        return -1; // Indicate failure
+    }
+
+    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_model", CONFIG_IDF_TARGET, 0);
+    if (sent_status < 0) {
+        ESP_LOGE(TAG, "Failed to send device model, status: %d", sent_status);
+        return -1; // Indicate failure
+    }
+
+    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "last_updated", last_updated, 0);
+    if (sent_status < 0) {
+        ESP_LOGE(TAG, "Failed to send last updated info, status: %d", sent_status);
+        return -1; // Indicate failure
+    }
+
+    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "sensor_type", sensor_type, 0);
+    if (sent_status < 0) {
+        ESP_LOGE(TAG, "Failed to send sensor type, status: %d", sent_status);
+        return -1; // Indicate failure
+    }
 }
 
-static void ota_handle(char *data, int data_len) 
+static void turnoff_led(esp_mqtt_event_handle_t event) 
 {
+    char *data = event->data;
+    size_t data_len = event->data_len;
+    char *led_status = get_cjson_string(event->data, "led_status");
+    if (led_status == NULL) {
+        ESP_LOGE(TAG, "LED status not found in data");
+        return;
+    }
+
+    const size_t status_len = strlen(led_status);
+
+    ESP_LOGI(TAG, "Received LED status: %.*s", status_len, led_status);
+
+    if (strncmp(led_status, "on", min(status_len, 2)) == 0) {
+        ESP_LOGI(TAG, "Turning on LED");
+    } else if (strncmp(led_status, "off", min(status_len, 3)) == 0) {
+        ESP_LOGI(TAG, "Turning off LED");
+        // Example: Turn off LED by setting GPIO pin low
+        // gpio_set_level(GPIO_NUM_2, 0); // Assuming GPIO 2 is used for LED
+    } else {
+        ESP_LOGW(TAG, "Unknown command for LED: %.*s", event->data_len, led_status);
+    }
+}
+
+static void ota_handle(esp_mqtt_event_handle_t event) 
+{
+    char *data = event->data;
+    size_t data_len = event->data_len;
+
     if (strncmp(data, MQTT_TOPIC("ota"), data_len) == 0) {
         if (strncmp(data, "update", data_len) == 0) {
             /* Example: Start OTA update task */
@@ -97,11 +137,12 @@ static void ota_handle(char *data, int data_len)
     }
 }
 
-static void handle_mqtt_data_recieved(char *key, char *data, int data_len)
+static void handle_mqtt_data_recieved(esp_mqtt_event_handle_t event)
 {
+    char *key = event->topic;
     mqtt_event_data_action_t action = hashmap_get(mqtt_device_map, key);
     if (action) {
-        action(data, data_len);
+        action(event);
     }
 }
 
@@ -118,7 +159,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
 
             /* On connection, subscribe to sensor and LED topics */
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            add_esp_mqtt_client_subscribe(MQTT_TOPIC("sys"), 0, turnoff_led);
+            add_esp_mqtt_client_subscribe(MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO), 0, turnoff_led);
             add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0, ota_handle);
             
             int sta = send_connection_info();
@@ -144,7 +185,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
             printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
             printf("DATA=%.*s\r\n", event->data_len, event->data);
             
-            handle_mqtt_data_recieved(event->topic, event->data, event->data_len);
+            handle_mqtt_data_recieved(event);
             break;
         default:
             /* Log other MQTT events */
