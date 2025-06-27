@@ -18,6 +18,18 @@ extern "C" {
 int get_json_last_len(void);
 
 /**
+ * @brief Placeholder free function for pool allocator
+ * Memory is freed when pool is reset
+ */
+void my_pool_free(void *ptr);
+
+/**
+ * @brief Resets the pool offset to reuse pool memory
+ */
+void cjson_pool_reset(void);
+
+
+/**
  * @brief Sets up cJSON to use the pool allocator
  */
 void setup_cjson_pool(void);

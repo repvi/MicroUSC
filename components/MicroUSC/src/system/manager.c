@@ -47,22 +47,20 @@
 
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 
-#define SYS_DIR HOME_DIR("sys")
-
-#define microusc_system_operation(status, func, section, data) do { \
-    send_to_mqtt_service(section, data); \
+#define microusc_system_operation(topic, status, func, key, data, len) do { \
+    send_to_mqtt_service(topic, key, data, len); \
     builtin_led_system(status); \
     func;  \
 } while(0)
 
-#define microusc_system_operation_quick(func, section, data) do { \
-    send_to_mqtt_service(section, data); \
+#define microusc_system_operation_quick(topic, func, key, data, len) do { \
+    send_to_mqtt_service(topic, key, data, len); \
     func; \
 } while(0)
 
-#define microusc_system_mqtt_main(status, func, data) microusc_system_operation(status, func, SYS_DIR, data)
+#define microusc_system_mqtt_main(topic, status, func, key, data, len) microusc_system_operation(topic, status, func, key, data, len)
 
-#define microusc_system_mqtt_main_fast(func, data) microusc_system_operation_quick(func, SYS_DIR, data)
+#define microusc_system_mqtt_main_fast(topic, func, key, data, len) microusc_system_operation_quick(topic, func, key, data, len)
 
 RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
 RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
@@ -480,10 +478,10 @@ static void microusc_system_task(void *p)
                     microusc_sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
-                    microusc_system_mqtt_main(sys_data.status, microusc_pause_drivers(), "pause");
+                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause", 0);
                     break;
                 case USC_SYSTEM_RESUME:
-                    microusc_system_mqtt_main(USC_SYSTEM_SUCCESS, microusc_resume_drivers(), "normal");
+                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_resume_drivers(), "status", "normal", 0);
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);
@@ -511,7 +509,7 @@ static void microusc_system_task(void *p)
                     usc_print_driver_configurations();
                     break;
                 case USC_SYSTEM_ERROR:
-                    microusc_system_mqtt_main_fast(call_usc_error_handler(sys_data.type.caller_pc), "error");
+                    microusc_system_mqtt_main_fast(CONNECTION_MQTT_SEND_INFO, call_usc_error_handler(sys_data.type.caller_pc), "status", "error", 0);
                     break;
                 default:
                     break;

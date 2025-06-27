@@ -1,7 +1,6 @@
 #include "MicroUSC/internal/wireless/parsing.h"
 #include "esp_log.h"
 #include "esp_system.h"
-#include "parsing.h"
 
 /* Pool configuration */
 #define CJSON_POOL_SIZE 512
@@ -30,20 +29,13 @@ static void *my_pool_malloc(size_t sz)
     return ptr;
 }
 
-/**
- * @brief Placeholder free function for pool allocator
- * Memory is freed when pool is reset
- */
-static void my_pool_free(void *ptr) 
+void my_pool_free(void *ptr) 
 {
     // No-op: can't free individual blocks in bump allocator
     (void)ptr;
 }
 
-/**
- * @brief Resets the pool offset to reuse pool memory
- */
-static void cjson_pool_reset(void) 
+void cjson_pool_reset(void) 
 {
     cjson_pool_offset = 0;
 }

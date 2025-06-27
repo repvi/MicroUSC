@@ -7,27 +7,58 @@
 
 #define TAG "[MQTT SERVICE]"
 
-#define MQTT_TOPIC(x) x
-#define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device_info")
-#define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 #define NO_NAME "No name"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
 typedef struct {
-    bool connect;
+    bool active; // Indicates if the MQTT service is active
     esp_mqtt_client_handle_t client;
     SemaphoreHandle_t mutex;
 } mqtt_handler_t;
 
-mqtt_handler_t mqtt_service;
+typedef struct {
+    esp_mqtt_event_handle_t event;
+    cJSON *json; // JSON data parsed from event
+} mqtt_data_package_t;
+
+typedef void (*mqtt_event_data_action_t)(mqtt_data_package_t *package);
+
+mqtt_handler_t mqtt_service = {.active = MQTT_DISABLED, .client = NULL, .mutex = NULL};
 
 HashMap mqtt_device_map; /* Stores subscription info */
 
 char *device_name = NULL;
 char *last_updated = ( __DATE__ );
 char* sensor_type = "uart";
+
+static int check_device_name(const char *new_name) 
+{
+    int name_length;
+
+    if (new_name == NULL && device_name == NULL) {
+        name_length = sizeof(NO_NAME);
+        // Allocate memory for the default device name
+        device_name = (char *)heap_caps_malloc(name_length, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    } 
+    else {
+        if (device_name != NULL) {
+            free(device_name); // Free previous name if it exists
+        }
+        name_length = strlen(new_name) + 1;
+        device_name = (char *)heap_caps_malloc(name_length, MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    }
+
+    if (device_name == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for device name");
+        return -1; // Indicate failure
+    }
+    strncpy(device_name, NO_NAME, name_length);
+
+
+    return 0; // Indicate success
+}
 
 int send_to_mqtt_service(char *const topic, char const *const key, const char *const data, int len)
 {
@@ -67,14 +98,6 @@ static bool add_esp_mqtt_client_subscribe(
 }
 
 static int send_connection_info(void) {
-    if (device_name == NULL) {
-        device_name = (char *)heap_caps_malloc(sizeof(NO_NAME), MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
-        strncpy(device_name, NO_NAME, sizeof(NO_NAME));
-        if (device_name == NULL) {
-            ESP_LOGE(TAG, "Failed to allocate memory for device name");
-            return -1; // Indicate failure
-        }
-    }
     #ifdef MICROUSC_MQTT_DEBUG
     int sent_status;
 
@@ -111,54 +134,42 @@ static int send_connection_info(void) {
     return 1;
 }
 
-static void turnoff_led(esp_mqtt_event_handle_t event) 
+static void turnoff_led(mqtt_data_package_t *package) 
 {
-    char *data = event->data;
-    size_t data_len = event->data_len;
-    char *led_status = get_cjson_string(event->data, "led_status");
+    esp_mqtt_event_handle_t event = package->event;
+
+    // Extract LED status
+    char *led_status = get_cjson_string(package->json, "led_status");
     if (led_status == NULL) {
         ESP_LOGE(TAG, "LED status not found in data");
         return;
     }
-
-    const size_t status_len = strlen(led_status);
-
-    ESP_LOGI(TAG, "Received LED status: %.*s", status_len, led_status);
-
-    if (strncmp(led_status, "on", min(status_len, 2)) == 0) {
-        ESP_LOGI(TAG, "Turning on LED");
-    } else if (strncmp(led_status, "off", min(status_len, 3)) == 0) {
-        ESP_LOGI(TAG, "Turning off LED");
-        // Example: Turn off LED by setting GPIO pin low
-        // gpio_set_level(GPIO_NUM_2, 0); // Assuming GPIO 2 is used for LED
-    } else {
-        ESP_LOGW(TAG, "Unknown command for LED: %.*s", event->data_len, led_status);
-    }
 }
 
-static void ota_handle(esp_mqtt_event_handle_t event) 
+static void ota_handle(mqtt_data_package_t *package) 
 {
-    char *data = event->data;
-    size_t data_len = event->data_len;
+    char *data = package->event->data;
+    size_t data_len = package->event->data_len;
 
+    /*
     if (strncmp(data, MQTT_TOPIC("ota"), data_len) == 0) {
         if (strncmp(data, "update", data_len) == 0) {
-            /* Example: Start OTA update task */
             // xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
         }
     }
+    */
 }
 
-static void handle_mqtt_data_recieved(esp_mqtt_event_handle_t event)
+static void handle_mqtt_data_recieved(mqtt_data_package_t *package)
 {
-    char *key = event->topic;
+    char *key = package->event->topic;
     mqtt_event_data_action_t action = hashmap_get(mqtt_device_map, key);
     if (action) {
-        action(event);
+        action(package);
     }
     #ifdef MICROUSC_MQTT_DEBUG
     else {
-        ESP_LOGW(TAG, "No action defined for topic: %.*s", event->topic_len, event->topic);
+        ESP_LOGW(TAG, "No action defined for topic: %.*s", package->event->topic_len, package->event->topic);
     }
     #endif
 }
@@ -178,6 +189,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
                 ESP_LOGE(TAG, "Failed to subscribe to topic: %s", MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO));
                 return;
             }
+
             if (!add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0, ota_handle)) {
                 ESP_LOGE(TAG, "Failed to subscribe to topic: %s", MQTT_TOPIC("ota"));
                 return;
@@ -187,7 +199,6 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
 
             if (send_connection_info() < 0) {
                 ESP_LOGI(TAG, "Connection info sent successfully");
-                return;
             }
             break;
         case MQTT_EVENT_DISCONNECTED: {
@@ -199,17 +210,18 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
             break;
         case MQTT_EVENT_DATA:
             cJSON *root = check_cjson(event->data, event->data_len);
-            if (root == NULL) {
-                xSemaphoreGive(mqtt_service.mutex);
-                return;
+            if (root != NULL) {
+                #ifdef MICROUSC_MQTT_DEBUG
+                ESP_LOGI(TAG, "MQTT_EVENT_DATA: Topic=%.*s, Data=%.*s", 
+                    event->topic_len, event->topic, 
+                    event->data_len, event->data);
+                #endif
+                mqtt_data_package_t package = {
+                    .event = event,
+                    .json = root
+                };
+                handle_mqtt_data_recieved(&package);
             }
-            /* On data, print topic and data, and handle LED/OTA commands */
-            #ifdef MICROUSC_MQTT_DEBUG
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA: Topic=%.*s, Data=%.*s", 
-                     event->topic_len, event->topic, 
-                     event->data_len, event->data);
-            #endif
-            handle_mqtt_data_recieved(event);
             break;
         default:
             /* Log other MQTT events */
@@ -228,6 +240,10 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
         return ESP_FAIL;
     }
     xSemaphoreGive(mqtt_service.mutex);
+
+    if (check_device_name(NULL) != 0) {
+        return ESP_FAIL; // Device name is not set
+    }
 
     /* Enforce minimum buffer sizes */
     if (buffer_size < 1024) {
@@ -262,7 +278,7 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
     esp_err_t ca = esp_mqtt_client_start(mqtt_service.client);
     if (ca == ESP_OK) {
         ESP_LOGI(TAG, "Has been successfully been set");
-        mqtt_service.connect = MQTT_ENABLED;
+        mqtt_service.active = MQTT_ENABLED;
     }
 
     return ca;
@@ -270,8 +286,8 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
 
 esp_err_t init_mqtt_with_device_info(const mqtt_device_info_t *device_info, char *const url, size_t buffer_size, size_t out_size)
 {
-    if (device_info->device_name == NULL) {
-        
+    if (check_device_name(device_info->device_name) != 0) {
+        return ESP_FAIL; // Device name is not set
     }
     return init_mqtt(url, buffer_size, out_size);
 }
@@ -290,7 +306,7 @@ void mqtt_service_deinit(void)
     }
 
     if (mqtt_device_map != NULL) {
-        hashmap_destroy(mqtt_device_map);
+        //hashmap_remove(mqtt_device_map);
         mqtt_device_map = NULL;
     }
 
@@ -298,4 +314,7 @@ void mqtt_service_deinit(void)
         free(device_name);
         device_name = NULL;
     }
+
+    mqtt_service.active = false; // Mark the MQTT service as inactive
+    ESP_LOGI(TAG, "MQTT service deinitialized");
 }

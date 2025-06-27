@@ -13,15 +13,15 @@
 #define MQTT_ENABLED   true
 #define MQTT_DISABLED  false
 
-#define HOME_DIR(label) "home/"label
+#define MQTT_TOPIC(x) x
+#define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device_info")
+#define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 
 typedef struct {
     char *device_name;
     char *last_updated;
     char *sensor_type;
 } mqtt_device_info_t;
-
-typedef void (*mqtt_event_data_action_t)(esp_mqtt_event_handle_t event);
 
 /**
  * @brief Send data to MQTT broker as JSON
