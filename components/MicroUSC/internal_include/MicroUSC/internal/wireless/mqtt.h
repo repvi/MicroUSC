@@ -15,6 +15,12 @@
 
 #define HOME_DIR(label) "home/"label
 
+typedef struct {
+    char *device_name;
+    char *last_updated;
+    char *sensor_type;
+} mqtt_device_info_t;
+
 typedef void (*mqtt_event_data_action_t)(esp_mqtt_event_handle_t event);
 
 /**
@@ -22,26 +28,32 @@ typedef void (*mqtt_event_data_action_t)(esp_mqtt_event_handle_t event);
  *
  * Creates and sends a JSON message to the MQTT broker with the format:
  * {
- *    "<section>": "<data>"
+ *    "<key>": "<data>"
  * }
  *
- * @param section    Topic section/key for the JSON object
- * @param data      Data string to be sent as value
+ * @param topic    MQTT topic to publish to
+ * @param key      Key name in the JSON object
+ * @param data     Data string to be sent as value
+ * @param len      Length of data (0 for automatic length calculation)
  *
- * @return          Message ID on success (>0)
- *                  -2 if JSON creation/printing fails
- *                  -1 if MQTT publish fails
+ * @return         Message ID on success (>0)
+ *                 -2 if JSON creation/printing fails
+ *                 -1 if MQTT publish fails
  *
  * @note Uses a static 128-byte buffer for JSON string
  * @note Resets JSON memory pool before operation
  * 
  * Example:
- * ```
- * // Sends: {"temperature": "25.5"}
- * send_to_mqtt_service("temperature", "25.5");
+ * ```c
+ * // Sends to topic "sensors/temperature" with payload {"current": "25.5"}
+ * send_to_mqtt_service("sensors/temperature", "current", "25.5", 0);
+ * 
+ * // With known length
+ * const char* data = "25.5";
+ * send_to_mqtt_service("sensors/temperature", "current", data, strlen(data));
  * ```
  */
-int send_to_mqtt_service(char *const topic, char const *const key, const char *const data);
+int send_to_mqtt_service(char *const topic, char const *const key, const char *const data, int len);
 
 /**
  * @brief MQTT event handler for ESP-IDF MQTT client.
@@ -76,3 +88,27 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
  * 3. Configures and starts MQTT client
  */
 esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size);
+
+/**
+ * @brief Initialize MQTT client with device information
+ *
+ * This function initializes the MQTT client using the provided device information.
+ * It sets up the MQTT client configuration and starts the client.
+ *
+ * @param device_info  Pointer to a structure containing device information
+ * @param url          MQTT broker URL
+ * @param buffer_size  Size for receive buffer (minimum 1024 bytes)
+ * @param out_size     Size for output buffer (minimum 512 bytes)
+ *
+ * @return ESP_OK if initialization successful
+ *         ESP_FAIL if semaphore creation fails or other errors occur
+ */
+esp_err_t init_mqtt_with_device_info(const mqtt_device_info_t *device_info, char *const url, size_t buffer_size, size_t out_size);
+
+/**
+ * @brief Deinitialize MQTT service and clean up resources
+ *
+ * Frees allocated memory, destroys mutex, and stops MQTT client.
+ * Should be called when MQTT service is no longer needed.
+ */
+void mqtt_service_deinit(void);

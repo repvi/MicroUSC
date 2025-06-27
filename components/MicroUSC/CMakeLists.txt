@@ -100,6 +100,7 @@ target_compile_definitions(
         UART_QUEUE_SIZE=10
         BUFFER_SIZE=1024
         SEND_BUFFER_SIZE=6
+        MICROUSC_MQTT_DEBUG
 )
 
 # add_compile_options(-mtext-section-literals)

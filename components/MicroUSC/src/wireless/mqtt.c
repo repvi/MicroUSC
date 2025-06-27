@@ -53,13 +53,17 @@ int send_to_mqtt_service(char *const topic, char const *const key, const char *c
     }
 }
 
-static void add_esp_mqtt_client_subscribe(
+static bool add_esp_mqtt_client_subscribe(
     const char *topic, 
     int qos,
     mqtt_event_data_action_t action
 ) {
-    esp_mqtt_client_subscribe(mqtt_service.client, topic, qos);
-    hashmap_put(mqtt_device_map, topic, action);
+    int id = esp_mqtt_client_subscribe(mqtt_service.client, topic, qos);
+    if (id < 0) {
+        ESP_LOGE(TAG, "Failed to subscribe to topic: %s", topic);
+        return false; // Subscription failed
+    }
+    return hashmap_put(mqtt_device_map, topic, action);
 }
 
 static int send_connection_info(void) {
@@ -71,7 +75,7 @@ static int send_connection_info(void) {
             return -1; // Indicate failure
         }
     }
-    
+    #ifdef MICROUSC_MQTT_DEBUG
     int sent_status;
 
     sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_name", device_name, 0);
@@ -97,6 +101,14 @@ static int send_connection_info(void) {
         ESP_LOGE(TAG, "Failed to send sensor type, status: %d", sent_status);
         return -1; // Indicate failure
     }
+    #else
+    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_name", device_name, 0);
+    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_model", CONFIG_IDF_TARGET, 0);
+    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "last_updated", last_updated, 0);
+    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "sensor_type", sensor_type, 0);
+    #endif
+
+    return 1;
 }
 
 static void turnoff_led(esp_mqtt_event_handle_t event) 
@@ -144,6 +156,11 @@ static void handle_mqtt_data_recieved(esp_mqtt_event_handle_t event)
     if (action) {
         action(event);
     }
+    #ifdef MICROUSC_MQTT_DEBUG
+    else {
+        ESP_LOGW(TAG, "No action defined for topic: %.*s", event->topic_len, event->topic);
+    }
+    #endif
 }
 
 void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data) 
@@ -156,15 +173,21 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
     switch (event->event_id) { 
         case MQTT_EVENT_CONNECTED:
-
             /* On connection, subscribe to sensor and LED topics */
-            ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            add_esp_mqtt_client_subscribe(MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO), 0, turnoff_led);
-            add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0, ota_handle);
-            
-            int sta = send_connection_info();
-            if (sta == -2) {
-                ESP_LOGE(TAG, "Failed to send connection info");
+            if (!add_esp_mqtt_client_subscribe(MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO), 0, turnoff_led)) {
+                ESP_LOGE(TAG, "Failed to subscribe to topic: %s", MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO));
+                return;
+            }
+            if (!add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0, ota_handle)) {
+                ESP_LOGE(TAG, "Failed to subscribe to topic: %s", MQTT_TOPIC("ota"));
+                return;
+            }
+
+            ESP_LOGI(TAG, "Successfully connected to MQTT broker");
+
+            if (send_connection_info() < 0) {
+                ESP_LOGI(TAG, "Connection info sent successfully");
+                return;
             }
             break;
         case MQTT_EVENT_DISCONNECTED: {
@@ -181,10 +204,11 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
                 return;
             }
             /* On data, print topic and data, and handle LED/OTA commands */
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-            printf("DATA=%.*s\r\n", event->data_len, event->data);
-            
+            #ifdef MICROUSC_MQTT_DEBUG
+            ESP_LOGI(TAG, "MQTT_EVENT_DATA: Topic=%.*s, Data=%.*s", 
+                     event->topic_len, event->topic, 
+                     event->data_len, event->data);
+            #endif
             handle_mqtt_data_recieved(event);
             break;
         default:
@@ -242,4 +266,36 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
     }
 
     return ca;
+}
+
+esp_err_t init_mqtt_with_device_info(const mqtt_device_info_t *device_info, char *const url, size_t buffer_size, size_t out_size)
+{
+    if (device_info->device_name == NULL) {
+        
+    }
+    return init_mqtt(url, buffer_size, out_size);
+}
+
+void mqtt_service_deinit(void) 
+{
+    if (mqtt_service.client != NULL) {
+        esp_mqtt_client_stop(mqtt_service.client);
+        esp_mqtt_client_destroy(mqtt_service.client);
+        mqtt_service.client = NULL;
+    }
+
+    if (mqtt_service.mutex != NULL) {
+        vSemaphoreDelete(mqtt_service.mutex);
+        mqtt_service.mutex = NULL;
+    }
+
+    if (mqtt_device_map != NULL) {
+        hashmap_destroy(mqtt_device_map);
+        mqtt_device_map = NULL;
+    }
+
+    if (device_name != NULL) {
+        free(device_name);
+        device_name = NULL;
+    }
 }
