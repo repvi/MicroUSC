@@ -35,9 +35,6 @@
 #define TAG "[MICROUSC KERNEL]"
 #define MEMORY_TAG "[MEMORY]"
 
-#define RTC_MEMORY_BUFFER_SIZE (256) // Size of the memory buffer
-#define RTC_MEMORY_STORAGE_KEY_SIZE (32) // Size of the key for the memory storage
-
 #define CONVERT_TO_SLEEPMODE_TIME(x) ( uint64_t ) ( pdMS_TO_TICKS(x) * portTICK_PERIOD_MS * 1000ULL )
 #define DEFAULT_LIGHTMODE_TIME CONVERT_TO_SLEEPMODE_TIME(5000) // 5 seconds
 
@@ -64,27 +61,6 @@
 
 RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
 RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
-
-struct rtc_map {
-    char key;
-    uint8_t size;
-};
-
-RTC_NOINIT_ATTR struct rtc_memory_t {
-    struct rtc_map mapping[RTC_MEMORY_STORAGE_KEY_SIZE];
-    uint8_t buf[RTC_MEMORY_BUFFER_SIZE]; // RTC memory buffer
-    portMUX_TYPE lock;
-    int address_key_index; // Index for the address key
-    int remaining_mem;
-} rtc_memory = {.mapping = {}, .buf = {0}, .lock = portMUX_INITIALIZER_UNLOCKED, .address_key_index = 0, .remaining_mem = RTC_MEMORY_BUFFER_SIZE};
-
-#define INITIALIZE_RTC_MEMORY { \
-    .mapping = {}, \
-    .buf = {0}, \
-    .lock = portMUX_INITIALIZER_UNLOCKED, \
-    .address_key_index = 0, \
-    .remaining_mem = RTC_MEMORY_BUFFER_SIZE \
-}
 
 struct sleep_config_t {
     gpio_num_t wakeup_pin;
@@ -127,41 +103,6 @@ void microusc_start_wifi(char *const ssid, char *const password)
 {
     wifi_init_sta(ssid, password);
 }
-/* Function is only accessed in this C file */
-void IRAM_ATTR microusc_software_isr_handler(void *arg)
-{
-    MiscrouscBackTrack_t current;
-    current.status = *(microusc_status *)arg;
-    xQueueSendFromISR(microusc_system.queue_system.queue_handler, &current, NULL);
-}
-
-/* Add on the next version */
-__deprecated void microusc_system_isr_trigger(void) 
-{
-    /* TODO */
-}
-
-void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status)
-{
-    int bit_mask = io_config.pin_bit_mask;
-    int gpio_pin = 1;
-
-    /* Determine the GPIO pin number from the bit mask */
-    if (bit_mask == 0) return;
-    while (bit_mask > 1) {
-        bit_mask >>= 1;
-        gpio_pin++;
-    }
-
-    /* Remove any existing ISR handler for this pin */
-    gpio_isr_handler_remove(gpio_pin);
-
-    /* Configure the GPIO pin with the provided settings */
-    gpio_config(&io_config);
-
-    /* Add the new ISR handler for this pin */
-    gpio_isr_handler_add((gpio_num_t)gpio_pin, microusc_software_isr_handler, &gpio_pin);
-}
 
 __always_inline void microusc_set_sleep_mode_timer_wakeup(uint64_t time) 
 {
@@ -191,7 +132,7 @@ void microusc_set_sleepmode_wakeup_default(void)
     microusc_set_wakeup_pin_status(false);
 }
 
-static __noreturn void microusc_system_restart(void)
+__attribute__((noreturn)) void microusc_system_restart(void)
 {
     esp_restart();
 }
@@ -199,48 +140,6 @@ static __noreturn void microusc_system_restart(void)
 static __always_inline unsigned int calculate_checksum(unsigned int value)
 {
     return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
-}
-
-void save_system_rtc_var(void *var, const size_t size, const char key)
-{
-    if (var == NULL || size == 0 || key == '\0') {
-        ESP_LOGE(TAG, "Invalid parameters for saving RTC variable");
-        return;
-    }
-
-    portENTER_CRITICAL(&rtc_memory.lock);
-    {
-        if (size <= rtc_memory.remaining_mem && rtc_memory.address_key_index < RTC_MEMORY_STORAGE_KEY_SIZE) {
-            const int offset = RTC_MEMORY_BUFFER_SIZE - rtc_memory.remaining_mem;
-            uint8_t *ptr = rtc_memory.buf + offset;
-            memcpy(ptr, var, size); // Copy the variable to the RTC memory
-            rtc_memory.remaining_mem -= size; // Decrease the remaining size
-            rtc_memory.mapping[rtc_memory.address_key_index++].key = key; // Save the key            
-            ESP_LOGI(TAG, "Saved %u bytes to RTC memory", size);
-        }
-        else{
-            ESP_LOGE(TAG, "Not enough space in RTC memory");
-        }
-    }
-    portEXIT_CRITICAL(&rtc_memory.lock);
-}
-
-void *get_system_rtc_var(const char key)
-{
-    uintptr_t address = 0; // 'NULL'
-    portENTER_CRITICAL(&rtc_memory.lock);
-    {
-        size_t offset = 0;
-        define_iteration(rtc_memory.mapping, struct rtc_map, map, RTC_MEMORY_STORAGE_KEY_SIZE) {
-            if (map->key == key) {
-                address = (uintptr_t)rtc_memory.buf + offset;
-                break;
-            }
-            offset += map->size;
-        }
-    }
-    portEXIT_CRITICAL(&rtc_memory.lock);
-    return (void *)address;
 }
 
 static void set_rtc_cycle(void)
@@ -518,13 +417,12 @@ static void microusc_system_task(void *p)
     }
 }
 
-__noreturn void microusc_infloop(void)
+__attribute__((noreturn)) void microusc_infloop(void)
 {
     while (1) {
         // nothing
     }
 }
-// needs to implement gpio isr trigger
 
 /**
  * @brief Initialize the MicroUSC system components and resources.
@@ -599,5 +497,5 @@ void init_MicroUSC_system(void)
     ESP_ERROR_CHECK(init_memory_handlers());
     ESP_ERROR_CHECK(init_configuration_storage());
     ESP_ERROR_CHECK(microusc_system_setup()); /* system task will run on core 0, mandatory */
-    vTaskDelay(1000 / portTICK_PERIOD_MS); /* Wait for the system to be ready (1 second) */
+    vTaskDelay(500 / portTICK_PERIOD_MS); /* Wait for the system to be ready (500 milliseconds) */
 }

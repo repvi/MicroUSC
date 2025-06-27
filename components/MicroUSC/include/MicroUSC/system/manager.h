@@ -49,6 +49,8 @@
 #pragma once
 
 #include "MicroUSC/system/uscsystemdef.h"
+#include "MicroUSC/system/manager_isr.h"
+#include "MicroUSC/system/rtc.h"
 #include "driver/gpio.h"
 
 #ifdef __cplusplus
@@ -58,21 +60,6 @@ extern "C" {
 typedef void(*microusc_error_handler)(void *);
 
 void microusc_start_wifi(char *const ssid, char *const password);
-
-/**
- * @brief Configure a GPIO pin as an interrupt source for the MicroUSC system and register an ISR.
- *
- * This function determines the GPIO pin from the provided gpio_config_t's pin_bit_mask,
- * removes any existing ISR handler for that pin, configures the pin with the given settings,
- * and attaches the specified ISR handler. It also sets the status code that will be triggered
- * when the ISR is called.
- *
- * Typical usage: Call this during system initialization to set up a wakeup or event pin.
- *
- * @param io_config      GPIO configuration structure specifying the pin and settings.
- * @param trigger_status The MicroUSC status code to associate with this ISR event.
- */
-void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status);
 
 /**
  * @brief Set the timer duration for sleep mode wakeup.
@@ -151,47 +138,15 @@ void microusc_set_wakeup_pin_status(bool option);
 void microusc_set_sleepmode_wakeup_default(void);
 
 /**
- * @brief Save a system variable to RTC memory.
+ * @brief Performs a complete system restart of the ESP32
  *
- * This function attempts to save a variable to RTC (Real-Time Clock) memory, identified by a key.
- * It performs argument validation and will return early without performing any operation if:
- *   - `var` is NULL,
- *   - `size` is 0,
- *   - `key` is 0 or the null character (`'\0'`).
+ * This function triggers a hardware reset of the ESP32. The noreturn attribute
+ * indicates to the compiler that this function will never return to the caller.
  *
- * @param var   Pointer to the variable data to be saved. Must not be NULL.
- * @param size  Size in bytes of the variable to be saved. Must be greater than 0.
- * @param key   Unique identifier for the variable in RTC memory. Must not be 0 or '\0'.
- *
- * @note
- * - If any argument is invalid, the function returns immediately and does not attempt to save the variable.
- * - It is the caller's responsibility to ensure that `var` points to valid memory of at least `size` bytes.
- *
- * @return None.
+ * @note This function will immediately restart the system without any cleanup
+ * @warning Any unsaved data will be lost
  */
-void save_system_rtc_var(void *var, const size_t size, const char key);
-
-/**
- * @brief Retrieve a system variable from RTC memory by key.
- *
- * This function searches for a variable previously saved to RTC (Real-Time Clock) memory
- * using the provided key. If the key matches an existing entry, a pointer to the variable's
- * data is returned. If the key does not match any stored entry, or if the key is invalid,
- * the function returns NULL.
- *
- * @param key  Unique identifier for the variable in RTC memory.
- *             Must match one of the keys used in save_system_rtc_var().
- *
- * @return
- *   - Pointer to the variable data if the key is found.
- *   - NULL if the key does not exist in the RTC variable store or is invalid.
- *
- * @note
- * - The returned pointer is to the internal RTC memory storage; do not free or modify it directly.
- * - The key must be a valid identifier previously used to save a variable; otherwise, NULL is returned.
- * - It is the caller's responsibility to ensure the key is valid and to handle a NULL return appropriately.
- */
-void *get_system_rtc_var(const char key);
+__attribute__((noreturn)) void microusc_system_restart(void);
 
 /**
  * @brief Set a custom system error handler for the microcontroller system.
@@ -306,8 +261,19 @@ void set_microusc_system_error_handler_default(void);
  */
 void send_microusc_system_status(microusc_status code);
 
-
-void microusc_infloop(void);
+/**
+ * @brief Infinite loop function for the MicroUSC system.
+ *
+ * This function is intended to be called when the system enters an unrecoverable state
+ * or when a critical error occurs that prevents normal operation. It will enter an infinite
+ * loop, effectively halting the system's execution.
+ *
+ * This is typically used in error handling routines to prevent further execution of code
+ * that may lead to undefined behavior or additional errors.
+ *
+ * @note This function should not return; it will block indefinitely.
+ */
+__attribute__((noreturn)) void microusc_infloop(void);
 
 /**
  * @brief Initialize the Tiny Kernel core for the MicroUSC library.

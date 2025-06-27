@@ -187,18 +187,21 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
             /* On connection, subscribe to sensor and LED topics */
             if (!add_esp_mqtt_client_subscribe(MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO), 0, turnoff_led)) {
                 ESP_LOGE(TAG, "Failed to subscribe to topic: %s", MQTT_TOPIC(CONNECTION_MQTT_SEND_INFO));
-                return;
+                goto exit; // Exit if subscription fails
             }
 
             if (!add_esp_mqtt_client_subscribe(MQTT_TOPIC("ota"), 0, ota_handle)) {
                 ESP_LOGE(TAG, "Failed to subscribe to topic: %s", MQTT_TOPIC("ota"));
-                return;
+                goto exit; // Exit if subscription fails
             }
 
             ESP_LOGI(TAG, "Successfully connected to MQTT broker");
 
-            if (send_connection_info() < 0) {
+            if (send_connection_info() > 0) {
                 ESP_LOGI(TAG, "Connection info sent successfully");
+            }
+            else {
+                ESP_LOGE(TAG, "Failed to send connection info");
             }
             break;
         case MQTT_EVENT_DISCONNECTED: {
@@ -228,6 +231,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
             ESP_LOGI(TAG, "Other event id:%d", event->event_id);
             break;
     }
+exit:
     xSemaphoreGive(mqtt_service.mutex);
 }
 
