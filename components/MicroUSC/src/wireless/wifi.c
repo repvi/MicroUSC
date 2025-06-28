@@ -1,4 +1,4 @@
-#include "MicroUSC/internal/wireless/wifi.h"
+#include "MicroUSC/wireless/wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"

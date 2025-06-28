@@ -295,3 +295,23 @@ __always_inline esp_err_t init_hidden_driver_lists(const size_t buffer_size, con
     /* Calls the main driver list memory pool initializer. */
     return init_driver_list_memory_pool(buffer_size, data_size);
 }
+
+void IRAM_ATTR usc_drivers_pause(void)
+{
+    struct usc_driverList *current, *tmp;
+    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
+        struct usc_driver_t *driver = &current->driver;
+        vTaskSuspend(driver->uart_processor.task);
+        vTaskSuspend(driver->uart_reader.task);
+    }
+}
+
+void IRAM_ATTR usc_drivers_resume(void)
+{
+    struct usc_driverList *current, *tmp;
+    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
+        struct usc_driver_t *driver = &current->driver;
+        vTaskResume(driver->uart_processor.task);
+        vTaskResume(driver->uart_reader.task);
+    }
+}

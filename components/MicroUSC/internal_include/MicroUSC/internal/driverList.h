@@ -70,8 +70,6 @@ struct usc_serialStorage {
 
 extern struct usc_driversHandler driver_system;
 
-extern memory_block_handle_t mem_block_driver_nodes;
-
 void driver_isr_trigger(struct usc_driver_t *driver);
 
 /**
@@ -116,7 +114,6 @@ void freeDriverList(void);
 
 #define WAIT_FOR_RESPONSE            ( pdMS_TO_TICKS( 1000 ) )
 
-
 /**
  * @brief Initializes the memory pool for driver list nodes and their associated buffers.
  *
@@ -134,11 +131,6 @@ void freeDriverList(void);
  */
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t data_size);
 
-/*
- * Wrapper for init_driver_list_memory_pool function
- */
-esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
-
 /**
  * @brief Initializes a static memory pool for driver task stacks.
  *
@@ -153,6 +145,31 @@ esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_
  *     setUSCtaskSize(2048); // Allocates a pool for DRIVER_MAX stacks, each 2048 bytes
  */
 esp_err_t setUSCtaskSize(stack_size_t size);
+
+/*
+ * Wrapper for init_driver_list_memory_pool function
+ */
+esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
+
+/**
+ * @brief Pause all USC driver tasks
+ * 
+ * Suspends both processor and reader tasks for all drivers in the list.
+ * Function runs from IRAM for faster execution during interrupts.
+ * 
+ * @warning Not thread-safe - should be called with proper synchronization
+ */
+void IRAM_ATTR usc_drivers_pause(void);
+
+/**
+ * @brief Resume all USC driver tasks
+ * 
+ * Resumes both processor and reader tasks for all drivers in the list.
+ * Function runs from IRAM for faster execution during interrupts.
+ * 
+ * @warning Not thread-safe - should be called with proper synchronization
+ */
+void IRAM_ATTR usc_drivers_resume(void);
 
 #ifdef __cplusplus
 }

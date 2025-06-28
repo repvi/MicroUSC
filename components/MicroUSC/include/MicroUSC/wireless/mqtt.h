@@ -87,7 +87,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
  * 2. Adjusts buffer sizes to minimums if needed
  * 3. Configures and starts MQTT client
  */
-esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size);
+esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg);
 
 /**
  * @brief Initialize MQTT client with device information
@@ -103,7 +103,7 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size);
  * @return ESP_OK if initialization successful
  *         ESP_FAIL if semaphore creation fails or other errors occur
  */
-esp_err_t init_mqtt_with_device_info(const mqtt_device_info_t *device_info, char *const url, size_t buffer_size, size_t out_size);
+esp_err_t init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info);
 
 /**
  * @brief Deinitialize MQTT service and clean up resources

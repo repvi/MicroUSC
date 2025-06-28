@@ -43,6 +43,37 @@ extern "C" {
  */
 void usc_print_driver_configurations(void);
 
+
+/**
+ * @brief Print ESP32 chip information to console
+ *
+ * Displays:
+ * - Chip model (ESP32 or Other)
+ * - Number of CPU cores
+ * - Available features (WiFi/BT/BLE)
+ */
+void print_system_info(void);
+
+/**
+ * @brief Display ESP32 memory usage statistics for DMA and internal memory regions
+ * 
+ * This function queries the ESP-IDF heap capabilities API to retrieve and display
+ * memory usage information for DMA-capable and internal memory regions.
+ * 
+ * @warning If this function crashes with LoadProhibited exception, it indicates
+ *          heap corruption has already occurred earlier in program execution.
+ *          Common causes include:
+ *          - Buffer overflows writing past allocated memory boundaries
+ *          - Use-after-free operations accessing freed memory
+ *          - Double-free operations corrupting heap metadata
+ *          - Memory alignment issues causing improper memory access
+ *          - Stack overflow damaging heap structures
+ * 
+ * @note Function uses local macro MEMORY_TAG for consistent logging output
+ * @note All memory values are retrieved as const to prevent modification
+ */
+void show_memory_usage(void);
+
 #ifdef __cplusplus
 }
 #endif

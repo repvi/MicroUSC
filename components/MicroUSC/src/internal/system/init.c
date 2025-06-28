@@ -5,10 +5,15 @@
 
 #define TAG "[MICROUSC KERNEL]"
 
-RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
-RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
+RTC_NOINIT_ATTR unsigned int system_reboot_count;
+RTC_NOINIT_ATTR unsigned int checksum;
 
-__always_inline unsigned int calculate_checksum(unsigned int value)
+/**
+ * @brief Calculate simple XOR checksum for reboot counter
+ * @param value Value to calculate checksum for
+ * @return Calculated checksum
+ */
+static __always_inline unsigned int calculate_checksum(unsigned int value)
 {
     return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
 }
@@ -34,6 +39,10 @@ void increment_rtc_cycle(void)
     set_rtc_cycle();
 }
 
+/**
+ * @brief Initialize system memory handlers and mutexes
+ * @return ESP_OK on success, ESP_FAIL on mutex creation failure
+ */
 static esp_err_t init_memory_handlers(void)
 {
     driver_system.lock = xSemaphoreCreateBinary(); /* initialize the mux (mandatory) */

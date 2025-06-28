@@ -48,6 +48,8 @@
 
 #pragma once
 
+#include "MicroUSC/wireless/wifi.h"
+#include "MicroUSC/wireless/mqtt.h"
 #include "MicroUSC/system/uscsystemdef.h"
 #include "MicroUSC/system/rtc.h"
 #include "MicroUSC/system/sleep.h"
@@ -128,10 +130,7 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
  * 
  * @note Requires active WiFi connection
  */
-esp_err_t microusc_system_start_mqtt_service(char *const url, size_t buffer_size, size_t out_size);
-
-/* completely flush the queue to make it fully available */
-void microusc_queue_flush(void);
+esp_err_t microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg);
 
 /**
  * @brief Set the current system status code for the microUSC subsystem.

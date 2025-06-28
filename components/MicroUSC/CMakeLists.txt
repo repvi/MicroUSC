@@ -75,13 +75,13 @@ idf_component_register(
         esp_system
         debug
         led_strip
+        esp_wifi
+        esp_http_client
+        mqtt
 
     PRIV_REQUIRES
-        esp_wifi
         esp_event
         nvs_flash
-        mqtt
-        esp_http_client
         esp_https_ota
         driver
         json

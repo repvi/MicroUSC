@@ -1,10 +1,11 @@
 #include "MicroUSC/system/status.h"
-#include "MicroUSC/internal/uscdef.h"
 #include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/USCdriver.h"
+#include "esp_chip_info.h"
 #include "esp_system.h"
 
 #define TAG "[STATUS]"
+#define MEMORY_TAG "[MEMORY]"
 
 // best to save SRAM for the esp32 which is essentail, log(n) time complexity
 static char *status_str(usc_status_t status)
@@ -50,4 +51,41 @@ void usc_print_driver_configurations(void)
         }
     }
     ESP_LOGI(TAG, "Finished literating drivers");
+}
+
+void print_system_info(void) 
+{
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+
+    printf("ESP32 Chip Info:\n");
+    printf("  Model: %s\n", chip_info.model == CHIP_ESP32 ? "ESP32" : "Other");
+    printf("  Cores: %d\n", chip_info.cores);
+    printf("  Features: WiFi%s%s\n", 
+           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+}
+
+void show_memory_usage(void) 
+{
+    // Local macro for consistent logging tag - scoped only to this function    
+    // Query DMA capable memory statistics
+    // DMA memory is required for hardware DMA operations and is typically limited
+    const size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
+    const size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
+    
+    // Log DMA memory information
+    ESP_LOGI(MEMORY_TAG, "DMA capable memory:");
+    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_dma);
+    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_dma);
+    
+    // Query internal SRAM memory statistics  
+    // Internal memory is fast SRAM, preferred for performance-critical operations
+    const size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    const size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    
+    // Log internal memory information
+    ESP_LOGI(MEMORY_TAG, "Internal memory:");
+    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_internal);
+    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_internal);
 }

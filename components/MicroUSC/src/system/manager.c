@@ -1,21 +1,14 @@
 #include "MicroUSC/internal/system/init.h"
-#include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/system/service_def.h"
-#include "MicroUSC/internal/wireless/wifi.h"
-#include "MicroUSC/internal/wireless/mqtt.h"
+#include "MicroUSC/internal/USC_driver_config.h"
+#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/chip_specific/system_attr.h"
 #include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/status.h"
-#include "MicroUSC/internal/USC_driver_config.h"
-#include "MicroUSC/internal/driverList.h"
-
-#include "MicroUSC/internal/uscdef.h"
 #include "MicroUSC/USCdriver.h"
 #include "esp_debug_helpers.h"
 #include "esp_system.h"
 #include <esp_task_wdt.h>
-#include "esp_chip_info.h"
-#include "esp_sleep.h"
 #include "esp_intr_alloc.h"
 #include "esp_attr.h"
 #include "stdint.h"
@@ -34,7 +27,6 @@
    n = 10 -> driver status
 */
 #define TAG "[MICROUSC KERNEL]"
-#define MEMORY_TAG "[MEMORY]"
 
 #define INTERNAL_TASK_STACK_SIZE (4096) // Stack size for the system task, increase the size in the future for development
 
@@ -52,6 +44,10 @@
     send_to_mqtt_service(topic, key, data, len); \
     func; \
 } while(0)
+
+#define microusc_pause_drivers() usc_drivers_pause()
+#define microusc_resume_drivers() usc_drivers_resume()
+#define microusc_queue_flush() xQueueReset(microusc_system.queue_system.queue_handler);
 
 #define microusc_system_mqtt_main(topic, status, func, key, data, len) microusc_system_operation(topic, status, func, key, data, len)
 
@@ -121,29 +117,14 @@ void microusc_start_wifi(char *const ssid, char *const password)
     wifi_init_sta(ssid, password);
 }
 
+esp_err_t microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg)
+{
+    return init_mqtt(mqtt_cfg);
+}
+
 __attribute__((noreturn)) void microusc_system_restart(void)
 {
     esp_restart();
-}
-
-void IRAM_ATTR microusc_pause_drivers(void)
-{
-    struct usc_driverList *current, *tmp;
-    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
-        struct usc_driver_t *driver = &current->driver;
-        vTaskSuspend(driver->uart_processor.task);
-        vTaskSuspend(driver->uart_reader.task);
-    }
-}
-
-void IRAM_ATTR microusc_resume_drivers(void)
-{
-    struct usc_driverList *current, *tmp;
-    list_for_each_entry_safe(current, tmp, &driver_system.driver_list.list, list) { // might be unsafe
-        struct usc_driver_t *driver = &current->driver;
-        vTaskResume(driver->uart_processor.task);
-        vTaskResume(driver->uart_reader.task);
-    }
 }
 
 static void getBackPCprevious(MiscrouscBackTrack_t *backtrack, const size_t amount) 
@@ -183,19 +164,9 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
     microusc_system.error_handler.size = size;
 }
 
-__always_inline void set_microusc_system_error_handler_default(void)
+void set_microusc_system_error_handler_default(void)
 {
     set_microusc_system_error_handler(microusc_system_error_handler_default, NULL, 0);
-}
-
-esp_err_t microusc_system_start_mqtt_service(char *const url, size_t buffer_size, size_t out_size)
-{
-    return init_mqtt(url, buffer_size, out_size);
-}
-
-__always_inline void microusc_queue_flush(void)
-{
-    xQueueReset(microusc_system.queue_system.queue_handler);
 }
 
 void send_microusc_system_status(microusc_status code)
@@ -231,18 +202,6 @@ void send_microusc_system_status(microusc_status code)
     }
 }
 
-void print_system_info(void) {
-    esp_chip_info_t chip_info;
-    esp_chip_info(&chip_info);
-
-    printf("ESP32 Chip Info:\n");
-    printf("  Model: %s\n", chip_info.model == CHIP_ESP32 ? "ESP32" : "Other");
-    printf("  Cores: %d\n", chip_info.cores);
-    printf("  Features: WiFi%s%s\n", 
-           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
-           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
-}
-
 static void call_usc_error_handler(uint32_t pc)
 {
     microusc_error_handler func;
@@ -264,48 +223,6 @@ static void call_usc_error_handler(uint32_t pc)
     if (tmp != NULL) {
         heap_caps_free(tmp);
     }
-}
-
-/**
- * @brief Display ESP32 memory usage statistics for DMA and internal memory regions
- * 
- * This function queries the ESP-IDF heap capabilities API to retrieve and display
- * memory usage information for DMA-capable and internal memory regions.
- * 
- * @warning If this function crashes with LoadProhibited exception, it indicates
- *          heap corruption has already occurred earlier in program execution.
- *          Common causes include:
- *          - Buffer overflows writing past allocated memory boundaries
- *          - Use-after-free operations accessing freed memory
- *          - Double-free operations corrupting heap metadata
- *          - Memory alignment issues causing improper memory access
- *          - Stack overflow damaging heap structures
- * 
- * @note Function uses local macro MEMORY_TAG for consistent logging output
- * @note All memory values are retrieved as const to prevent modification
- */
-static void show_memory_usage(void) 
-{
-    // Local macro for consistent logging tag - scoped only to this function    
-    // Query DMA capable memory statistics
-    // DMA memory is required for hardware DMA operations and is typically limited
-    const size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
-    const size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
-    
-    // Log DMA memory information
-    ESP_LOGI(MEMORY_TAG, "DMA capable memory:");
-    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_dma);
-    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_dma);
-    
-    // Query internal SRAM memory statistics  
-    // Internal memory is fast SRAM, preferred for performance-critical operations
-    const size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
-    const size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    
-    // Log internal memory information
-    ESP_LOGI(MEMORY_TAG, "Internal memory:");
-    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_internal);
-    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_internal);
 }
 
 static void microusc_system_task(void *p)
@@ -370,22 +287,6 @@ __attribute__((noreturn)) void microusc_infloop(void)
     }
 }
 
-/**
- * @brief Initialize the MicroUSC system components and resources.
- *
- * This function performs one-time initialization of critical system components
- * required for MicroUSC operation, including hardware interfaces and internal
- * data structures. It must be called exactly once during system startup.
- *
- * @return 
- * - ESP_OK: Initialization successful
- * - Other error codes: Initialization failed (specific error depends on implementation)
- *
- * @note Calling this function multiple times may cause resource leaks, 
- *       hardware conflicts, or undefined behavior due to duplicate initialization.
- *       Ensure it is only called once during the application lifecycle, typically
- *       in app_main() before entering the main execution loop.
- */
 static esp_err_t microusc_system_setup(void)
 {
     gpio_install_isr_service(0);

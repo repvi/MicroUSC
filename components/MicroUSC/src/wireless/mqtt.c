@@ -1,6 +1,6 @@
-#include "MicroUSC/internal/wireless/mqtt.h"
-#include "MicroUSC/internal/wireless/wifi.h"
-#include "MicroUSC/internal/wireless/parsing.h"
+#include "MicroUSC/wireless/mqtt.h"
+#include "MicroUSC/wireless/wifi.h"
+#include "MicroUSC/wireless/parsing.h"
 #include "MicroUSC/internal/hashmap.h"
 #include "esp_system.h"
 #include "esp_log.h"
@@ -239,7 +239,7 @@ exit:
     xSemaphoreGive(mqtt_service.mutex);
 }
 
-esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
+esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
 {
     /* Create binary semaphore for thread safety */
     vSemaphoreCreateBinary(mqtt_service.mutex);
@@ -254,12 +254,12 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
     }
 
     /* Enforce minimum buffer sizes */
-    if (buffer_size < 1024) {
-        buffer_size = 1024; /* Set minimum buffer size */
+    if (mqtt_cfg->buffer.size < 1024) {
+        mqtt_cfg->buffer.size = 1024; /* Set minimum buffer size */
     }
 
-    if (out_size < 512) {
-        out_size = 512; /* Set minimum output size */
+    if (mqtt_cfg->buffer.out_size < 512) {
+        mqtt_cfg->buffer.out_size = 512; /* Set minimum output size */
     }
 
     setup_cjson_pool(); /* Initialize cJSON pool for JSON handling */
@@ -270,14 +270,13 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
         return ESP_FAIL;
     }
     /* Configure the MQTT client with the broker URI */
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = url,
-        .buffer.out_size = out_size, /* Set the output buffer size */
-        .buffer.size = buffer_size, /* Set the input buffer size */
-    };
 
     /* Initialize the MQTT client */
-    mqtt_service.client = esp_mqtt_client_init(&mqtt_cfg);
+    mqtt_service.client = esp_mqtt_client_init(mqtt_cfg);
+    if (mqtt_service.client == NULL) {
+        ESP_LOGE(TAG, "Failed to initialize MQTT client");
+        return ESP_FAIL; // Initialization failed
+    }
 
     /* Register the event handler for all MQTT events */
     esp_mqtt_client_register_event(mqtt_service.client, ESP_EVENT_ANY_ID, mqtt_event_handler, mqtt_service.client);
@@ -292,12 +291,12 @@ esp_err_t init_mqtt(char *const url, size_t buffer_size, size_t out_size)
     return ca;
 }
 
-esp_err_t init_mqtt_with_device_info(const mqtt_device_info_t *device_info, char *const url, size_t buffer_size, size_t out_size)
+esp_err_t init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info)
 {
     if (check_device_name(device_info->device_name) != 0) {
         return ESP_FAIL; // Device name is not set
     }
-    return init_mqtt(url, buffer_size, out_size);
+    return init_mqtt(mqtt_cfg);
 }
 
 void mqtt_service_deinit(void) 
