@@ -8,22 +8,22 @@ struct sleep_config_t {
     bool sleep_time_enable;
 } deep_sleep;
 
-__always_inline void sleep_mode_timer_wakeup(uint64_t time) 
+void sleep_mode_timer_wakeup(uint64_t time) 
 {
     deep_sleep.time = time;
 }
 
-__always_inline void sleep_mode_timer(bool option) 
+void sleep_mode_timer(bool option) 
 {
     deep_sleep.sleep_time_enable = option;
 }
-
-__always_inline void sleep_mode_wakeup_pin(gpio_num_t pin) 
+ 
+void sleep_mode_wakeup_pin(gpio_num_t pin) 
 {
     deep_sleep.wakeup_pin = pin;
 }
-
-__always_inline void sleep_mode_wakeup_pin_status(bool option)
+ 
+void sleep_mode_wakeup_pin_status(bool option)
 {
     deep_sleep.wakeup_pin_enable = option;
 }

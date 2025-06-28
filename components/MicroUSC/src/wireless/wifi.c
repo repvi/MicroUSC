@@ -37,14 +37,17 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
+    #ifdef SYSTEM_WIFI_DEBUG
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa((const ip4_addr_t*)&event->ip_info.ip));
+        /* Set the bit to indicate that we are connected */
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
+    #endif
 }
 
-void wifi_init_sta(char *const ssid, char *const password)
+static void wifi_init_sta_config(char *const ssid, char *const password) 
 {
     /* Create an event group for WiFi events */
     wifi_event_group = xEventGroupCreate();
@@ -80,9 +83,16 @@ void wifi_init_sta(char *const ssid, char *const password)
     ESP_ERROR_CHECK(esp_wifi_start());
     
     ESP_LOGI(TAG, "wifi_init_sta finished.");
+    #ifdef SYSTEM_WIFI_DEBUG
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", ssid, password);
+    #endif
 
     wifi_sys = WIFI_ON;
+}
+
+void wifi_init_sta(char *const ssid, char *const password)
+{
+    wifi_init_sta_config(ssid, password);
 }
 
 static void init_nvs(void) 
@@ -125,40 +135,9 @@ static void set_password_nvs(char *const ssid, char *const password, char *const
     //read_wifi_information_nvs(hidden_password, section, strlen(password));
 }
 
-void wifi_init_sta_get_passowrd_on_flash(char *const ssid, char *const password, char *const section) 
+void wifi_init_sta_get_password_on_flash(char *const ssid, char *const password, char *const section) 
 {
     /* Store and read WiFi credentials in NVS */
     set_password_nvs(ssid, password, section);
-
-    /* Create an event group for WiFi events */
-    wifi_event_group = xEventGroupCreate();
-
-    /* Initialize the TCP/IP network interface and event loop */
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* Create the default WiFi station interface */
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-    assert(sta_netif);
-
-    /* Register WiFi and IP event handlers */
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_any_id);
-    esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_got_ip);
-
-    /* Configure WiFi with provided SSID and password */
-    wifi_config_t wifi_config;
-    memcpy(wifi_config.sta.ssid, ssid, SSID_SIZE);
-    memcpy(wifi_config.sta.password, password, PASSWORD_SIZE);
-
-    /* Set WiFi mode to station and apply configuration */
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
-    ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", ssid, password);
-
-    wifi_sys = WIFI_ON;
+    wifi_init_sta_config(ssid, password);
 }

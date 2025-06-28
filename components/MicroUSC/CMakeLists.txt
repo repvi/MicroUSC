@@ -22,6 +22,7 @@ set(MICROUSC_INTERNAL
     "internal/genList.c"
     "internal/driverList.c"
     "internal/system/bit_manip.c"
+    "internal/system/init.c"
     "internal/hashmap.c"
 )
 
@@ -103,6 +104,7 @@ target_compile_definitions(
         BUFFER_SIZE=1024
         SEND_BUFFER_SIZE=6
         MICROUSC_MQTT_DEBUG
+        SYSTEM_WIFI_DEBUG
 )
 
 # add_compile_options(-mtext-section-literals)

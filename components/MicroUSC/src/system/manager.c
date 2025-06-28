@@ -1,3 +1,4 @@
+#include "MicroUSC/internal/system/init.h"
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/system/service_def.h"
 #include "MicroUSC/internal/wireless/wifi.h"
@@ -7,7 +8,7 @@
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/internal/driverList.h"
-#include "MicroUSC/internal/genList.h"
+
 #include "MicroUSC/internal/uscdef.h"
 #include "MicroUSC/USCdriver.h"
 #include "esp_debug_helpers.h"
@@ -55,9 +56,6 @@
 #define microusc_system_mqtt_main(topic, status, func, key, data, len) microusc_system_operation(topic, status, func, key, data, len)
 
 #define microusc_system_mqtt_main_fast(topic, func, key, data, len) microusc_system_operation_quick(topic, func, key, data, len)
-
-RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
-RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
 
 struct {
     struct {
@@ -126,28 +124,6 @@ void microusc_start_wifi(char *const ssid, char *const password)
 __attribute__((noreturn)) void microusc_system_restart(void)
 {
     esp_restart();
-}
-
-static __always_inline unsigned int calculate_checksum(unsigned int value)
-{
-    return value ^ 0xA5A5A5A5; // XOR-based checksum for simplicity
-}
-
-static void set_rtc_cycle(void)
-{
-    if (checksum != calculate_checksum(system_reboot_count)) {
-        system_reboot_count = 0; // Reset only on corruption detection
-    } 
-    else {
-        system_reboot_count++; // Safe increment
-    }
-    
-    checksum = calculate_checksum(system_reboot_count); // Update valid checksum
-}
-
-static __always_inline void increment_rtc_cycle(void)
-{
-    set_rtc_cycle();
 }
 
 void IRAM_ATTR microusc_pause_drivers(void)
@@ -413,7 +389,6 @@ __attribute__((noreturn)) void microusc_infloop(void)
 static esp_err_t microusc_system_setup(void)
 {
     gpio_install_isr_service(0);
-
     microusc_system.critical_lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
 
     microusc_system.queue_system.queue_handler = xQueueCreate(MICROUSC_QUEUEHANDLE_SIZE, sizeof(MiscrouscBackTrack_t));
@@ -427,11 +402,6 @@ static esp_err_t microusc_system_setup(void)
     #endif
     
     set_rtc_cycle();
-
-    if (system_reboot_count != 0) {
-        ESP_LOGW(TAG, "System fail count: %u", system_reboot_count);
-        vTaskDelay(1000 / portTICK_PERIOD_MS); /* Wait for the system to be ready (1 second) experimental */
-    }
 
     sleep_mode_wakeup_default();
     set_microusc_system_error_handler_default(); /* Set the default error handler */
@@ -449,23 +419,9 @@ static esp_err_t microusc_system_setup(void)
     return ESP_OK;
 }
 
-static esp_err_t init_memory_handlers(void)
-{
-    driver_system.lock = xSemaphoreCreateBinary(); /* initialize the mux (mandatory) */
-    if (driver_system.lock == NULL) {
-        ESP_LOGE(TAG, "Could not initialize main driver lock");
-        return ESP_FAIL;
-    }
-    xSemaphoreGive(driver_system.lock);
-    INIT_LIST_HEAD(&driver_system.driver_list.list);
-
-    return init_hidden_driver_lists(sizeof(uint32_t) + 2 /* was SEND_BUFFER_SIZE */, 256);
-}
-
 void init_MicroUSC_system(void) 
 {
-    ESP_ERROR_CHECK(init_memory_handlers());
-    ESP_ERROR_CHECK(init_configuration_storage());
+    ESP_ERROR_CHECK(init_system_memory_space()); /* Initialize memory pools for the system */
     ESP_ERROR_CHECK(microusc_system_setup()); /* system task will run on core 0, mandatory */
     vTaskDelay(500 / portTICK_PERIOD_MS); /* Wait for the system to be ready (500 milliseconds) */
 }
