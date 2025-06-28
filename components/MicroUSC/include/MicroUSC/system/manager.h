@@ -49,8 +49,8 @@
 #pragma once
 
 #include "MicroUSC/system/uscsystemdef.h"
-#include "MicroUSC/system/manager_isr.h"
 #include "MicroUSC/system/rtc.h"
+#include "MicroUSC/system/sleep.h"
 #include "driver/gpio.h"
 
 #ifdef __cplusplus
@@ -59,83 +59,22 @@ extern "C" {
 
 typedef void(*microusc_error_handler)(void *);
 
+/**
+ * @brief Configure a GPIO pin as an interrupt source for the MicroUSC system and register an ISR.
+ *
+ * This function determines the GPIO pin from the provided gpio_config_t's pin_bit_mask,
+ * removes any existing ISR handler for that pin, configures the pin with the given settings,
+ * and attaches the specified ISR handler. It also sets the status code that will be triggered
+ * when the ISR is called.
+ *
+ * Typical usage: Call this during system initialization to set up a wakeup or event pin.
+ *
+ * @param io_config      GPIO configuration structure specifying the pin and settings.
+ * @param trigger_status The MicroUSC status code to associate with this ISR event.
+ */
+void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status);
+
 void microusc_start_wifi(char *const ssid, char *const password);
-
-/**
- * @brief Set the timer duration for sleep mode wakeup.
- *
- * This function configures the timer duration (in microseconds) for the timer-based wakeup source.
- * When the timer expires, it triggers the ISR used to wake up the ESP32 from sleep mode.
- *
- * Typical usage: Call this function after enabling the timer wakeup source to specify the wakeup interval.
- *
- * @param time The timer duration in microseconds until the wakeup ISR is triggered.
- *
- * @note This is essential for applications requiring precise timed wakeups and low-power operation on ESP32.
- */
-void microusc_set_sleep_mode_timer_wakeup(uint64_t time);
-
-/**
- * @brief Enable or disable the timer as a sleep mode wakeup source.
- *
- * This function enables or disables the use of a timer to wake up the ESP32 from sleep mode.
- * When enabled, the timer can be configured to trigger an interrupt service routine (ISR) that wakes the device.
- *
- * Typical usage: Call this function before entering sleep mode to specify whether the timer should be used as a wakeup source.
- *
- * @param option Set to true to enable the timer wakeup, or false to disable it.
- *
- * @note This function is typically used in embedded ESP32 projects where precise timing and wakeup control are required.
- */
-void microusc_set_sleep_mode_timer(bool option);
-
-/**
- * @brief Configure a GPIO pin as the wakeup source for ISR.
- *
- * This function sets the specified GPIO pin to be used as the interrupt source for waking up the ESP32 from sleep mode.
- * It configures the pin to trigger an ISR (Interrupt Service Routine) that will wake the device.
- *
- * Typical usage involves calling this function before entering sleep mode to ensure the device can be awakened by the specified GPIO.
- *
- * @param pin The GPIO number to be configured as the wakeup interrupt source.
- *
- * @note The actual interrupt configuration and enabling must be handled separately.
- */
-void microusc_set_wakeup_pin(gpio_num_t pin);
-
-/**
- * @brief Enable or disable the GPIO wakeup interrupt pin.
- *
- * This function controls the status of the GPIO interrupt pin used for waking up the ESP32 from sleep mode.
- * When called with 'option' set to true, the wakeup pin is enabled; when set to false, the wakeup pin is disabled.
- * Disabling the pin prevents the associated interrupt from triggering a wakeup event.
- *
- * This function is typically used in conjunction with microusc_set_sleepmode_wakeup_default() to manage
- * the device's wakeup sources and power management behavior.
- *
- * @param option Set to true to enable the GPIO wakeup pin, or false to disable it.
- *
- * @note Disabling the wakeup pin will prevent the device from waking up via the corresponding GPIO interrupt.
- */
-void microusc_set_wakeup_pin_status(bool option);
-
-/**
- * @brief Configure the default wakeup function for sleep mode.
- *
- * This function sets up a void pointer to a default wakeup handler
- * that is used as an ISR (Interrupt Service Routine) to wake up
- * the ESP32 from sleep mode. It ensures that, when the microcontroller
- * is in a low-power state, the configured interrupt can properly
- * trigger the wakeup sequence using the assigned handler.
- *
- * Typical use case: Call this function during system initialization
- * or before entering sleep mode to ensure the device can be correctly
- * awakened by external events or interrupts.
- *
- * @note The actual wakeup source and interrupt configuration must be
- *       set up separately, depending on the hardware and application needs.
- */
-void microusc_set_sleepmode_wakeup_default(void);
 
 /**
  * @brief Performs a complete system restart of the ESP32

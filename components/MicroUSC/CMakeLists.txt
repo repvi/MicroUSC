@@ -33,9 +33,9 @@ set(MICROUSC_SYNCED_DRIVER
 set(MICROUSC_SYSTEM
     "system/memory_pool.c"
     "system/manager.c"
-    "system/manager_isr.c"
     "system/rtc.c"
     "system/status.c"
+    "system/sleep.c"
 )
 
 set(MICROUSC_WIRELESS

@@ -1,6 +1,11 @@
 #include "MicroUSC/system/rtc.h"
 #include "MicroUSC/internal/USC_driver_config.h"
-#include  "esp_system.h"
+#include "MicroUSC/internal/uscdef.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "esp_heap_caps.h"
+
+#define TAG "[RTC MEMORY]"
 
 #define RTC_MEMORY_BUFFER_SIZE (256) // Size of the memory buffer
 #define RTC_MEMORY_STORAGE_KEY_SIZE (32) // Size of the key for the memory storage
@@ -52,7 +57,7 @@ void save_system_rtc_var(void *var, const size_t size, const char key)
 
 void *get_system_rtc_var(const char key)
 {
-    uintptr_t address = 0; // 'NULL'
+    uintptr_t address = 0; // 'NULL' equivalent
     portENTER_CRITICAL(&rtc_memory.lock);
     {
         size_t offset = 0;

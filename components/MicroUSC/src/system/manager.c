@@ -35,9 +35,6 @@
 #define TAG "[MICROUSC KERNEL]"
 #define MEMORY_TAG "[MEMORY]"
 
-#define CONVERT_TO_SLEEPMODE_TIME(x) ( uint64_t ) ( pdMS_TO_TICKS(x) * portTICK_PERIOD_MS * 1000ULL )
-#define DEFAULT_LIGHTMODE_TIME CONVERT_TO_SLEEPMODE_TIME(5000) // 5 seconds
-
 #define INTERNAL_TASK_STACK_SIZE (4096) // Stack size for the system task, increase the size in the future for development
 
 #define WDT_TIMER_WAIT 3
@@ -62,25 +59,12 @@
 RTC_NOINIT_ATTR unsigned int system_reboot_count; // only accessed by the system
 RTC_NOINIT_ATTR unsigned int checksum; // only accessed by the system
 
-struct sleep_config_t {
-    gpio_num_t wakeup_pin;
-    uint64_t sleep_time;
-    bool wakeup_pin_enable;
-    bool sleep_time_enable;
-} microusc_system_sleep;
-
 struct {
     struct {
         StackType_t stack[TASK_STACK_SIZE];
         StaticTask_t taskBuffer;
         TaskHandle_t main_task;
     } task;
-    struct {
-        gpio_num_t wakeup_pin;
-        uint64_t sleep_time;
-        bool wakeup_pin_enable;
-        bool sleep_time_enable;
-    } deep_sleep;
     struct {
         QueueHandle_t queue_handler;
         size_t count;
@@ -99,37 +83,44 @@ struct {
     portEXIT_CRITICAL(&microusc_system.critical_lock); \
 } while(0)
 
+void IRAM_ATTR microusc_software_isr_handler(void *arg)
+{
+    MiscrouscBackTrack_t current;
+    current.status = *(microusc_status *)arg;
+    xQueueSendFromISR(microusc_system.queue_system.queue_handler, &current, NULL);
+}
+
+/* Add on the next version */
+__deprecated void microusc_system_isr_trigger(void) 
+{
+    /* TODO */
+}
+
+void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status)
+{
+    int bit_mask = io_config.pin_bit_mask;
+    int gpio_pin = 1;
+
+    /* Determine the GPIO pin number from the bit mask */
+    if (bit_mask == 0) return;
+    while (bit_mask > 1) {
+        bit_mask >>= 1;
+        gpio_pin++;
+    }
+
+    /* Remove any existing ISR handler for this pin */
+    gpio_isr_handler_remove((gpio_num_t)gpio_pin);
+
+    /* Configure the GPIO pin with the provided settings */
+    gpio_config(&io_config);
+
+    /* Add the new ISR handler for this pin */
+    gpio_isr_handler_add((gpio_num_t)gpio_pin, microusc_software_isr_handler, &gpio_pin);
+}
+
 void microusc_start_wifi(char *const ssid, char *const password)
 {
     wifi_init_sta(ssid, password);
-}
-
-__always_inline void microusc_set_sleep_mode_timer_wakeup(uint64_t time) 
-{
-    microusc_quick_context(microusc_system.deep_sleep.sleep_time, time);
-}
-
-__always_inline void microusc_set_sleep_mode_timer(bool option) 
-{
-    microusc_quick_context(microusc_system.deep_sleep.sleep_time_enable, option);
-}
-
-__always_inline void microusc_set_wakeup_pin(gpio_num_t pin) 
-{
-    microusc_quick_context(microusc_system.deep_sleep.wakeup_pin, pin);
-}
-
-__always_inline void microusc_set_wakeup_pin_status(bool option)
-{
-    microusc_quick_context(microusc_system.deep_sleep.wakeup_pin_enable, option);
-}
-
-void microusc_set_sleepmode_wakeup_default(void) 
-{
-    microusc_set_sleep_mode_timer_wakeup(DEFAULT_LIGHTMODE_TIME);
-    microusc_set_sleep_mode_timer(true);
-    microusc_set_wakeup_pin(GPIO_NUM_NC);
-    microusc_set_wakeup_pin_status(false);
 }
 
 __attribute__((noreturn)) void microusc_system_restart(void)
@@ -157,27 +148,6 @@ static void set_rtc_cycle(void)
 static __always_inline void increment_rtc_cycle(void)
 {
     set_rtc_cycle();
-}
-
-static void microusc_sleep_mode(void)
-{
-    portENTER_CRITICAL(&microusc_system.critical_lock);
-    {
-        bool sleep_time_enabled = microusc_system.deep_sleep.sleep_time_enable;
-        bool wakeup_pin_enable = microusc_system.deep_sleep.wakeup_pin_enable;
-        if (!(sleep_time_enabled || wakeup_pin_enable)) {
-            return; // do nothing as timer is completely disabled
-        }
-        
-        if (sleep_time_enabled) {
-            esp_sleep_enable_timer_wakeup(microusc_system.deep_sleep.sleep_time);
-        }
-        if (wakeup_pin_enable) {
-            esp_sleep_enable_ext0_wakeup(microusc_system.deep_sleep.wakeup_pin, 1);
-        }
-    }
-    portEXIT_CRITICAL(&microusc_system.critical_lock);
-    esp_deep_sleep_start();
 }
 
 void IRAM_ATTR microusc_pause_drivers(void)
@@ -374,7 +344,7 @@ static void microusc_system_task(void *p)
                     break;
                 case USC_SYSTEM_SLEEP:
                     builtin_led_system(USC_SYSTEM_SLEEP);
-                    microusc_sleep_mode();
+                    sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
                     microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause", 0);
@@ -463,7 +433,7 @@ static esp_err_t microusc_system_setup(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS); /* Wait for the system to be ready (1 second) experimental */
     }
 
-    microusc_set_sleepmode_wakeup_default();
+    sleep_mode_wakeup_default();
     set_microusc_system_error_handler_default(); /* Set the default error handler */
 
     xTaskCreatePinnedToCore(

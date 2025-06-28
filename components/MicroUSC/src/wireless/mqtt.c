@@ -137,7 +137,8 @@ static int send_connection_info(void) {
 static void turnoff_led(mqtt_data_package_t *package) 
 {
     esp_mqtt_event_handle_t event = package->event;
-
+    (void)event; // Suppress unused variable warning
+    
     // Extract LED status
     char *led_status = get_cjson_string(package->json, "led_status");
     if (led_status == NULL) {
@@ -150,6 +151,9 @@ static void ota_handle(mqtt_data_package_t *package)
 {
     char *data = package->event->data;
     size_t data_len = package->event->data_len;
+
+    (void)data; // Suppress unused variable warning
+    (void)data_len; // Suppress unused variable warning
 
     /*
     if (strncmp(data, MQTT_TOPIC("ota"), data_len) == 0) {
