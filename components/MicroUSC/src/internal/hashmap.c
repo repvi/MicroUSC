@@ -1,5 +1,7 @@
 #include "MicroUSC/internal/hashmap.h"
+#include "stdio.h"
 #include <string.h>
+#include <stdbool.h>
 
 typedef struct {
     char key[MAX_KEY_LENGTH];
@@ -47,9 +49,15 @@ static uint16_t find_slot(HashMap map, const char* key, bool* found) {
 
     do {
         if (!map->entries[index].occupied) {
+            #ifdef DEBUG_HASHMAP
+            printf("Found empty slot for key %s at index %d\n", key, index);
+            #endif
             return index;  // Found empty slot
         }
         if (strcmp(map->entries[index].key, key) == 0) {
+            #ifdef DEBUG_HASHMAP
+            printf("Found existing key %s at index %d\n", key, index);
+            #endif
             *found = true;
             return index;  // Found existing key
         }
@@ -77,6 +85,9 @@ bool hashmap_put(HashMap map, const char* key, void* value) {
         map->entries[index].key[MAX_KEY_LENGTH - 1] = '\0';
         map->entries[index].occupied = true;
         map->size++;
+        #ifdef DEBUG_HASHMAP
+        printf("Inserted key %s at index %d\n", key, index);
+        #endif
     }
     
     map->entries[index].value = value;
@@ -89,8 +100,15 @@ void* hashmap_get(HashMap map, const char* key) {
     uint16_t index = find_slot(map, key, &found);
     
     if (found && index < HASHMAP_SIZE) {
+        #ifdef DEBUG_HASHMAP
+        printf("Found key %s at index %d\n", key, index);
+        #endif
         return map->entries[index].value;
     }
+
+    #ifdef DEBUG_HASHMAP
+    printf("Key %s not found in hashmap\n", key);
+    #endif
     return NULL;
 }
 
@@ -102,7 +120,13 @@ bool hashmap_remove(HashMap map, const char* key) {
     if (found && index < HASHMAP_SIZE) {
         map->entries[index].occupied = false;
         map->size--;
+        #ifdef DEBUG_HASHMAP
+        printf("Removed key %s from index %d\n", key, index);
+        #endif
         return true;
     }
+    #ifdef DEBUG_HASHMAP
+    printf("Key %s not found for removal\n", key);
+    #endif
     return false;
 }

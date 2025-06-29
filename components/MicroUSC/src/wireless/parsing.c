@@ -3,7 +3,7 @@
 #include "esp_system.h"
 
 /* Pool configuration */
-#define CJSON_POOL_SIZE 512
+#define CJSON_POOL_SIZE 1024
 #define TAG "[CJSON POOL]"
 
 uint8_t cjson_pool[CJSON_POOL_SIZE];

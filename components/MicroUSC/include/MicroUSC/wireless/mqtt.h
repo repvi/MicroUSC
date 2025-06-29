@@ -24,36 +24,23 @@ typedef struct {
 } mqtt_device_info_t;
 
 /**
- * @brief Send data to MQTT broker as JSON
- *
- * Creates and sends a JSON message to the MQTT broker with the format:
- * {
- *    "<key>": "<data>"
- * }
- *
- * @param topic    MQTT topic to publish to
- * @param key      Key name in the JSON object
- * @param data     Data string to be sent as value
- * @param len      Length of data (0 for automatic length calculation)
- *
- * @return         Message ID on success (>0)
- *                 -2 if JSON creation/printing fails
- *                 -1 if MQTT publish fails
- *
- * @note Uses a static 128-byte buffer for JSON string
- * @note Resets JSON memory pool before operation
- * 
- * Example:
- * ```c
- * // Sends to topic "sensors/temperature" with payload {"current": "25.5"}
- * send_to_mqtt_service("sensors/temperature", "current", "25.5", 0);
- * 
- * // With known length
- * const char* data = "25.5";
- * send_to_mqtt_service("sensors/temperature", "current", data, strlen(data));
- * ```
+ * @brief Send single key-value pair as JSON to MQTT topic
+ * @param topic MQTT topic
+ * @param key   JSON key
+ * @param data  JSON value
+ * @return >0 on success, -1 on JSON fail, -2 if buffer too small
  */
-int send_to_mqtt_service(char *const topic, char const *const key, const char *const data, int len);
+int send_to_mqtt_service_single(char *const topic, char const *const key, const char *const data);
+
+/**
+ * @brief Send multiple key-value pairs as JSON to MQTT topic
+ * @param topic MQTT topic
+ * @param key   Array of JSON keys
+ * @param data  Array of JSON values
+ * @param len   Number of key-value pairs
+ * @return >0 on success, -1 on JSON fail, -2 if buffer too small
+ */
+int send_to_mqtt_service_multiple(char *const topic, const char**key, const char**data, int len);
 
 /**
  * @brief MQTT event handler for ESP-IDF MQTT client.

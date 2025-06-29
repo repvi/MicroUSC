@@ -2,6 +2,7 @@
 #include "MicroUSC/wireless/wifi.h"
 #include "MicroUSC/wireless/parsing.h"
 #include "MicroUSC/internal/hashmap.h"
+#include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_log.h"
 
@@ -33,6 +34,13 @@ char *device_name = NULL;
 char *last_updated = ( __DATE__ );
 char* sensor_type = "uart";
 
+const char *general_key[] = {
+    "device_name",
+    "device_model",
+    "last_updated",
+    "sensor_type"
+};
+
 static int check_device_name(const char *new_name) 
 {
     int name_length;
@@ -56,11 +64,10 @@ static int check_device_name(const char *new_name)
     }
     strncpy(device_name, NO_NAME, name_length);
 
-
     return 0; // Indicate success
 }
 
-int send_to_mqtt_service(char *const topic, char const *const key, const char *const data, int len)
+int send_to_mqtt_service_single(char *const topic, char const *const key, const char *const data)
 {
     cjson_pool_reset(); // Reset pool before building new JSON tree
 
@@ -70,14 +77,43 @@ int send_to_mqtt_service(char *const topic, char const *const key, const char *c
     char json_buffer[128];
     bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
     if (success) {
-        if (len == 0) {
-            len = strlen(json_buffer);
-            if (len < 0) {
-                ESP_LOGE(TAG, "Failed to create JSON payload");
-                return -1;
-            }
+        int len = strlen(json_buffer);
+        if (len < 0) {
+            ESP_LOGE(TAG, "Failed to create JSON payload");
+            return -1;
         }
         return esp_mqtt_client_publish(mqtt_service.client, topic, json_buffer, len, 1, 0);
+    }
+    else {
+        return -2;
+    }
+}
+
+int send_to_mqtt_service_multiple(char *const topic, const char**key, const char**data, int len)
+{
+    cjson_pool_reset(); // Reset pool before building new JSON tree
+
+    cJSON *root = cJSON_CreateObject();
+    for (int i = 0; i < len; i++) {
+        if (!key[i] || !data[i]) {
+            ESP_LOGE(TAG, "Key or data is NULL at index %d", i);
+            return -1; // Indicate failure
+        }
+        #ifdef MICROUSC_MQTT_DEBUG
+        ESP_LOGI(TAG, "Adding key: %s with data: %s", key[i], data[i]);
+        #endif
+        cJSON_AddStringToObject(root, key[i], data[i]);
+    }
+    
+    char json_buffer[256];
+    bool success = cJSON_PrintPreallocated(root, json_buffer, sizeof(json_buffer), 0);
+    if (success) {
+        int json_string_size = strlen(json_buffer);
+        if (json_string_size < 0) {
+            ESP_LOGE(TAG, "Failed to create JSON payload");
+            return -1;
+        }
+        return esp_mqtt_client_publish(mqtt_service.client, topic, json_buffer, json_string_size, 1, 0);
     }
     else {
         return -2;
@@ -98,40 +134,35 @@ static bool add_esp_mqtt_client_subscribe(
 }
 
 static int send_connection_info(void) {
-    #ifdef MICROUSC_MQTT_DEBUG
-    int sent_status;
+    char general_info[4][32];
+    const char *info_ptrs[4];
 
-    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_name", device_name, 0);
-    if (sent_status < 0) {
-        ESP_LOGE(TAG, "Failed to send connection info, status: %d", sent_status);
-        return -1; // Indicate failure
-    }
+    int device_name_length = min(strlen(device_name), 31);
+    strncpy(general_info[0], device_name, device_name_length);
+    general_info[0][device_name_length] = '\0'; // Ensure null-termination
+    info_ptrs[0] = general_info[0];
 
-    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_model", CONFIG_IDF_TARGET, 0);
-    if (sent_status < 0) {
-        ESP_LOGE(TAG, "Failed to send device model, status: %d", sent_status);
-        return -1; // Indicate failure
-    }
+    int device_model_length = min(strlen(CONFIG_IDF_TARGET), 31);
+    strncpy(general_info[1], CONFIG_IDF_TARGET, device_model_length);
+    general_info[1][device_model_length] = '\0'; // Ensure null-termination
+    info_ptrs[1] = general_info[1];
 
-    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "last_updated", last_updated, 0);
-    if (sent_status < 0) {
-        ESP_LOGE(TAG, "Failed to send last updated info, status: %d", sent_status);
-        return -1; // Indicate failure
-    }
+    int last_updated_length = min(strlen(last_updated), 31);
+    strncpy(general_info[2], last_updated, last_updated_length);
+    general_info[2][last_updated_length] = '\0'; // Ensure null-termination
+    info_ptrs[2] = general_info[2];
 
-    sent_status = send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "sensor_type", sensor_type, 0);
-    if (sent_status < 0) {
-        ESP_LOGE(TAG, "Failed to send sensor type, status: %d", sent_status);
-        return -1; // Indicate failure
-    }
-    #else
-    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_name", device_name, 0);
-    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "device_model", CONFIG_IDF_TARGET, 0);
-    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "last_updated", last_updated, 0);
-    send_to_mqtt_service(CONNECTION_MQTT_SEND_INFO, "sensor_type", sensor_type, 0);
-    #endif
+    int sensor_type_length = min(strlen(sensor_type), 31);
+    strncpy(general_info[3], sensor_type, sensor_type_length);
+    general_info[3][sensor_type_length] = '\0'; // Ensure null-termination
+    info_ptrs[3] = general_info[3];
 
-    return 1;
+    return send_to_mqtt_service_multiple(
+        CONNECTION_MQTT_SEND_INFO, 
+        (const char **)general_key, 
+        (const char **)info_ptrs, 
+        4
+    );
 }
 
 static void turnoff_led(mqtt_data_package_t *package) 
@@ -166,7 +197,11 @@ static void ota_handle(mqtt_data_package_t *package)
 
 static void handle_mqtt_data_recieved(mqtt_data_package_t *package)
 {
-    char *key = package->event->topic;
+    char key[20];
+    int key_len = min(package->event->topic_len, sizeof(key) - 1);
+    strncpy(key, package->event->topic, key_len);
+    key[key_len] = '\0';  // Ensure null-termination
+
     mqtt_event_data_action_t action = hashmap_get(mqtt_device_map, key);
     if (action) {
         action(package);
@@ -241,8 +276,13 @@ exit:
 
 esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
 {
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi not connected - MQTT start failed");
+        return ESP_FAIL;
+    }
     /* Create binary semaphore for thread safety */
-    vSemaphoreCreateBinary(mqtt_service.mutex);
+    mqtt_service.mutex = xSemaphoreCreateBinary();
     if (mqtt_service.mutex == NULL) {
         ESP_LOGE(TAG, "Could not intialize semaphore for mqtt service");
         return ESP_FAIL;
@@ -250,7 +290,7 @@ esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
     xSemaphoreGive(mqtt_service.mutex);
 
     if (check_device_name(NULL) != 0) {
-        return ESP_FAIL; // Device name is not set
+        goto clean_up;
     }
 
     /* Enforce minimum buffer sizes */
@@ -267,7 +307,7 @@ esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
     mqtt_device_map = hashmap_create(); /* Create a new hashmap for storing MQTT device subscriptions */
     if (mqtt_device_map == NULL) {
         ESP_LOGE(TAG, "Failed to create hashmap for MQTT device map");
-        return ESP_FAIL;
+        goto clean_up;
     }
     /* Configure the MQTT client with the broker URI */
 
@@ -275,7 +315,7 @@ esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
     mqtt_service.client = esp_mqtt_client_init(mqtt_cfg);
     if (mqtt_service.client == NULL) {
         ESP_LOGE(TAG, "Failed to initialize MQTT client");
-        return ESP_FAIL; // Initialization failed
+        goto clean_up;
     }
 
     /* Register the event handler for all MQTT events */
@@ -283,12 +323,19 @@ esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
 
     /* Start the MQTT client (runs on core 0) */
     esp_err_t ca = esp_mqtt_client_start(mqtt_service.client);
-    if (ca == ESP_OK) {
-        ESP_LOGI(TAG, "Has been successfully been set");
-        mqtt_service.active = MQTT_ENABLED;
+    if (ca != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start MQTT client: %s", esp_err_to_name(ca));
+        goto clean_up;
     }
 
+    ESP_LOGI(TAG, "Has been successfully been set");
+    mqtt_service.active = MQTT_ENABLED;
     return ca;
+
+clean_up:
+    vSemaphoreDelete(mqtt_service.mutex);
+    mqtt_service.mutex = NULL;
+    return ESP_FAIL; // Return failure if any step fails
 }
 
 esp_err_t init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info)

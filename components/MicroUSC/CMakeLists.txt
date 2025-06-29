@@ -105,6 +105,7 @@ target_compile_definitions(
         SEND_BUFFER_SIZE=6
         MICROUSC_MQTT_DEBUG
         SYSTEM_WIFI_DEBUG
+        DEBUG_HASHMAP
 )
 
 # add_compile_options(-mtext-section-literals)

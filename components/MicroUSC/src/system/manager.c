@@ -34,14 +34,14 @@
 
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 
-#define microusc_system_operation(topic, status, func, key, data, len) do { \
-    send_to_mqtt_service(topic, key, data, len); \
+#define microusc_system_operation(topic, status, func, key, data) do { \
+    send_to_mqtt_service_single(topic, key, data); \
     builtin_led_system(status); \
     func;  \
 } while(0)
 
-#define microusc_system_operation_quick(topic, func, key, data, len) do { \
-    send_to_mqtt_service(topic, key, data, len); \
+#define microusc_system_operation_quick(topic, func, key, data) do { \
+    send_to_mqtt_service_single(topic, key, data); \
     func; \
 } while(0)
 
@@ -49,9 +49,9 @@
 #define microusc_resume_drivers() usc_drivers_resume()
 #define microusc_queue_flush() xQueueReset(microusc_system.queue_system.queue_handler);
 
-#define microusc_system_mqtt_main(topic, status, func, key, data, len) microusc_system_operation(topic, status, func, key, data, len)
+#define microusc_system_mqtt_main(topic, status, func, key, data) microusc_system_operation(topic, status, func, key, data)
 
-#define microusc_system_mqtt_main_fast(topic, func, key, data, len) microusc_system_operation_quick(topic, func, key, data, len)
+#define microusc_system_mqtt_main_fast(topic, func, key, data) microusc_system_operation_quick(topic, func, key, data)
 
 struct {
     struct {
@@ -240,10 +240,10 @@ static void microusc_system_task(void *p)
                     sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
-                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause", 0);
+                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause");
                     break;
                 case USC_SYSTEM_RESUME:
-                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_resume_drivers(), "status", "normal", 0);
+                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_resume_drivers(), "status", "normal");
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);
@@ -271,7 +271,7 @@ static void microusc_system_task(void *p)
                     usc_print_driver_configurations();
                     break;
                 case USC_SYSTEM_ERROR:
-                    microusc_system_mqtt_main_fast(CONNECTION_MQTT_SEND_INFO, call_usc_error_handler(sys_data.type.caller_pc), "status", "error", 0);
+                    microusc_system_mqtt_main_fast(CONNECTION_MQTT_SEND_INFO, call_usc_error_handler(sys_data.type.caller_pc), "status", "error");
                     break;
                 default:
                     break;
