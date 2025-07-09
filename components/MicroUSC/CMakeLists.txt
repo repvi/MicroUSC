@@ -24,6 +24,8 @@ set(MICROUSC_INTERNAL
     "internal/system/bit_manip.c"
     "internal/system/init.c"
     "internal/hashmap.c"
+    "internal/wireless/wifi_handler.cpp"
+    "internal/wireless/mqtt_handler.cpp"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -40,8 +42,9 @@ set(MICROUSC_SYSTEM
 )
 
 set(MICROUSC_WIRELESS
-    "wireless/wifi.c"
-    "wireless/mqtt.c"
+    "wireless/wifi.cpp"
+    "wireless/mqtt.cpp"
+    "wireless/ota.c"
     "wireless/parsing.c"
 )
 

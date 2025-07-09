@@ -17,6 +17,9 @@
 #define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device_info")
 #define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 
+typedef MqttMaintainer MqttMaintainer;
+typedef MqttMaintainer *MqttMaintainerHandler;
+
 typedef struct {
     char *device_name;
     char *last_updated;
