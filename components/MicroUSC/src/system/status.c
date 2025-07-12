@@ -36,13 +36,13 @@ void usc_print_driver_configurations(void)
         struct usc_driver_t *driver = &current->driver;
         SemaphoreHandle_t lock = driver->sync_signal;
         if (xSemaphoreTake(lock, SEMAPHORE_WAIT_TIME) == pdTRUE) {
-            ESP_LOGI("DRIVER", "      %s",  driver->driver_name);
-            ESP_LOGI("Baud Rate", "   %d", driver->uart_config.baud_rate);
-            ESP_LOGI("Status", "      %s",  status_str(driver->status));
-            ESP_LOGI("UART Port", "   %d",  driver->port_config.port);
-            ESP_LOGI("UART TX Pin", " %d",  driver->port_config.tx);
-            ESP_LOGI("UART RX Pin", " %d",  driver->port_config.rx);
-            ESP_LOGI("--------", "----------------------------");
+            printf("DRIVER", "      %s",  driver->driver_name);
+            printf("Baud Rate", "   %d", driver->uart_config.baud_rate);
+            printf("Status", "      %s",  status_str(driver->status));
+            printf("UART Port", "   %d",  driver->port_config.port);
+            printf("UART TX Pin", " %d",  driver->port_config.tx);
+            printf("UART RX Pin", " %d",  driver->port_config.rx);
+            printf("--------", "----------------------------");
             xSemaphoreGive(lock);
             i++;
         }
@@ -71,21 +71,25 @@ void show_memory_usage(void)
     // Local macro for consistent logging tag - scoped only to this function    
     // Query DMA capable memory statistics
     // DMA memory is required for hardware DMA operations and is typically limited
+    #ifdef __XTENSA__
     const size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
     const size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
     
     // Log DMA memory information
-    ESP_LOGI(MEMORY_TAG, "DMA capable memory:");
-    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_dma);
-    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_dma);
-    
-    // Query internal SRAM memory statistics  
+    printf(" %s DMA capable memory:", MEMORY_TAG);
+    printf(" %s  Total: %d bytes", MEMORY_TAG, total_dma);
+    printf(" %s  Free: %d bytes", MEMORY_TAG, free_dma);
+
+    // Query internal SRAM memory statistics
     // Internal memory is fast SRAM, preferred for performance-critical operations
     const size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
     const size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     
     // Log internal memory information
-    ESP_LOGI(MEMORY_TAG, "Internal memory:");
-    ESP_LOGI(MEMORY_TAG, "  Total: %d bytes", total_internal);
-    ESP_LOGI(MEMORY_TAG, "  Free: %d bytes", free_internal);
+    printf(" %s Internal memory:", MEMORY_TAG);
+    printf(" %s  Total: %d bytes", MEMORY_TAG, total_internal);
+    printf(" %s  Free: %d bytes", MEMORY_TAG, free_internal);
+    #else
+    printf(" %s Memory statistics are not available on this platform.", MEMORY_TAG);
+    #endif
 }

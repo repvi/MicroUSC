@@ -1,6 +1,7 @@
 idf_component_register(  
-    SRC_DIRS ""
+    SRC "logger.c"
     INCLUDE_DIRS "debugging" "."
     REQUIRES 
     esp_timer
+    general
 )

@@ -1,5 +1,6 @@
-#include "MicroUSC/wireless/wifi_handler.hpp"
-#include "wifi_handler.hpp"
+#include "MicroUSC/internal/wireless/wifi_handler.hpp"
+
+#define TAG "[WIFI SERVICE]"
 
 void  WifiMaintainer::startWifi(wifi_config_t *wifi_config) 
 {
@@ -9,10 +10,10 @@ void  WifiMaintainer::startWifi(wifi_config_t *wifi_config)
     this->wifi_config = *wifi_config;
 
     /* Configure WiFi with provided SSID and password */
-    strncpy(static_cast<char *>(this->wifi_config.sta.ssid), static_cast<char *>(this->wifi_config.sta.ssid), SSID_SIZE);
+    strncpy(reinterpret_cast<char *>(this->wifi_config.sta.ssid), reinterpret_cast<char *>(this->wifi_config.sta.ssid), SSID_SIZE);
     this->wifi_config.sta.ssid[sizeof(this->wifi_config.sta.ssid) - 1] = '\0';
 
-    strncpy(static_cast<char *>(this->wifi_config.sta.password), (char *)this->wifi_config.sta.password, PASSWORD_SIZE);
+    strncpy(reinterpret_cast<char *>(this->wifi_config.sta.password), reinterpret_cast<char *>(this->wifi_config.sta.password), PASSWORD_SIZE);
     this->wifi_config.sta.password[sizeof(this->wifi_config.sta.password) - 1] = '\0';
 
     /* Set WiFi mode to station and apply configuration */

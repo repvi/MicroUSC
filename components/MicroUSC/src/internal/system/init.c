@@ -1,7 +1,7 @@
 #include "MicroUSC/internal/system/init.h"
 #include "MicroUSC/internal/system/bit_manip.h"
 #include "MicroUSC/internal/driverList.h"
-#include "MicroUSC/internal/genList.h"
+#include "genList.h"
 
 #define TAG "[MICROUSC KERNEL]"
 

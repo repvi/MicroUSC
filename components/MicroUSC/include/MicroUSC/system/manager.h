@@ -130,7 +130,7 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
  * 
  * @note Requires active WiFi connection
  */
-esp_err_t microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg);
+MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg);
 
 /**
  * @brief Set the current system status code for the microUSC subsystem.

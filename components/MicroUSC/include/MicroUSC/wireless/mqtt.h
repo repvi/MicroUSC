@@ -10,6 +10,10 @@
 #include "esp_http_client.h"
 #include "driver/gpio.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MQTT_ENABLED   true
 #define MQTT_DISABLED  false
 
@@ -17,7 +21,7 @@
 #define CONNECTION_MQTT_SEND_INFO MQTT_TOPIC("device_info")
 #define MQTT_DEVICE_CHANGE CONNECTION_MQTT_SEND_INFO
 
-typedef MqttMaintainer MqttMaintainer;
+typedef struct MqttMaintainer MqttMaintainer;
 typedef MqttMaintainer *MqttMaintainerHandler;
 
 typedef struct {
@@ -77,7 +81,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
  * 2. Adjusts buffer sizes to minimums if needed
  * 3. Configures and starts MQTT client
  */
-esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg);
+MqttMaintainerHandler init_mqtt(esp_mqtt_client_config_t *mqtt_cfg);
 
 /**
  * @brief Initialize MQTT client with device information
@@ -93,7 +97,7 @@ esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg);
  * @return ESP_OK if initialization successful
  *         ESP_FAIL if semaphore creation fails or other errors occur
  */
-esp_err_t init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info);
+MqttMaintainerHandler init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info);
 
 /**
  * @brief Deinitialize MQTT service and clean up resources
@@ -102,3 +106,7 @@ esp_err_t init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const m
  * Should be called when MQTT service is no longer needed.
  */
 void mqtt_service_deinit(void);
+
+#ifdef __cplusplus
+}
+#endif

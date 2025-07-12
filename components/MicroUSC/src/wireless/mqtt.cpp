@@ -4,7 +4,7 @@
 #include "MicroUSC/wireless/wifi.h"
 #include "MicroUSC/wireless/parsing.h"
 #include "MicroUSC/internal/hashmap.h"
-#include "stdatomic.h"
+#include "esp_heap_caps.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_log.h"
@@ -23,15 +23,13 @@ typedef struct {
     SemaphoreHandle_t mutex;
 } mqtt_handler_t;
 
-typedef void (*mqtt_event_data_action_t)(mqtt_data_package_t *package);
-
 mqtt_handler_t mqtt_service;
 
 HashMap mqtt_device_map; /* Stores subscription info */
 
 char *device_name = NULL;
-char *last_updated = ( __DATE__ );
-char *sensor_type = "uart";
+const char *last_updated = ( __DATE__ );
+const char *sensor_type = "uart";
 
 const char *general_key[] = {
     "device_name",
@@ -40,7 +38,7 @@ const char *general_key[] = {
     "sensor_type"
 };
 
-int send_to_mqtt_service_single(char *const topic, char const *const key, const char *const data)
+extern "C" int send_to_mqtt_service_single(char *const topic, char const *const key, const char *const data)
 {
     cjson_pool_reset(); // Reset pool before building new JSON tree
 
@@ -62,7 +60,7 @@ int send_to_mqtt_service_single(char *const topic, char const *const key, const 
     }
 }
 
-int send_to_mqtt_service_multiple(char *const topic, const char**key, const char**data, int len)
+extern "C" int send_to_mqtt_service_multiple(char *const topic, const char**key, const char**data, int len)
 {
     cjson_pool_reset(); // Reset pool before building new JSON tree
 
@@ -107,25 +105,25 @@ static bool add_esp_mqtt_client_subscribe(
 }
 
 static int send_connection_info(void) {
-    char general_info[4][32];
+    char general_info[4][MqttMaintainer::STRING_SIZE];
     const char *info_ptrs[4];
 
-    int device_name_length = min(strlen(device_name), 31);
+    int device_name_length = min(strlen(device_name), MqttMaintainer::STRING_SIZE - 1);
     strncpy(general_info[0], device_name, device_name_length);
     general_info[0][device_name_length] = '\0';
     info_ptrs[0] = general_info[0];
 
-    int device_model_length = min(strlen(CONFIG_IDF_TARGET), 31);
+    int device_model_length = min(strlen(CONFIG_IDF_TARGET), MqttMaintainer::STRING_SIZE - 1);
     strncpy(general_info[1], CONFIG_IDF_TARGET, device_model_length);
     general_info[1][device_model_length] = '\0';
     info_ptrs[1] = general_info[1];
 
-    int last_updated_length = min(strlen(last_updated), 31);
+    int last_updated_length = min(strlen(last_updated), MqttMaintainer::STRING_SIZE - 1);
     strncpy(general_info[2], last_updated, last_updated_length);
     general_info[2][last_updated_length] = '\0';
     info_ptrs[2] = general_info[2];
 
-    int sensor_type_length = min(strlen(sensor_type), 31);
+    int sensor_type_length = min(strlen(sensor_type), MqttMaintainer::STRING_SIZE - 1);
     strncpy(general_info[3], sensor_type, sensor_type_length);
     general_info[3][sensor_type_length] = '\0';
     info_ptrs[3] = general_info[3];
@@ -233,7 +231,7 @@ static void mqtt_data_handler(esp_mqtt_event_handle_t event)
     }
 }
 
-void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data) 
+extern "C" void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data) 
 {
     if (xSemaphoreTake(mqtt_service.mutex, portMAX_DELAY) == pdFALSE) {
         ESP_LOGE(TAG, "Could not get semaphore");
@@ -260,60 +258,7 @@ void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event
     xSemaphoreGive(mqtt_service.mutex);
 }
 
-static void set_mqtt_service_info(void) 
-{
-    static atomic_flag mqtt_service_flags = ATOMIC_FLAG_INIT;
-    if (!atomic_flag_test_and_set(&mqtt_service_flags)) {
-        mqtt_service.stored_info = *mqtt_cfg; /* Store the MQTT configuration */
-    }
-}
-
-static esp_err_t setup_mqtt_service(SemaphoreHandle_t mutex, size_t *buffer_size, size_t *out_size) 
-{
-    if (xSemaphoreTake(mutex, portMAX_DELAY) != pdFALSE) {
-        /* Enforce minimum buffer sizes */
-        if (*buffer_size < 1024) {
-            *buffer_size = 1024; /* Set minimum buffer size */
-        }
-
-        if (*out_size < 512) {
-            *out_size = 512; /* Set minimum output size */
-        }
-        /* Configure the MQTT client with the broker URI */
-        /* Initialize the MQTT client */
-        mqtt_service.client = esp_mqtt_client_init(mqtt_cfg);
-        if (mqtt_service.client != NULL) {
-            /* Register the event handler for all MQTT events */
-            esp_mqtt_client_register_event(mqtt_service.client, ESP_EVENT_ANY_ID, mqtt_event_handler, mqtt_service.client);
-            /* Start the MQTT client (runs on core 0) */
-            esp_err_t ca = esp_mqtt_client_start(mqtt_service.client);
-            if (ca == ESP_OK) {
-                ESP_LOGI(TAG, "Has been successfully been set");
-                mqtt_service.active = MQTT_ENABLED;
-                return ca;
-            }
-            #ifdef MICROUSC_MQTT_DEBUG
-            else {
-                ESP_LOGE(TAG, "Failed to start MQTT client: %s", esp_err_to_name(ca));
-            }
-            #endif
-        }
-        #ifdef MICROUSC_MQTT_DEBUG
-        else {
-            ESP_LOGE(TAG, "Failed to initialize MQTT client");
-        }
-        #endif
-        xSemaphoreGive(mutex);
-    }
-    #ifdef MICROUSC_MQTT_DEBUG
-    else {
-        ESP_LOGE(TAG, "Could not get semaphore for MQTT service setup");
-    }
-    #endif
-    return ESP_FAIL; // Return failure if any step fails
-}
-
-esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
+extern "C" MqttMaintainerHandler init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
 {
     if (check_connection() != ESP_OK) {
         ESP_LOGE(TAG, "No WiFi connection available");
@@ -325,61 +270,29 @@ esp_err_t init_mqtt(esp_mqtt_client_config_t *mqtt_cfg)
         ESP_LOGE(TAG, "Failed to allocate memory for MQTT maintainer handler");
         return ESP_ERR_NO_MEM; // Return memory allocation error
     }
-    MqttMaintainerHandler *handlerv = reinterpret_cast<MqttMaintainerHandler *>(mem); /* Create a new MQTT maintainer handler */
 
-    mqtt_device_map = hashmap_create(); /* Create a new hashmap for storing MQTT device subscriptions */
-    if (check_device_name(NULL) == 0 && mqtt_device_map != NULL) {        
-        esp_err_t con = setup_mqtt_service(mqtt_service.mutex, &mqtt_cfg->buffer.size, &mqtt_cfg->buffer.out_size);
-        if (con == ESP_OK) {
-            ESP_LOGI(TAG, "MQTT service initialized successfully");
-            setup_cjson_pool(); /* Initialize cJSON pool for JSON handling */
-            set_mqtt_service_info(); /* Set MQTT service information */
-            return con; // Return success if all steps are successful
-        }
-        #ifdef MICROUSC_MQTT_DEBUG
-        else {
-            ESP_LOGE(TAG, "Failed to initialize MQTT service");
-        }
-        #endif
+    MqttMaintainerHandler handler = reinterpret_cast<MqttMaintainerHandler *>(mem); /* Create a new MQTT maintainer handler */
+    
+    esp_err_t err = handler->start(*mqtt_cfg);
+    if (err == ESP_OK) {
+        return handler;
     }
-
-    vSemaphoreDelete(mqtt_service.mutex);
-    mqtt_service.mutex = NULL;
-    return ESP_FAIL; // Return failure if any step fails
+    else {
+        heap_caps_free(mem); // Free allocated memory on failure
+        return NULL;
+    }
 }
 
-esp_err_t init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info)
+extern "C" MqttMaintainerHandler init_mqtt_with_device_info(esp_mqtt_client_config_t *mqtt_cfg, const mqtt_device_info_t *device_info)
 {
     if (check_device_name(device_info->device_name) != 0) {
-        return ESP_FAIL; // Device name is not set
+        return NULL; // Device name is not set
     }
 
     return init_mqtt(mqtt_cfg);
 }
 
-void mqtt_service_deinit(void) 
+extern "C" void mqtt_service_deinit(void) 
 {
-    if (mqtt_service.client != NULL) {
-        esp_mqtt_client_stop(mqtt_service.client);
-        esp_mqtt_client_destroy(mqtt_service.client);
-        mqtt_service.client = NULL;
-    }
 
-    if (mqtt_service.mutex != NULL) {
-        vSemaphoreDelete(mqtt_service.mutex);
-        mqtt_service.mutex = NULL;
-    }
-
-    if (mqtt_device_map != NULL) {
-        //hashmap_remove(mqtt_device_map);
-        mqtt_device_map = NULL;
-    }
-
-    if (device_name != NULL) {
-        free(device_name);
-        device_name = NULL;
-    }
-
-    mqtt_service.active = false; // Mark the MQTT service as inactive
-    ESP_LOGI(TAG, "MQTT service deinitialized");
 }

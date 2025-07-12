@@ -42,9 +42,9 @@ extern "C" {
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/synced_driver/atomic_sys_op.h"
-#include "MicroUSC/internal/genList.h"
 #include "MicroUSC/internal/uscdef.h"
 #include "MicroUSC/uscUniversal.h"
+#include "genList.h"
 #include "esp_err.h"
 
 #ifdef LIST_HEAD

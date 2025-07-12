@@ -19,7 +19,7 @@ else()
 endif()
 
 set(MICROUSC_INTERNAL
-    "internal/genList.c"
+    #"internal/genList.c"
     "internal/driverList.c"
     "internal/system/bit_manip.c"
     "internal/system/init.c"
@@ -81,6 +81,7 @@ idf_component_register(
         esp_wifi
         esp_http_client
         mqtt
+        general
 
     PRIV_REQUIRES
         esp_event

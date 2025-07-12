@@ -117,7 +117,7 @@ void microusc_start_wifi(char *const ssid, char *const password)
     wifi_init_sta(ssid, password);
 }
 
-esp_err_t microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg)
+MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg)
 {
     return init_mqtt(mqtt_cfg);
 }
