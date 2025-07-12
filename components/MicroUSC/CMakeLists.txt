@@ -24,8 +24,8 @@ set(MICROUSC_INTERNAL
     "internal/system/bit_manip.c"
     "internal/system/init.c"
     "internal/hashmap.c"
-    "internal/wireless/wifi_handler.cpp"
-    "internal/wireless/mqtt_handler.cpp"
+    #"internal/wireless/wifi_handler.cpp"
+    #"internal/wireless/mqtt_handler.cpp"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -41,19 +41,19 @@ set(MICROUSC_SYSTEM
     "system/sleep.c"
 )
 
-set(MICROUSC_WIRELESS
-    "wireless/wifi.cpp"
-    "wireless/mqtt.cpp"
-    "wireless/ota.c"
-    "wireless/parsing.c"
-)
+#set(MICROUSC_WIRELESS
+#    "wireless/wifi.cpp"
+#    "wireless/mqtt.cpp"
+#    "wireless/ota.c"
+#    "wireless/parsing.c"
+#)
 
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
 list(TRANSFORM MICROUSC_INTERNAL PREPEND "src/")
 list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
 list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
-list(TRANSFORM MICROUSC_WIRELESS PREPEND "src/")
+#list(TRANSFORM MICROUSC_WIRELESS PREPEND "src/")
 
 idf_component_register(
     COMPILE_OPTIONS "-mtext-section-literals"
@@ -64,7 +64,7 @@ idf_component_register(
         ${MICROUSC_INTERNAL}
         ${MICROUSC_SYNCED_DRIVER}
         ${MICROUSC_SYSTEM}
-        ${MICROUSC_WIRELESS}
+        #${MICROUSC_WIRELESS}
 
     INCLUDE_DIRS
         "include"

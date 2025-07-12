@@ -1,6 +1,6 @@
 idf_component_register(  
-    SRC "genList.c"
+    SRCS "genList.c"
     INCLUDE_DIRS "include" "."
     REQUIRES 
-    esp_timer
+        esp_timer
 )

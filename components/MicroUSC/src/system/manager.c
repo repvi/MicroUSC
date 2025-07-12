@@ -112,16 +112,18 @@ void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_st
     gpio_isr_handler_add((gpio_num_t)gpio_pin, microusc_software_isr_handler, &gpio_pin);
 }
 
+/*
 void microusc_start_wifi(char *const ssid, char *const password)
 {
     wifi_init_sta(ssid, password);
 }
-
+*/
+/*
 MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg)
 {
     return init_mqtt(mqtt_cfg);
 }
-
+*/
 __attribute__((noreturn)) void microusc_system_restart(void)
 {
     esp_restart();
@@ -240,10 +242,14 @@ static void microusc_system_task(void *p)
                     sleep_mode();
                     break;
                 case USC_SYSTEM_PAUSE:
-                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause");
+                    builtin_led_system(USC_SYSTEM_PAUSE);
+                    microusc_pause_drivers();
+                    //microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause");
                     break;
                 case USC_SYSTEM_RESUME:
-                    microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_resume_drivers(), "status", "normal");
+                    builtin_led_system(USC_SYSTEM_RESUME);
+                    microusc_resume_drivers();
+                    //microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_resume_drivers(), "status", "normal");
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);
@@ -271,7 +277,9 @@ static void microusc_system_task(void *p)
                     usc_print_driver_configurations();
                     break;
                 case USC_SYSTEM_ERROR:
-                    microusc_system_mqtt_main_fast(CONNECTION_MQTT_SEND_INFO, call_usc_error_handler(sys_data.type.caller_pc), "status", "error");
+                    builtin_led_system(USC_SYSTEM_ERROR);
+                    call_usc_error_handler(sys_data.type.caller_pc);
+                    //microusc_system_mqtt_main_fast(CONNECTION_MQTT_SEND_INFO, call_usc_error_handler(sys_data.type.caller_pc), "status", "error");
                     break;
                 default:
                     break;

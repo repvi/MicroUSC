@@ -48,8 +48,8 @@
 
 #pragma once
 
-#include "MicroUSC/wireless/wifi.h"
-#include "MicroUSC/wireless/mqtt.h"
+//#include "MicroUSC/wireless/wifi.h"
+//#include "MicroUSC/wireless/mqtt.h"
 #include "MicroUSC/system/uscsystemdef.h"
 #include "MicroUSC/system/rtc.h"
 #include "MicroUSC/system/sleep.h"
@@ -76,7 +76,7 @@ typedef void(*microusc_error_handler)(void *);
  */
 void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status);
 
-void microusc_start_wifi(char *const ssid, char *const password);
+// void microusc_start_wifi(char *const ssid, char *const password);
 
 /**
  * @brief Performs a complete system restart of the ESP32
@@ -130,7 +130,7 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
  * 
  * @note Requires active WiFi connection
  */
-MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg);
+// MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg);
 
 /**
  * @brief Set the current system status code for the microUSC subsystem.
