@@ -2,12 +2,10 @@
 #include "esp_log.h"
 #include "testing_driver.h"
 #include "speed_test.h"
-#include "esp_wifi.h"
 
 void app_main(void) {
-    // microusc_start_wifi("user", "password");
     init_MicroUSC_system();
-
+    
     uart_config_t setting = STANDARD_UART_CONFIG; // only for debugging
     /*
     uart_port_config_t pins = {
@@ -54,6 +52,5 @@ void app_main(void) {
     //vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
     //send_microusc_system_status(USC_SYSTEM_ERROR);
     //send_microusc_system_status(USC_SYSTEM_SLEEP);
-    microusc_system_start_mqtt_service("mqtt://192.168.1.23");
     printf("End of program\n");
 }
