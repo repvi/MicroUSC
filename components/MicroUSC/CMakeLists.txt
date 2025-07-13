@@ -78,9 +78,6 @@ idf_component_register(
         esp_system
         debug
         led_strip
-        esp_wifi
-        esp_http_client
-        mqtt
         general
 
     PRIV_REQUIRES
