@@ -1,0 +1,10 @@
+.devcontainer
+.vscode/
+build/
+managed_components/
+
+/dependencies.lock
+/sdkconfig
+/sdkconfig.old
+/partitions.csv
+/disassembly.txt
