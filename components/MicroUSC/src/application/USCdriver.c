@@ -58,17 +58,15 @@ static void check_valid_uart_config( const uart_config_t *uart_config,
 
     if (v) {
         ESP_LOGE(TAG, "Invalid driver index");
-        set_microusc_system_code(USC_SYSTEM_ERROR);
+        send_microusc_system_status(USC_SYSTEM_ERROR);
         return;
     }
 
     if (OUTSIDE_SCOPE(port_config->port, UART_NUM_MAX)) {
         ESP_LOGE(TAG, "Invalid UART port");
-        set_microusc_system_code(USC_SYSTEM_ERROR);
+        send_microusc_system_status(USC_SYSTEM_ERROR);
         return;
     }
-
-    UBaseType_t i = getCurrentEmptyDriverIndex();
 
     vTaskDelay(LOOP_DELAY_MS); /* 10ms delay */
 
@@ -86,15 +84,15 @@ struct usc_driver_t *getLastDriver(void) {
     return (node != NULL) ? &node->driver : NULL;
 }
 
-esp_err_t usc_driver_init( const char *const driver_name,
-                           const uart_config_t uart_config,
-                           const uart_port_config_t port_config,
-                           const usc_process_t driver_process,
-                           const stack_size_t stack_size
+esp_err_t usc_driver_install( const char *const driver_name,
+                              const uart_config_t uart_config,
+                              const uart_port_config_t port_config,
+                              const usc_process_t driver_process,
+                              const stack_size_t stack_size
 ) {
     if (driver_process == NULL) {
         ESP_LOGE(TAG, "driver_process cannot be NULL");
-        set_microusc_system_code(USC_SYSTEM_ERROR);
+        send_microusc_system_status(USC_SYSTEM_ERROR);
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -108,7 +106,7 @@ esp_err_t usc_driver_init( const char *const driver_name,
     if (current_driver == NULL) {
         ESP_LOGE(TAG, "Failed to get the last driver in the system driver manager");
         xSemaphoreGive(system_lock);
-        set_microusc_system_code(USC_SYSTEM_ERROR);
+        send_microusc_system_status(USC_SYSTEM_ERROR);
         return ESP_ERR_NO_MEM;
     }
 
@@ -116,7 +114,7 @@ esp_err_t usc_driver_init( const char *const driver_name,
     if (!xSemaphoreTake(current_driver->sync_signal, SEMAPHORE_WAIT_TIME)) {
         ESP_LOGE(TAG, "Failed to take semaphore");
         xSemaphoreGive(system_lock);
-        set_microusc_system_code(USC_SYSTEM_ERROR);
+        send_microusc_system_status(USC_SYSTEM_ERROR);
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -124,7 +122,7 @@ esp_err_t usc_driver_init( const char *const driver_name,
     xSemaphoreGive(current_driver->sync_signal); /* Release driver's sync semaphore */
     
     #ifdef MICROUSC_DEBUG_MEMORY_USAGE
-    set_microusc_system_code(USC_SYSTEM_MEMORY_USAGE);
+    send_microusc_system_status(USC_SYSTEM_MEMORY_USAGE);
     #endif
     
     return ESP_OK;
@@ -261,7 +259,7 @@ usc_status_t handle_serial_key(struct usc_driver_t *driver, const UBaseType_t i)
                 break;
         }
     }
-    return TIME_OUT; // doesn't need system interface
+    return TIME_OUT;
 }
 
 /**

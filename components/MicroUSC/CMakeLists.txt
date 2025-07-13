@@ -19,9 +19,13 @@ else()
 endif()
 
 set(MICROUSC_INTERNAL
-    "internal/genList.c"
+    #"internal/genList.c"
     "internal/driverList.c"
     "internal/system/bit_manip.c"
+    "internal/system/init.c"
+    "internal/hashmap.c"
+    #"internal/wireless/wifi_handler.cpp"
+    #"internal/wireless/mqtt_handler.cpp"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -32,14 +36,24 @@ set(MICROUSC_SYNCED_DRIVER
 set(MICROUSC_SYSTEM
     "system/memory_pool.c"
     "system/manager.c"
+    "system/rtc.c"
     "system/status.c"
+    "system/sleep.c"
 )
+
+#set(MICROUSC_WIRELESS
+#    "wireless/wifi.cpp"
+#    "wireless/mqtt.cpp"
+#    "wireless/ota.c"
+#    "wireless/parsing.c"
+#)
 
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
 list(TRANSFORM MICROUSC_INTERNAL PREPEND "src/")
 list(TRANSFORM MICROUSC_SYNCED_DRIVER PREPEND "src/")
 list(TRANSFORM MICROUSC_SYSTEM PREPEND "src/")
+#list(TRANSFORM MICROUSC_WIRELESS PREPEND "src/")
 
 idf_component_register(
     COMPILE_OPTIONS "-mtext-section-literals"
@@ -50,6 +64,7 @@ idf_component_register(
         ${MICROUSC_INTERNAL}
         ${MICROUSC_SYNCED_DRIVER}
         ${MICROUSC_SYSTEM}
+        #${MICROUSC_WIRELESS}
 
     INCLUDE_DIRS
         "include"
@@ -63,12 +78,21 @@ idf_component_register(
         esp_system
         debug
         led_strip
+        general
+
+    PRIV_REQUIRES
+        esp_event
+        nvs_flash
+        esp_https_ota
+        driver
+        json
 )
 
 target_compile_definitions(
     ${COMPONENT_LIB}
     PUBLIC
         DRIVER_MAX=3
+
     PRIVATE 
         ${COMPILE_DEFINITIONS_LIST}
         MICROUSC_DEBUG
@@ -80,6 +104,9 @@ target_compile_definitions(
         UART_QUEUE_SIZE=10
         BUFFER_SIZE=1024
         SEND_BUFFER_SIZE=6
+        MICROUSC_MQTT_DEBUG
+        SYSTEM_WIFI_DEBUG
+        DEBUG_HASHMAP
 )
 
 # add_compile_options(-mtext-section-literals)

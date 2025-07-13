@@ -1,5 +1,6 @@
 idf_component_register(  
-    INCLUDE_DIRS "debugging" "."
+    SRCS "genList.c"
+    INCLUDE_DIRS "include" "."
     REQUIRES 
         esp_timer
 )

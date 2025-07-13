@@ -48,7 +48,11 @@
 
 #pragma once
 
+//#include "MicroUSC/wireless/wifi.h"
+//#include "MicroUSC/wireless/mqtt.h"
 #include "MicroUSC/system/uscsystemdef.h"
+#include "MicroUSC/system/rtc.h"
+#include "MicroUSC/system/sleep.h"
 #include "driver/gpio.h"
 
 #ifdef __cplusplus
@@ -58,123 +62,32 @@ extern "C" {
 typedef void(*microusc_error_handler)(void *);
 
 /**
- * @brief Set the timer duration for sleep mode wakeup.
+ * @brief Configure a GPIO pin as an interrupt source for the MicroUSC system and register an ISR.
  *
- * This function configures the timer duration (in microseconds) for the timer-based wakeup source.
- * When the timer expires, it triggers the ISR used to wake up the ESP32 from sleep mode.
+ * This function determines the GPIO pin from the provided gpio_config_t's pin_bit_mask,
+ * removes any existing ISR handler for that pin, configures the pin with the given settings,
+ * and attaches the specified ISR handler. It also sets the status code that will be triggered
+ * when the ISR is called.
  *
- * Typical usage: Call this function after enabling the timer wakeup source to specify the wakeup interval.
+ * Typical usage: Call this during system initialization to set up a wakeup or event pin.
  *
- * @param time The timer duration in microseconds until the wakeup ISR is triggered.
- *
- * @note This is essential for applications requiring precise timed wakeups and low-power operation on ESP32.
+ * @param io_config      GPIO configuration structure specifying the pin and settings.
+ * @param trigger_status The MicroUSC status code to associate with this ISR event.
  */
-void microusc_set_sleep_mode_timer_wakeup(uint64_t time);
+void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_status);
+
+// void microusc_start_wifi(char *const ssid, char *const password);
 
 /**
- * @brief Enable or disable the timer as a sleep mode wakeup source.
+ * @brief Performs a complete system restart of the ESP32
  *
- * This function enables or disables the use of a timer to wake up the ESP32 from sleep mode.
- * When enabled, the timer can be configured to trigger an interrupt service routine (ISR) that wakes the device.
+ * This function triggers a hardware reset of the ESP32. The noreturn attribute
+ * indicates to the compiler that this function will never return to the caller.
  *
- * Typical usage: Call this function before entering sleep mode to specify whether the timer should be used as a wakeup source.
- *
- * @param option Set to true to enable the timer wakeup, or false to disable it.
- *
- * @note This function is typically used in embedded ESP32 projects where precise timing and wakeup control are required.
+ * @note This function will immediately restart the system without any cleanup
+ * @warning Any unsaved data will be lost
  */
-void microusc_set_sleep_mode_timer(bool option);
-
-/**
- * @brief Configure a GPIO pin as the wakeup source for ISR.
- *
- * This function sets the specified GPIO pin to be used as the interrupt source for waking up the ESP32 from sleep mode.
- * It configures the pin to trigger an ISR (Interrupt Service Routine) that will wake the device.
- *
- * Typical usage involves calling this function before entering sleep mode to ensure the device can be awakened by the specified GPIO.
- *
- * @param pin The GPIO number to be configured as the wakeup interrupt source.
- *
- * @note The actual interrupt configuration and enabling must be handled separately.
- */
-void microusc_set_wakeup_pin(gpio_num_t pin);
-
-/**
- * @brief Enable or disable the GPIO wakeup interrupt pin.
- *
- * This function controls the status of the GPIO interrupt pin used for waking up the ESP32 from sleep mode.
- * When called with 'option' set to true, the wakeup pin is enabled; when set to false, the wakeup pin is disabled.
- * Disabling the pin prevents the associated interrupt from triggering a wakeup event.
- *
- * This function is typically used in conjunction with microusc_set_sleepmode_wakeup_default() to manage
- * the device's wakeup sources and power management behavior.
- *
- * @param option Set to true to enable the GPIO wakeup pin, or false to disable it.
- *
- * @note Disabling the wakeup pin will prevent the device from waking up via the corresponding GPIO interrupt.
- */
-void microusc_set_wakeup_pin_status(bool option);
-
-/**
- * @brief Configure the default wakeup function for sleep mode.
- *
- * This function sets up a void pointer to a default wakeup handler
- * that is used as an ISR (Interrupt Service Routine) to wake up
- * the ESP32 from sleep mode. It ensures that, when the microcontroller
- * is in a low-power state, the configured interrupt can properly
- * trigger the wakeup sequence using the assigned handler.
- *
- * Typical use case: Call this function during system initialization
- * or before entering sleep mode to ensure the device can be correctly
- * awakened by external events or interrupts.
- *
- * @note The actual wakeup source and interrupt configuration must be
- *       set up separately, depending on the hardware and application needs.
- */
-void microusc_set_sleepmode_wakeup_default(void);
-
-/**
- * @brief Save a system variable to RTC memory.
- *
- * This function attempts to save a variable to RTC (Real-Time Clock) memory, identified by a key.
- * It performs argument validation and will return early without performing any operation if:
- *   - `var` is NULL,
- *   - `size` is 0,
- *   - `key` is 0 or the null character (`'\0'`).
- *
- * @param var   Pointer to the variable data to be saved. Must not be NULL.
- * @param size  Size in bytes of the variable to be saved. Must be greater than 0.
- * @param key   Unique identifier for the variable in RTC memory. Must not be 0 or '\0'.
- *
- * @note
- * - If any argument is invalid, the function returns immediately and does not attempt to save the variable.
- * - It is the caller's responsibility to ensure that `var` points to valid memory of at least `size` bytes.
- *
- * @return None.
- */
-void save_system_rtc_var(void *var, const size_t size, const char key);
-
-/**
- * @brief Retrieve a system variable from RTC memory by key.
- *
- * This function searches for a variable previously saved to RTC (Real-Time Clock) memory
- * using the provided key. If the key matches an existing entry, a pointer to the variable's
- * data is returned. If the key does not match any stored entry, or if the key is invalid,
- * the function returns NULL.
- *
- * @param key  Unique identifier for the variable in RTC memory.
- *             Must match one of the keys used in save_system_rtc_var().
- *
- * @return
- *   - Pointer to the variable data if the key is found.
- *   - NULL if the key does not exist in the RTC variable store or is invalid.
- *
- * @note
- * - The returned pointer is to the internal RTC memory storage; do not free or modify it directly.
- * - The key must be a valid identifier previously used to save a variable; otherwise, NULL is returned.
- * - It is the caller's responsibility to ensure the key is valid and to handle a NULL return appropriately.
- */
-void *get_system_rtc_var(const char key);
+__attribute__((noreturn)) void microusc_system_restart(void);
 
 /**
  * @brief Set a custom system error handler for the microcontroller system.
@@ -207,6 +120,19 @@ void *get_system_rtc_var(const char key);
 void set_microusc_system_error_handler(microusc_error_handler handler, void *var, int size);
 
 /**
+ * @brief Starts the MQTT service with the specified broker URL and buffers
+ *
+ * @param url         MQTT broker URL string
+ * @param buffer_size Size for receive buffer
+ * @param out_size   Size for publish buffer
+ *
+ * @return ESP_OK if successful, error code otherwise
+ * 
+ * @note Requires active WiFi connection
+ */
+// MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg);
+
+/**
  * @brief Set the current system status code for the microUSC subsystem.
  *
  * This function updates the internal status of the microUSC system by assigning
@@ -226,10 +152,10 @@ void set_microusc_system_error_handler(microusc_error_handler handler, void *var
  *       microusc_status enum or macro set.
  *
  * @example
- *   set_microusc_system_code(USC_SYSTEM_SUCCESS);
- *   set_microusc_system_code(USC_SYSTEM_ERROR);
+ *   send_microusc_system_status(USC_SYSTEM_SUCCESS);
+ *   send_microusc_system_status(USC_SYSTEM_ERROR);
  */
-void set_microusc_system_code(microusc_status code);
+void send_microusc_system_status(microusc_status code);
 
 /**
  * @brief Set the default system error handler for the microcontroller.
@@ -271,29 +197,21 @@ void set_microusc_system_error_handler_default(void);
  * - This function is intended for use in embedded ESP32 applications and should be called whenever a system state change is required.
  * - Ensure thread safety if this function is called from multiple tasks or ISRs.
  */
-void set_microusc_system_code(microusc_status code);
-
-
-void microusc_infloop(void);
+void send_microusc_system_status(microusc_status code);
 
 /**
- * @brief Initialize the MicroUSC system components and resources.
+ * @brief Infinite loop function for the MicroUSC system.
  *
- * This function performs one-time initialization of critical system components
- * required for MicroUSC operation, including hardware interfaces and internal
- * data structures. It must be called exactly once during system startup.
+ * This function is intended to be called when the system enters an unrecoverable state
+ * or when a critical error occurs that prevents normal operation. It will enter an infinite
+ * loop, effectively halting the system's execution.
  *
- * @return 
- * - ESP_OK: Initialization successful
- * - Other error codes: Initialization failed (specific error depends on implementation)
+ * This is typically used in error handling routines to prevent further execution of code
+ * that may lead to undefined behavior or additional errors.
  *
- * @note Calling this function multiple times may cause resource leaks, 
- *       hardware conflicts, or undefined behavior due to duplicate initialization.
- *       Ensure it is only called once during the application lifecycle, typically
- *       in app_main() before entering the main execution loop.
+ * @note This function should not return; it will block indefinitely.
  */
-esp_err_t microusc_system_setup(void);
-
+__attribute__((noreturn)) void microusc_infloop(void);
 
 /**
  * @brief Initialize the Tiny Kernel core for the MicroUSC library.

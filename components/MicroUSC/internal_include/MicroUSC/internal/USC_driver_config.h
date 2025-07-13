@@ -69,11 +69,6 @@ extern "C" {
     #define HOT            __attribute__((hot)) // Performance-critical paths
     #define COLD           __attribute__((cold)) // Cold code paths
     #define ALWAYS_INLINE  __attribute__((always_inline))
-    #define RUN_FIRST      __attribute__((constructor, used, noinline)) // Early initialization
-    #define MALLOC         __attribute__((malloc)) // Memory allocator hint
-    #define HOT            __attribute__((hot)) // Performance-critical paths
-    #define COLD           __attribute__((cold)) // Cold code paths
-    #define ALWAYS_INLINE  __attribute__((always_inline))
 
     #define UNUSED         __attribute__((unused))
     #define DEPRECATED     __attribute__((deprecated))
@@ -93,7 +88,6 @@ extern "C" {
     #define __deprecated __attribute__((deprecated))
 #else
     /* Fallbacks for non-GCC compilers */
-    /* Fallbacks for non-GCC compilers */
     #define RUN_FIRST
     #define MALLOC 
     #define HOT   
@@ -107,7 +101,6 @@ extern "C" {
 #endif
 ///@}
 
-/* Constant optimization helper */
 /* Constant optimization helper */
 #define OPTIMIZE_CONSTANT(x) \
     (__builtin_constant_p(x) ? optimize_for_constant(x) : general_case(x))
@@ -139,8 +132,8 @@ extern "C" {
     #define CONFIGURED_BAUDRATE (-1)
     #define CONFIGURED_BAUDRATE (-1)
 #endif
-ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, 
-                 "CONFIG_ESP_CONSOLE_UART_BAUDRATE undefined!");
+
+ESP_STATIC_ASSERT(CONFIGURED_BAUDRATE != -1, "CONFIG_ESP_CONSOLE_UART_BAUDRATE undefined!");
 
 /**
  * @name Task Configuration
