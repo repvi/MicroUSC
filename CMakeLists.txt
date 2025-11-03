@@ -12,26 +12,3 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 set(PARTITION_TABLE_CSV "partitions.csv")
 
 project(MicroUSC)
-
-# idf.py -p <COM_PORT> erase_flash
-
-# Custom compiler flags
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DDEBUG -Og")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG -Og")
-
-# Custom linker flags
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections")
-
-# Add custom build steps or custom targets if needed
-#add_custom_target(clean-all
-#    COMMAND ${CMAKE_COMMAND} -P clean-all.cmake
-#)
-
-# Add custom pre-build or post-build commands
-#add_custom_command(TARGET ${COMPONENT_LIB} PRE_BUILD
-#    COMMAND echo "Running pre-build steps..."
-#)
-
-#add_custom_command(TARGET ${COMPONENT_LIB} POST_BUILD
-#    COMMAND echo "Running post-build steps..."
-#)

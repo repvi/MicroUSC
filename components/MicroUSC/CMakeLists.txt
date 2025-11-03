@@ -19,13 +19,9 @@ else()
 endif()
 
 set(MICROUSC_INTERNAL
-    #"internal/genList.c"
     "internal/driverList.c"
     "internal/system/bit_manip.c"
     "internal/system/init.c"
-    "internal/hashmap.c"
-    #"internal/wireless/wifi_handler.cpp"
-    #"internal/wireless/mqtt_handler.cpp"
 )
 
 set(MICROUSC_SYNCED_DRIVER
@@ -40,13 +36,6 @@ set(MICROUSC_SYSTEM
     "system/status.c"
     "system/sleep.c"
 )
-
-#set(MICROUSC_WIRELESS
-#    "wireless/wifi.cpp"
-#    "wireless/mqtt.cpp"
-#    "wireless/ota.c"
-#    "wireless/parsing.c"
-#)
 
 list(TRANSFORM MICROUSC_APPLICATION PREPEND "src/")
 list(TRANSFORM MICROUSC_ESP_CHIP PREPEND "src/")
@@ -64,7 +53,6 @@ idf_component_register(
         ${MICROUSC_INTERNAL}
         ${MICROUSC_SYNCED_DRIVER}
         ${MICROUSC_SYSTEM}
-        #${MICROUSC_WIRELESS}
 
     INCLUDE_DIRS
         "include"

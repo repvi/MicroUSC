@@ -244,20 +244,16 @@ static void microusc_system_task(void *p)
                 case USC_SYSTEM_PAUSE:
                     builtin_led_system(USC_SYSTEM_PAUSE);
                     microusc_pause_drivers();
-                    //microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_pause_drivers(), "status", "pause");
                     break;
                 case USC_SYSTEM_RESUME:
                     builtin_led_system(USC_SYSTEM_RESUME);
                     microusc_resume_drivers();
-                    //microusc_system_mqtt_main(CONNECTION_MQTT_SEND_INFO, sys_data.status, microusc_resume_drivers(), "status", "normal");
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);
-                    // conflicting feature
                     break;
                 case USC_SYSTEM_BLUETOOTH_CONNECT:
                     builtin_led_system(USC_SYSTEM_BLUETOOTH_CONNECT);
-                    // conflicting feature
                     break;
                 case USC_SYSTEM_LED_ON:
                     ESP_LOGI(TAG, "Turning on led...");
@@ -279,7 +275,6 @@ static void microusc_system_task(void *p)
                 case USC_SYSTEM_ERROR:
                     builtin_led_system(USC_SYSTEM_ERROR);
                     call_usc_error_handler(sys_data.type.caller_pc);
-                    //microusc_system_mqtt_main_fast(CONNECTION_MQTT_SEND_INFO, call_usc_error_handler(sys_data.type.caller_pc), "status", "error");
                     break;
                 default:
                     break;
