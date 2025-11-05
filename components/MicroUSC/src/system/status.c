@@ -36,13 +36,13 @@ void usc_print_driver_configurations(void)
         struct usc_driver_t *driver = &current->driver;
         SemaphoreHandle_t lock = driver->sync_signal;
         if (xSemaphoreTake(lock, SEMAPHORE_WAIT_TIME) == pdTRUE) {
-            printf("%s       %s", "DRIVER",  driver->driver_name);
-            printf("%s     %d", "Baud Rate",  driver->uart_config.baud_rate);
-            printf("%s        %s", "Status",  status_str(driver->status));
-            printf("%s     %d", "UART Port",  driver->port_config.port);
-            printf("%s   %d", "UART TX Pin",  driver->port_config.tx);
-            printf("%s   %d", "UART RX Pin",  driver->port_config.rx);
-            printf("%s", "--------");
+            printf("%s       %s\n", "DRIVER",  driver->driver_name);
+            printf("%s     %d\n", "Baud Rate",  driver->uart_config.baud_rate);
+            printf("%s        %s\n", "Status",  status_str(driver->status));
+            printf("%s     %d\n", "UART Port",  driver->port_config.port);
+            printf("%s   %d\n", "UART TX Pin",  driver->port_config.tx);
+            printf("%s   %d\n", "UART RX Pin",  driver->port_config.rx);
+            printf("%s\n", "--------");
             xSemaphoreGive(lock);
             i++;
         }

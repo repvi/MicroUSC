@@ -1,11 +1,12 @@
 #include "MicroUSC/internal/system/init.h"
 #include "MicroUSC/internal/system/service_def.h"
 #include "MicroUSC/internal/USC_driver_config.h"
-#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/chip_specific/system_attr.h"
+#include "MicroUSC/internal/driverList.h"
 #include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/status.h"
 #include "MicroUSC/USCdriver.h"
+#include "MicroUSC/internal/config.h"
 #include "esp_debug_helpers.h"
 #include "esp_system.h"
 #include <esp_task_wdt.h>
@@ -34,24 +35,9 @@
 
 #define WDT_TIMER_DELAY pdMS_TO_TICKS(1)
 
-#define microusc_system_operation(topic, status, func, key, data) do { \
-    send_to_mqtt_service_single(topic, key, data); \
-    builtin_led_system(status); \
-    func;  \
-} while(0)
-
-#define microusc_system_operation_quick(topic, func, key, data) do { \
-    send_to_mqtt_service_single(topic, key, data); \
-    func; \
-} while(0)
-
-#define microusc_pause_drivers() usc_drivers_pause()
-#define microusc_resume_drivers() usc_drivers_resume()
-#define microusc_queue_flush() xQueueReset(microusc_system.queue_system.queue_handler);
-
-#define microusc_system_mqtt_main(topic, status, func, key, data) microusc_system_operation(topic, status, func, key, data)
-
-#define microusc_system_mqtt_main_fast(topic, func, key, data) microusc_system_operation_quick(topic, func, key, data)
+#define microusc_pause_drivers() // usc_drivers_pause()
+#define microusc_resume_drivers() // usc_drivers_resume()
+#define microusc_queue_flush() xQueueReset(microusc_system.queue_system.queue_handler)
 
 struct {
     struct {
@@ -112,18 +98,6 @@ void microusc_system_isr_pin(gpio_config_t io_config, microusc_status trigger_st
     gpio_isr_handler_add((gpio_num_t)gpio_pin, microusc_software_isr_handler, &gpio_pin);
 }
 
-/*
-void microusc_start_wifi(char *const ssid, char *const password)
-{
-    wifi_init_sta(ssid, password);
-}
-*/
-/*
-MqttMaintainerHandler microusc_system_start_mqtt_service(esp_mqtt_client_config_t *mqtt_cfg)
-{
-    return init_mqtt(mqtt_cfg);
-}
-*/
 __attribute__((noreturn)) void microusc_system_restart(void)
 {
     esp_restart();
@@ -243,11 +217,9 @@ static void microusc_system_task(void *p)
                     break;
                 case USC_SYSTEM_PAUSE:
                     builtin_led_system(USC_SYSTEM_PAUSE);
-                    microusc_pause_drivers();
                     break;
                 case USC_SYSTEM_RESUME:
                     builtin_led_system(USC_SYSTEM_RESUME);
-                    microusc_resume_drivers();
                     break;
                 case USC_SYSTEM_WIFI_CONNECT:
                     builtin_led_system(USC_SYSTEM_WIFI_CONNECT);

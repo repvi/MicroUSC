@@ -72,7 +72,7 @@ typedef struct {
  *       Ensure GPIO pins are valid for the target ESP32 variant.
  *       Use IRAM_ATTR for ISR handlers if UART used in interrupt context.
  */
-void uart_init( uart_port_config_t port_config, 
+esp_err_t uart_init( uart_port_config_t port_config, 
                 uart_config_t uart_config
               );
 

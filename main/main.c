@@ -2,6 +2,9 @@
 #include "esp_log.h"
 #include "testing_driver.h"
 #include "speed_test.h"
+#include "esp_check.h"
+
+static const char *TAG = "MAIN";
 
 void app_main(void) {
     init_MicroUSC_system();
@@ -23,12 +26,12 @@ void app_main(void) {
 
     // code should go after here
     
-    usc_process_t driver_action = &system_task; // point to the function you created
+    // usc_process_t driver_action = &system_task; // point to the function you created
     // function will configure driver_example
 
     // uncomment the line below to test the speed of the function
-    usc_driver_install("first driver", setting, pins, driver_action, 4086);
-    
+    uscDriverHandler example = usc_driver_create("first driver", setting, pins);
+    ESP_RETURN_VOID_ON_FALSE(example != NULL, TAG, "Failed to create driver_example");
     /*
     uart_port_config_t pinss = {
         .tx = GPIO_NUM_4,
@@ -45,12 +48,21 @@ void app_main(void) {
     
     printf("Pausing system...\n");
     send_microusc_system_status(USC_SYSTEM_PAUSE);
-    vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    send_microusc_system_status(USC_SYSTEM_LED_OFF);
-    //vTaskDelay(4000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //send_microusc_system_status(USC_SYSTEM_RESUME);
-    //vTaskDelay(2000 / portTICK_PERIOD_MS); // Wait for the system to be ready (1 second)
-    //send_microusc_system_status(USC_SYSTEM_ERROR);
-    //send_microusc_system_status(USC_SYSTEM_SLEEP);
+    //vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for the system to be ready (1 second)
+    //send_microusc_system_status(USC_SYSTEM_LED_OFF);
+
+    usc_command_t command = 0;
+    while (1) {
+        bool status = usc_driver_get_data(example, &command);
+        if (status) {
+            printf("Received data: %lu\n", command);
+            usc_driver_send_data(example, command + 1); // increment by 1
+        }
+        else {
+            printf("No data received.\n");
+            usc_driver_send_data(example, command); // resend the same command
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
     printf("End of program\n");
 }

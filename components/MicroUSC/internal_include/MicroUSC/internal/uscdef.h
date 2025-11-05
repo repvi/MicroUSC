@@ -92,19 +92,6 @@ typedef enum {
  * Used in linked list management via genList.h utilities
  */ 
 struct usc_driver_t {
-    struct {
-        TaskHandle_t task;
-        StaticTask_t task_buffer;
-        StackType_t stack[TASK_STACK_SIZE];
-        bool active;
-    } uart_reader;
-    struct {
-        TaskHandle_t task;
-        StaticTask_t task_buffer;
-        StackType_t *stack;
-        size_t stack_size;
-        // always run
-    } uart_processor;
     uart_config_t uart_config;
     driver_name_t driver_name;               ///< Human-readable identifier
     uart_port_config_t port_config;          ///< ESP32 UART port/pin assignments
@@ -115,7 +102,6 @@ struct usc_driver_t {
     SemaphoreHandle_t sync_signal;           ///< Thread synchronization
     SerialDataQueueHandler data;
     usc_status_t status;                     ///< Current state machine position
-    UBaseType_t priority;                    ///< Execution precedence
     bool has_access;                         ///< Security clearance flag
 };
 

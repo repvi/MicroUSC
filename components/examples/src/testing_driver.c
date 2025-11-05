@@ -12,15 +12,15 @@ void system_task(void *p) {
     uint32_t data = 0;
 
     while (1) {
-        data = usc_driver_get_data(driver);
+        usc_driver_get_data(driver, &data);
 
         if (data != 0) {
             ESP_LOGI("driver task", "Got data: %lu", data);
             if (data == 0x64) {
-                usc_send_data(driver, 1234); // send password
+                usc_driver_send_data(driver, 1234); // send password
             }
             else {
-                usc_send_data(driver, data + 1); // increment by 1
+                usc_driver_send_data(driver, data + 1); // increment by 1
             }
         }
         

@@ -43,7 +43,6 @@ extern "C" {
 #include "MicroUSC/internal/USC_driver_config.h"
 #include "MicroUSC/synced_driver/atomic_sys_op.h"
 #include "MicroUSC/internal/uscdef.h"
-#include "MicroUSC/uscUniversal.h"
 #include "genList.h"
 #include "esp_err.h"
 
@@ -86,9 +85,7 @@ void driver_isr_trigger(struct usc_driver_t *driver);
  */
 void addSingleDriver( const char *const driver_name,
                       const uart_config_t uart_config,
-                      const uart_port_config_t port_config,
-                      const usc_process_t driver_process,
-                      const stack_size_t stack_size
+                      const uart_port_config_t port_config
                     );
                     
 /**
@@ -131,45 +128,10 @@ void freeDriverList(void);
  */
 esp_err_t init_driver_list_memory_pool(const size_t buffer_size, const size_t data_size);
 
-/**
- * @brief Initializes a static memory pool for driver task stacks.
- *
- * This function allocates a memory pool large enough to hold the stack for each driver task,
- * with each stack having the specified size. The pool is used to provide stack memory for
- * driver processor tasks, improving memory efficiency and allowing for static allocation.
- *
- * @param size The size (in bytes) of each task stack to allocate for every driver.
- * @return ESP_OK on success, ESP_ERR_NO_MEM if allocation fails.
- *
- * Example usage:
- *     setUSCtaskSize(2048); // Allocates a pool for DRIVER_MAX stacks, each 2048 bytes
- */
-esp_err_t setUSCtaskSize(stack_size_t size);
-
 /*
  * Wrapper for init_driver_list_memory_pool function
  */
 esp_err_t init_hidden_driver_lists(const size_t buffer_size,  const size_t data_size);
-
-/**
- * @brief Pause all USC driver tasks
- * 
- * Suspends both processor and reader tasks for all drivers in the list.
- * Function runs from IRAM for faster execution during interrupts.
- * 
- * @warning Not thread-safe - should be called with proper synchronization
- */
-void IRAM_ATTR usc_drivers_pause(void);
-
-/**
- * @brief Resume all USC driver tasks
- * 
- * Resumes both processor and reader tasks for all drivers in the list.
- * Function runs from IRAM for faster execution during interrupts.
- * 
- * @warning Not thread-safe - should be called with proper synchronization
- */
-void IRAM_ATTR usc_drivers_resume(void);
 
 #ifdef __cplusplus
 }

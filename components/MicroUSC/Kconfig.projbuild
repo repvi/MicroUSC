@@ -1,0 +1,60 @@
+menu "MicroUSC Configuration"
+	choice TIMER
+		prompt "Timer type"
+		default FREERTOS_TIMER
+		help
+			Select task type
+		config FREERTOS_TIMER
+			bool "FreeRTOS Timer"
+			help
+				Use FreeRTOS timer for timing.
+		config GPTIMER
+			bool "General Purpose Timer"
+			help
+				Use General Purpose Timer for timing.
+	endchoice
+
+	config MICROUSC_DEBUG
+		bool "Enable MicroUSC debug"
+		default false
+		help
+			Enable debug logs for MicroUSC components.
+	
+	config MICROUSC_UART_DEBUG
+		bool "Enable UART debug for MicroUSC"
+		default false
+		help
+			Enable debug logs for MicroUSC UART component.
+	
+	config MICROUSC_DEBUG_MEMORY_USAGE
+		bool "Enable memory usage logging"
+		default false
+		help
+			Enable logging of memory usage for debugging purposes.
+
+	config MICROUSC_SYSTEM_PRIORITY
+		int "MicroUSC System Task Priority"
+		range 1 25
+		default 20
+		help
+			Set the priority for the MicroUSC system task.
+
+	config MICROUSC_CORE
+		int "MicroUSC core run on task"
+		range 0 1
+		default 0
+
+	config MICROUSC_QUEUEHANDLE_SIZE
+		int "MicroUSC queue size"
+		range 1 100
+		default 5
+		help
+			Set the queue size for MicroUSC.
+
+	config UART_QUEUE_SIZE
+		int "UART QUEUE SIZE"
+		default 10
+		range 0 1000
+		help
+			Set the queue size to store for the UART driver.
+endmenu

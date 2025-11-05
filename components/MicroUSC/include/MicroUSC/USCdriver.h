@@ -34,7 +34,6 @@
 #include "MicroUSC/system/manager.h"
 #include "MicroUSC/system/memory_pool.h"
 #include "MicroUSC/synced_driver/esp_uart.h"
-#include "MicroUSC/uscUniversal.h"
 #include "esp_system.h"
 
 #ifdef __cplusplus
@@ -55,10 +54,8 @@ extern "C" {
 
 /* --- Type Definitions --- */
 
-/* Forward declarations */
-typedef void (*usc_process_t)(void *);
-
 typedef struct usc_driver_t *uscDriverHandler;
+typedef uint32_t usc_command_t;
 
 /**
  * @brief Initialize a UART-based driver for the ESP32.
@@ -70,24 +67,19 @@ typedef struct usc_driver_t *uscDriverHandler;
  * @param driver_name     Optional identifier for the driver (nullable). If NULL, a default name is used.
  * @param uart_config     UART configuration structure (`uart_config_t`), defining baud rate, data bits, etc.
  * @param port_config     UART port configuration (`uart_port_config_t`), specifying GPIO mappings and buffer sizes.
- * @param driver_process  Callback function (`usc_process_t`) for handling received UART data. **Must not be NULL**.
- * @param stack_size      Stack size for UART driver task (recommended: appropriate for expected data loads).
  * 
  * @return
- * - **ESP_OK**: Successfully initialized the driver.
- * - **ESP_ERR_INVALID_ARG**: Provided `port_config` has invalid GPIO settings or `driver_process` is NULL.
- * - **ESP_FAIL**: Invalid `uart_config` (e.g., unsupported baud rate) or failure in UART driver installation.
+ * - On success, returns a handle to the initialized driver (`uscDriverHandler`).
+ * - On failure, returns NULL.
  * 
  * @note
  * - The caller must verify that assigned GPIO pins do not conflict with other peripherals.
  * - Ensure correct stack size based on UART traffic for optimal performance.
  * - The driver must be **properly deinitialized** using `usc_driver_deinit()` when no longer needed.
  */
-esp_err_t usc_driver_install( const char *const driver_name,
+uscDriverHandler usc_driver_create( const char *const driver_name,
                               const uart_config_t uart_config, 
-                              const uart_port_config_t port_config, 
-                              const usc_process_t driver_process,
-                              const stack_size_t stack_size
+                              const uart_port_config_t port_config
                             );
 
 /**
@@ -107,9 +99,9 @@ esp_err_t usc_driver_install( const char *const driver_name,
  *   this API acts as the correct method for extracting UART data.
  * - Ensure that the driver instance is **initialized and valid** before calling this function.
  */
-uint32_t usc_driver_get_data(uscDriverHandler driver);
+bool usc_driver_get_data(uscDriverHandler driver, usc_command_t *command);
 
-esp_err_t usc_send_data(uscDriverHandler driver, uint32_t data);
+esp_err_t usc_driver_send_data(uscDriverHandler driver, uint32_t data);
 
 #ifdef __cplusplus
 }
