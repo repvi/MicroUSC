@@ -1,19 +1,4 @@
 menu "MicroUSC Configuration"
-	choice TIMER
-		prompt "Timer type"
-		default FREERTOS_TIMER
-		help
-			Select task type
-		config FREERTOS_TIMER
-			bool "FreeRTOS Timer"
-			help
-				Use FreeRTOS timer for timing.
-		config GPTIMER
-			bool "General Purpose Timer"
-			help
-				Use General Purpose Timer for timing.
-	endchoice
-
 	config MICROUSC_DEBUG
 		bool "Enable MicroUSC debug"
 		default false
@@ -51,10 +36,10 @@ menu "MicroUSC Configuration"
 		help
 			Set the queue size for MicroUSC.
 
-	config UART_QUEUE_SIZE
-		int "UART QUEUE SIZE"
-		default 10
-		range 0 1000
-		help
-			Set the queue size to store for the UART driver.
+	#config UART_QUEUE_SIZE
+	#	int "UART QUEUE SIZE"
+	#	default 10
+	#	range 0 1000
+	#	help
+	#		Set the queue size to store for the UART driver.
 endmenu

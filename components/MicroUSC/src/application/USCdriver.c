@@ -99,23 +99,13 @@ cleanup_fail:
     return NULL;
 }
 
-static esp_err_t usc_driver_write( const struct usc_driver_t *driver,
-                                   const char *data,
-                                   const size_t len
-) {
-    /* Write data to UART; return ESP_OK if successful, ESP_FAIL otherwise */
-    return (uart_write_bytes(driver->port_config.port, data, len) == -1) ? ESP_FAIL : ESP_OK;
-}
-
 static __always_inline esp_err_t usc_driver_send_helper( const struct usc_driver_t *driver,
                                                          const char *data,
                                                          const size_t len
 ) {
     /* Copy data into driver's buffer at offset 1 */
     memcpy((driver->buffer.memory + 1), data, len);
-    //printf("Sending: %.*s\n", (int)len, (char *)(driver->buffer.memory));
     /* Write the entire buffer to UART */
-    // return usc_driver_write(driver, (const char *)driver->buffer.memory, driver->buffer.size);
     return (uart_write_bytes(driver->port_config.port, (const char *)driver->buffer.memory, driver->buffer.size) == -1) ? ESP_FAIL : ESP_OK;
 }
 
@@ -158,15 +148,13 @@ usc_status_t handle_serial_key(struct usc_driver_t *driver)
     SERIAL_RECIEVE_DELAY();
 
     /* Read the serial key from UART */
-    uint8_t *key = uart_read( driver->port_config.port, 
-                              driver->buffer.memory, 
-                              driver->buffer.size, 
-                              PASSWORD_PING_DELAY
-                            );
+    uint8_t *key = uart_read(driver->port_config.port, driver->buffer.memory, driver->buffer.size, PASSWORD_PING_DELAY);
     if (key != NULL) {
+        #ifdef MICROUSC_UART_DEBUG
         ESP_LOGI(TAG, "Serial key: %u %u %u %u", key[1], key[2], key[3], key[4]);
+        #endif
         uint32_t parsed_data = parse_data(key);
-        ESP_LOGI(TAG, "Parsed value: %lu", parsed_data);
+        //ESP_LOGI(TAG, "Parsed value: %lu", parsed_data);
 
         switch (parsed_data) {
             case SERIAL_KEY_VAL:
@@ -197,7 +185,9 @@ static usc_status_t process_data(struct usc_driver_t *driver, usc_command_t *com
         uint32_t data = parse_data(temp_data);
         *command = data;
         // dataStorageQueue_add(driver->data, data); // Add the data to the queue
-        //ESP_LOGI(TAG, "Got: %lu", data);
+        #ifdef MICROUSC_UART_DEBUG
+        ESP_LOGI(TAG, "Got: %lu", data);
+        #endif
         return DATA_RECEIVED;
     }
     return DATA_RECEIVE_ERROR; // doesn't need system interface
